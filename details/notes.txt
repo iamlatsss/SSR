@@ -1,8 +1,0 @@
-frontend-html,css,js
-backend-python
-database-MySQL
-
-pyton - we have used flask framework
-flask -1) jinja2 used for fetching the info from backend 
-       2) Flash used for alert box that should be shown in frontend  
-          where the logic is present in backend .
