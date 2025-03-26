@@ -1,0 +1,629 @@
+body{
+    margin:0;
+    padding:0;
+    
+    font-family: rockwell;
+}
+
+.header{
+    
+    background:linear-gradient(to right , rgb(200, 125, 26), white,white ,white);
+    position: relative;
+    height:auto;
+    display: flex;
+    z-index: 2;
+}
+
+.box{
+   
+   border: 2px solid bl;
+   width:200px;
+   height:200px;
+   flex-grow: 1;
+   margin: 0;
+   box-sizing: border-box;
+   flex-wrap: wrap;
+  
+}
+
+.box1{
+    display:flex; 
+    box-sizing: border-box;
+ }
+
+ 
+
+ .box2{
+    padding-top: 30px;
+    padding-left:60px;
+ }
+
+.box2 img{
+    width:80%; 
+    height:150px;
+}
+
+
+
+/* .box3 a{
+ padding: 0px;
+ display: inline;
+
+ 
+}
+
+.box3 a img{
+   
+    height:20px;
+    padding-left: 70px;
+    width:20px;
+} */
+
+
+
+
+.box3 {
+    display: flex;  /* Makes the box a flex container */
+    justify-content: center;  /* Centers the content horizontally */
+    align-items: center;  /* Centers the content vertically */
+    flex-wrap: wrap;  /* Ensures items wrap if the screen is too small */
+    gap: 10px;  /* Adds space between elements */
+    padding: 10px;  /* Adds padding inside the box */
+    box-sizing: border-box;  /* Includes padding and border in the box size */
+}
+
+.box3 a img {
+    max-width: 100%;  /* Ensures images scale down if necessary */
+    height: auto;  /* Maintains aspect ratio */
+    width: 50px;  /* Sets a fixed width */
+    height: 50px;  /* Sets a fixed height */
+}
+
+@media (max-width: 600px) {
+    .box3 {
+        flex-direction: column;  /* Stacks items vertically on smaller screens */
+    }
+
+    .box3 a img {
+        width: 40px;  /* Adjusts image width for medium-small screens */
+        height: 40px;  /* Adjusts image height for medium-small screens */
+    }
+}
+
+@media (max-width: 400px) {
+    .box3 a img {
+        width: 20px;  /* Reduces image width for small screens */
+        height: 20px;  /* Reduces image height for small screens */
+    }
+}
+
+
+.first{
+    padding: 10px;
+    flex-grow: 1;
+    flex-direction: row;
+    flex-wrap: wrap;
+    color: rgb(19, 18, 18);
+    letter-spacing: 1px;
+    font-variant: bold;
+    justify-content:space-between;
+    
+    
+}
+
+.first input{
+    padding-top: 20px;
+    padding-right: 0px;
+    padding-bottom: 20px;
+    background-color: inherit;
+    border: 2px solid rgb(10, 10, 10);
+    border-radius: 10px;
+    color: rgb(12, 12, 12);
+    outline:none;
+    padding-left: 10px;
+
+   
+}
+
+input::placeholder{
+    padding-left: 10px;
+    color: rgb(10, 10, 10);
+    
+}
+
+
+
+nav{
+    background-color: black;
+    width:100%;
+    min-height: 50px;
+    display: flex;
+    position: sticky;
+    top: 0;
+    z-index: 3;
+    flex-direction: row;
+    box-sizing: border-box;
+    
+    
+}
+
+nav .nav-link{
+    width:10%;
+    
+    /* background-color: aliceblue; */
+    
+}
+
+span{
+    margin-left: 10px;
+    display: block;
+    width:30px;
+    height:3px;
+    background-color: aliceblue;
+}
+
+.one{
+    margin-top: 15px;
+}
+
+.two{
+    margin-top: 5px;
+}
+
+nav .nav-items{
+   position: relative;
+   width:90%;
+   z-index: 2;
+
+}
+
+nav .nav-items ul{
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    
+}
+
+nav .nav-items ul li{
+   
+   text-align: center;
+  
+   list-style-type: none;
+   flex-grow: 1;
+}
+
+nav .nav-items ul li a{
+    text-transform: uppercase;
+    outline: none;
+    list-style-type: none;
+    text-decoration: none;
+    color: white;
+ }
+
+ nav .nav-items ul li  :hover{
+    border-bottom: 2px solid white;
+ }
+
+/* .dropdown{
+    background-color: black;
+    display: block;
+    margin: 0;
+    padding: 0;
+    width:20%;
+}
+
+.dropdown li {
+    list-style-type: none;
+    padding: 20px;
+    text-align: left;
+    border: 2px solid red;
+}
+
+.dropdown li a{
+   text-decoration: none;
+   color: white;
+   text-align: center;
+}
+
+.dropdown li a:hover{
+border-bottom: 2px solid white;
+} */
+
+.dropdown {
+    display: none;
+    position: absolute;
+    background-color: #080808;
+    list-style-type: none;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    padding: 0px 0;
+    margin: 0;
+    z-index: 2;
+    
+   
+}
+
+.dropdown li {
+    padding: 25px 25px;
+    border-radius: 2px;
+}
+
+.dropdown li:hover {
+    border: 2px solid rgb(254, 253, 253);
+    background-color: rgb(250, 247, 247);
+   
+}
+
+.dropdown li a {
+    text-decoration: none;
+   color:rgb(244, 12, 12);
+}
+
+.dropdown li a :hover{
+    color: white;
+    background-color: black;
+}
+
+/* .dropdown li a:hover{
+    border-bottom: 2px solid black;
+} */
+
+.nav-link {
+    cursor: pointer;
+}
+
+
+
+.user li{
+    list-style-type: none;
+    text-align: center;
+    
+}
+
+.user li a{
+    text-decoration: none;
+}
+
+.user{
+    right:0;
+    
+}
+
+.user li{
+    padding: 10px;
+    width:200px;
+    
+}
+
+
+/* Hero section */
+.hero {
+    position: relative;
+    background: url("/static/background1.png") no-repeat center center/cover;
+    height: 100vh;
+    color: white;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+.hero h1 {
+    font-size: 3rem;
+    margin: 0;
+}
+
+
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+}
+
+.hero-content {
+    position: relative;
+    z-index: 1;
+}
+
+/* Fixed size for the container */
+.hero-content {
+    position: relative;
+    width: 70%;
+    
+    height: 250px;
+    
+    overflow: hidden;
+
+}
+
+
+/* Modify animation to move text in the opposite direction */
+@keyframes moveText {
+    0% {
+        transform: translateX(100%);
+        
+    }
+
+    50% {
+        transform: translateX(10%);
+        /* Move to the middle */
+    }
+
+    100% {
+        transform: translateX(-100%);
+        
+    }
+}
+
+.hero-content h1 {
+    display: inline-block;
+    /* Makes the text behave like a block element but inline for animation */
+    white-space: nowrap;
+    /* Prevents the text from wrapping */
+    animation: moveText 7s linear infinite;
+    /* Applies the animation */
+    font-family: Verdana, Geneva, Tahoma, sans-serif;
+    border: 6px double white;
+    padding: 10px;
+    font-size:80px;
+    border-radius: 40px;
+}
+
+
+@media screen and (max-width:400px){
+
+   
+    .header{
+        display: block;
+        
+    }
+
+    .box{
+        width:100%;
+        height: 100px;
+    }
+
+    .box1{
+        height:30px;
+        width:100%;
+    }
+     .box3{
+        padding-top: 10px;
+        height:40px;
+        width:100%;
+        padding-bottom: 10px;
+    }
+
+    .first{
+    padding: 2px;
+    
+    }
+
+    .first input{
+        margin-left:6px;
+        padding-top: 0px;
+        padding-bottom: 0px;
+    }
+
+    span{
+        margin-left: 10px;
+        display: block;
+        width:18px;
+        height:3px;
+        background-color: aliceblue;
+    }
+    
+    .one{
+        margin-top: 15px;
+    }
+    
+    .two{
+        margin-top: 5px;
+    }
+
+    .dropdown {
+        display: none;
+        position:absolute;
+        background-color: #f9f9f9;
+        list-style-type: none;
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+        padding: 10px 0;
+        margin: 0;
+    }
+    
+    .dropdown li {
+        padding: 10px 20px;
+        
+    }
+    
+    .dropdown li a {
+        text-decoration: none;
+        color: #333;
+    }
+    
+    .nav-link {
+        cursor: pointer;
+    }
+
+    .user{
+        padding: 0;
+    }
+
+    .user li{
+        width:50px;
+      
+    }
+
+    .hero-content{
+        top: 100px;
+    }
+
+
+    .hero-content h1 {
+        display: inline-block;
+        /* Makes the text behave like a block element but inline for animation */
+        white-space: nowrap;
+        /* Prevents the text from wrapping */
+        animation: moveText 7s linear infinite;
+        /* Applies the animation */
+        /* font-family: Verdana, Geneva, Tahoma, sans-serif; */
+        border: 3px double white;
+        padding: 10px;
+        font-size:30px;
+        border-radius: 40px;
+    }
+
+    .box1 {
+        /* Fixed width */
+        padding: 0px;
+        display: flex;
+        
+     }
+
+     .box2{
+        padding-top:10px;
+     }
+     .box2 img{
+        width:80%;
+        height:80px;
+        
+        
+     }
+
+     
+
+    
+
+}
+
+
+
+
+@media screen  and (max-width:800px){
+
+    nav .nav-items ul{
+        display: flex;
+        flex-wrap: wrap;
+        padding: 0; 
+    }
+
+    nav .nav-items ul li {
+        
+        margin-left: 4px;
+        justify-content: space-between ;
+        outline: none;
+
+        
+    }
+
+    nav .nav-items ul li a{
+      
+        font-size: small;
+        
+        
+    }
+
+    .box1 {
+        /* Fixed width */
+        padding: 0px;
+        
+     }
+
+     /* .box2{
+        padding-top: 20px;
+        padding-left:20px;
+     } */
+
+     
+
+     
+   
+}
+
+
+@media (min-width: 1000px) {
+    .box1 {
+       /* Fixed width */
+       padding: 20px;
+       display: block;
+    }
+  }
+
+
+
+  @media screen and (min-width: 400px) and (max-width: 500px) {
+    /* Header styles */
+    .header {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between; /* Evenly distributes the space between elements */
+        align-items: center;
+        padding: 10px; /* Adds padding around the header */
+        box-sizing: border-box;
+    }
+
+    /* Box 1 styles */
+    .box1 {
+        display: flex;
+        flex-direction: column;
+        justify-content: left;
+        width: 30%; /* Fix the width of the first box */
+        padding: 5px;
+        box-sizing: border-box;
+    }
+
+    /* Box 2 styles (for the image) */
+    .box2 {
+        width: 40%; /* Fix the width of the second box */
+        padding: 5px;
+        display: flex;
+        justify-content: center; /* Centers the image horizontally */
+        box-sizing: border-box;
+    }
+
+    .box2 img {
+        width: 100%;    /* Makes the image take the full width of the container */
+        height: auto;   /* Maintain the aspect ratio */
+        padding: 10px;  /* Adds padding around the image */
+        object-fit: contain; /* Ensures the image fits within the container */
+    }
+
+    /* Box 3 styles (for social icons) */
+    .box3 {
+        width: 30%; /* Fix the width of the third box */
+        display: flex;
+        justify-content: space-around; /* Evenly spaces the icons */
+        padding: 5px;
+        box-sizing: border-box;
+    }
+
+    .box3 a img {
+        width: 40px;  /* Controls the size of the icons */
+        height: 40px; /* Ensures the icons maintain a consistent size */
+        padding: 5px; /* Adds padding around the icons */
+    }
+
+    .first {
+        text-align:center;
+        width: 100%; /* Ensures the text input box takes up full width */
+        margin-bottom: 10px; /* Adds space between the elements */
+    }
+
+    .first input {
+        width: 80%; /* Makes the input field span the full width */
+        padding: 10px;
+        margin-left:0px;
+        border-radius: 5px;
+        border: 1px solid #040404;
+    }
+}
+
+
+
+ 
+  
+ 

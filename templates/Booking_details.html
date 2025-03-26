@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> SSR | Booking Details </title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/static/home.css">
+
+    <style>
+ 
+       .nav-items{
+        padding-top: 20px;
+       }
+       body{
+            background-color: rgb(237, 200, 120);
+            background-image: url(/static/background1.png);
+            background-size: cover;
+
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 30px auto;
+            background: #ffffff;
+            padding: 25px;
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 10px;
+            background-color: #ffffff;
+            border: 1px solid #ced4da;
+           
+        }
+
+        .form-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        button {
+            background-color: #007bff;
+            color: white;
+            font-size: 14px;
+            width: auto;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        hr {
+            margin-left: 0px;
+            margin-bottom: 30px;
+            margin-right: 8px
+        }
+        
+    </style>
+</head>
+
+<body>
+    <header class="header">
+
+        <div class="box box1">
+            <div class="first">
+                Track Shipment
+            </div>
+
+            <div class="first">
+                <input type="text" placeholder="Enter BL/Container no.">
+            </div>
+        </div>
+
+        <div class="box box2">
+            <img src="/static/SSR_nobg.png" alt="logo">
+        </div>
+
+        <div class="box box3">
+
+            <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img
+                    src="/static/linkedin.png"></a>
+            <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/whatsapp.png"></a>
+            <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/facebook.png"></a>
+        </div>
+    </header>
+    <nav>
+        <div class="nav-link " onclick="toggleDropdown()">
+            <span class="one"> </span>
+            <span class="two"></span>
+            <span class="two"></span>
+        </div>
+        <div class="nav-items">
+            <ul>
+                <li><a href="home.html">home</a></li>
+                <li><a href="/templates/">about</a></li>
+                <li><a href="/templates/">service</a></li>
+                <li><a href="/templates/">contact</a></li>
+                <li><a href="#" onclick="toggleUserDropdown(event)"><img src="/static/user.png" alt=""
+                            style="width: 20px; height: 20px;" class="user-icon"></a></li>
+            </ul>
+        </div>
+    </nav>
+
+
+    <ul class="dropdown" id="dropdownMenu">
+        <li><a href="/templates/kycdetails.html" class="dropdown-link" target="_blank"> 💁 KYC details</a></li>
+        <li><a href="/templates/quotationdetails.html" class="dropdown-link" target="_blank">📇 Quotation details </a>
+        </li>
+        <li><a href="/templates/bookingdetails.html" class="dropdown-link" target="_blank">🧾 Booking details</a></li>
+        <li><a href="#" class="dropdown-link" target="_blank">🧾 Invoice Format</a></li>
+        <li><a href="#" class="dropdown-link" target="_blank">⚠ Pre-Alert</a></li>
+        <li><a href="#" class="dropdown-link" target="_blank">📇 BL Details</a></li>
+    </ul>
+
+
+    <ul class="dropdown user" id="userDropdown">
+        <li><a href="/templates/login.html" class="dropdown-link">Login</a></li>
+        <li><a href="/templates/signup.html" class="dropdown-link">SignUp</a></li>
+        <li><a href="#" class="dropdown-link">Profile</a></li>
+    </ul>
+
+    <div class="container">
+        <div class="form-title">Booking Details</div>
+        <hr>
+        <form id="shippingForm"  action=""  method="POST" >
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="nominationDate" class="form-label">Nomination Date</label>
+                    <input type="date" id="nominationDate" name="nominationDate" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="consigneeDetails" class="form-label">Consignee Details</label>
+                    <select id="consignee" name="consigneeDetails" class="form-select" required>
+                        <option value="">Select Consignee</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="shipperDetails" class="form-label">Shipper Details</label>
+                    <input type="text" id="shipperDetails" name="shipperDetails" class="form-control"
+                        placeholder="Enter Shipper Details" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="hblNo" class="form-label">HBL No.</label>
+                    <input type="text" id="hblNo" name="hblNo" class="form-control" placeholder="Enter HBL Number">
+                </div>
+                <div class="col-md-4">
+                    <label for="mblNo" class="form-label">MBL No.</label>
+                    <input type="text" id="mblNo" name="mblNo" class="form-control" placeholder="Enter MBL Number">
+                </div>
+                <div class="col-md-4">
+                    <label for="pol" class="form-label">Port of Loading (POL)</label>
+                    <input type="text" id="pol" name="pol" class="form-control" placeholder="Enter POL">
+                </div>
+                <div class="col-md-4">
+                    <label for="pod" class="form-label">Port of Discharge (POD)</label>
+                    <input type="text" id="pod" name="pod" class="form-control" placeholder="Enter POD">
+                </div>
+                <div class="col-md-4">
+                    <label for="containerSize" class="form-label">Size of Container</label>
+                    <select id="containerSize" name="containerSize" class="form-select" required>
+                        <option value="20ft">20 ft</option>
+                        <option value="40ft">40 ft</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="job_number" class="form-label">Job Number</label>
+                    <input type="number" id="job_number" name="job_number" class="form-control"
+                        placeholder="Enter Job Number" required>
+                </div>
+                <!-- <div class="col-md-4">
+                    <label for="job_number" class="form-label">Job Number</label>
+                    <input type="number" id="job_number" name="job_number" class="form-control" readonly>
+                </div> -->
+                <div class="col-md-4">
+                    <label for="agentDetails" class="form-label">Agent Details</label>
+                    <input type="text" id="agentDetails" name="agentDetails" class="form-control"
+                        placeholder="Enter Agent Details">
+                </div>
+                <div class="col-md-4">
+                    <label for="shippingLine" class="form-label">Shipping Line</label>
+                    <input type="text" id="shippingLine" name="shippingLine" class="form-control"
+                        placeholder="Enter Shipping Line">
+                </div>
+                <div class="col-md-4">
+                    <label for="buyRate" class="form-label">Buy Rate</label>
+                    <input type="number" id="buyRate" name="buyRate" class="form-control" placeholder="Enter Buy Rate"
+                        required>
+                </div>
+                <div class="col-md-4">
+                    <label for="sellRate" class="form-label">Sell Rate</label>
+                    <input type="number" id="sellRate" name="sellRate" class="form-control"
+                        placeholder="Enter Sell Rate">
+                </div>
+                <div class="col-md-4">
+                    <label for="etd" class="form-label">ETD</label>
+                    <input type="date" id="etd" name="etd" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="eta" class="form-label">ETA</label>
+                    <input type="date" id="eta" name="eta" class="form-control">
+                </div>
+                <div class="col-md-4">
+                    <label for="swb" class="form-label">SWB</label>
+                    <select id="swb" name="swb" class="form-select">
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="igmFiled" class="form-label">IGM Filed</label>
+                    <select id="igmFiled" name="igmFiled" class="form-select">
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+            </div>
+            <div class="text-center">
+                <button type="submit" action="" class="btn btn-primary btn-sm">Submit</button>
+                <br><br>
+                <a href="{{url_for('bookinglist')}}"  class="btn btn-secondary btn-sm">View Details</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Auto-increment job number
+        document.addEventListener("DOMContentLoaded", function () {
+            let jobNumberField = document.getElementById("jobNumber");
+
+            // Fetch last job number from backend (replace with actual logic)
+            fetch('/get-last-job-number')
+                .then(response => response.json())
+                .then(data => {
+                    jobNumberField.value = data.lastJobNumber + 1;
+                })
+                .catch(error => {
+                    console.error("Error fetching job number:", error);
+                    jobNumberField.value = 1; // Default to 1 if backend fails
+                });
+        });
+        document.addEventListener("DOMContentLoaded", function () {
+            fetch("/api/companies")  // API to fetch company names
+                .then(response => response.json())
+                .then(data => {
+                    let dropdown = document.getElementById("consignee");
+                    data.companies.forEach(company => {
+                        let option = document.createElement("option");
+                        option.value = company;
+                        option.textContent = company;
+                        dropdown.appendChild(option);
+                    });
+                })
+                .catch(error => console.error("Error fetching companies:", error));
+        });
+    </script>
+</body>
+</html>
+
+    <!-- <div class="container">
+        <div class="form-title">Booking Details</div>
+        <hr>
+        <form id="shippingForm"  action=""  method="POST" >
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label for="job_number" class="form-label">Job Number</label>
+                    <input type="number" id="job_number" name="job_number" class="form-control"
+                        placeholder="Enter Job Number" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="nomination_date" class="form-label">Nomination Date</label>
+                    <input type="date" id="nomination_date" name="nomination_date" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="consignee_details" class="form-label">Consignee Details</label>
+                    <input type="text" id="consignee_details" name="consignee_details" class="form-control"
+                        placeholder="Enter Consignee Details" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="shipper_details" class="form-label">Shipper Details</label>
+                    <input type="text" id="shipper_details" name="shipper_details" class="form-control"
+                        placeholder="Enter Shipper Details" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="hbl_no" class="form-label">HBL No.</label>
+                    <input type="text" id="hbl_no" name="hbl_no" class="form-control" placeholder="Enter HBL Number"
+                        required>
+                </div>
+                <div class="col-md-4">
+                    <label for="mbl_no" class="form-label">MBL No.</label>
+                    <input type="text" id="mbl_no" name="mbl_no" class="form-control" placeholder="Enter MBL Number"
+                        required>
+                </div>
+                <div class="col-md-4">
+                    <label for="pol" class="form-label">Port of Loading (POL)</label>
+                    <input type="text" id="pol" name="pol" class="form-control" placeholder="Enter POL" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="pod" class="form-label">Port of Discharge (POD)</label>
+                    <input type="text" id="pod" name="pod" class="form-control" placeholder="Enter POD" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="container_size" class="form-label">Size of Container</label>
+                    <select id="container_size" name="container_size" class="form-select" required>
+                        <option value="20ft">20 ft</option>
+                        <option value="40ft">40 ft</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="agent_details" class="form-label">Agent Details</label>
+                    <input type="text" id="agent_details" name="agent_details" class="form-control"
+                        placeholder="Enter Agent Details" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="shipping_line" class="form-label">Shipping Line</label>
+                    <input type="text" id="shipping_line" name="shipping_line" class="form-control"
+                        placeholder="Enter Shipping Line" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="buy_rate" class="form-label">Buy Rate</label>
+                    <input type="number" id="buy_rate" name="buy_rate" class="form-control" placeholder="Enter Buy Rate"
+                        required>
+                </div>
+                <div class="col-md-4">
+                    <label for="sell_rate" class="form-label">Sell Rate</label>
+                    <input type="number" id="sell_rate" name="sell_rate" class="form-control"
+                        placeholder="Enter Sell Rate" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="etd" class="form-label">ETD</label>
+                    <input type="date" id="etd" name="etd" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="eta" class="form-label">ETA</label>
+                    <input type="date" id="eta" name="eta" class="form-control" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="swb" class="form-label">SWB</label>
+                    <select id="swb" name="swb" class="form-select" required>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="igm_filed" class="form-label">IGM Filed</label>
+                    <select id="igm_filed" name="igm_filed" class="form-select" required>
+                        <option value="yes">Yes</option>
+                        <option value="no">No</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="cha" class="form-label">CHA</label>
+                    <input type="text" id="cha" name="cha" class="form-control" placeholder="Enter CHA Details"
+                        required>
+                </div>
+            </div>
+            <div class="text-center">
+                <button type="submit" action="" class="btn btn-primary btn-sm">Submit</button>
+                <br><br>
+                <a href=""  class="btn btn-secondary btn-sm">View Details</a>
+            </div> -->
+
