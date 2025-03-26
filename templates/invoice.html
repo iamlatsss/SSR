@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="/static/invoice.css">
+</head>
+<body>
+    <header>
+        <div class="left-section">
+            <h3 >Track Shipment</h3><br>
+            <input type="text" placeholder="Enter BL/Container no.">
+        </div>
+        <div class="center-section">
+            <img src="/static/images/SSR_nobg.png" alt="Logo">
+        </div>
+        <div>
+            <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/images/whatsapp.png" height="30px"
+                    width="30px"></a>
+            <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/images/facebook.png" height="30px"
+                    width="30px"></a>
+            <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img src="/static/images/linkedin.png"
+                    height="30px" width="30px"></a>
+        </div>
+    </header>
+
+    <nav>
+        <ul class="nav-list">
+            <li class="nav-item">
+                <a href="#" class="nav-link"><img src="static/images/hamberger.png" alt="hambergericon"></a>
+                <ul class="dropdown">
+                    <!-- <li><a href="Login.html" class="dropdown-link">Login</a></li>
+                    <li><a href="Signup.html" class="dropdown-link">Signup</a></li> -->
+                    <li><a href="/kycwebpage" class="dropdown-link">KYC details</a></li>
+                    <li><a href="/quotationwebpage" class="dropdown-link">Quotation details </a></li>
+                    <li><a href="/bookingwebpage" class="dropdown-link">Booking details</a></li>
+                    <li><a href="/invoice" class="dropdown-link">Invoice Format</a></li>
+                    <li><a href="#" class="dropdown-link">Pre-Alert</a></li>
+                    <li><a href="#" class="dropdown-link">BL Details</a></li>
+                </ul>
+            </li>
+
+        </ul>
+    </nav>
+
+    <div class="main-A4page">
+      
+        <div class="main-content">
+              <div  class="r1" >
+                <div  id="r11">
+                     <h1 style="color:#ff1a1a;font-family:'Times New Roman', Times, serif;font-size: 20px;">SSR LOGISTIC SOLUTIONS PVT. LTD.</h1>
+                     <p>Office No. 612, 6th Floor, Vashi Infotech Park,<br>
+                        Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai - 400 703.<br>
+                        GSTIN: 27ABMCS1941A1ZI &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        PAN: ABMCS1941A <br>
+                        Phone: 47835280 <br>
+                        E-Mail: customerservice@ssrlogistic.net 
+                    </p>
+                </div>
+                <div  id="r12">
+                     <img src="/static/images/SSR_nobg.png" alt="SSR Logistic solutions logo" height="125" width="240px">
+                </div>
+              </div>
+
+              <div  class="r2" >
+                <h1>PROFORMA INVOICE</h1>
+              </div>
+              
+              <div  class="r3" >
+                <div id="r31">
+                    <br>
+                    <p style="margin-top:-8px;">Bill To: </p>
+                    <p id="cust_name" style="font-weight: bold;">M/s. {{cust_name}}</p>
+                    <p id="cust_address">{{cust_address}}</p>
+                    <p id="cust_address">{{cust_state}} - {{cust_pincode}}, INDIA</p>
+                    <p id="cust_details" style="font-weight: bold;"><span>GSTIN: {{cust_gstin}}</span>
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        <span>PAN: {{cust_pan}}</span></p>
+                </div>
+                <div id="r32">
+                    <p>Reverse Charge :&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input style="margin-top: 6px;" type="text" placeholder="eg.Yes/No" name="reverse_charge"></p>
+                    <p>Invoice No&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" placeholder="eg. SSRIMP/83/24-25" name="invoice_no">
+                    </p>
+                    <p>Invoice Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="date" placeholder="28/08/24" name="invoice_date"> </p>
+                    <p>Ref. No.&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input type="number" placeholder="eg.5086" name="ref_no"></p>
+                        
+                    <p>Place of Supply&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input type="text" placeholder="eg.Delhi, India (07)" name="place_of_supply">
+                    </p>
+                </div>
+              </div>
+
+              <div  class="r4" >
+                <div id="r41">
+                       <p>VESSEL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;EVER ULYSSES V.162W</p>
+                       <p>IGM NO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;</p>
+                       <p>IGM DATE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;</p>
+                       <p>Line No&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;</p>
+                       <p>SUB LINE NO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;</p>
+                       <p>CONTR TYPE&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;40'HC </p>
+                       <p>Number of Container&nbsp;&nbsp;:&nbsp;1</p>
+                </div>
+
+                <div id="r42">
+                    <p>B/L No &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;YSNBF24090462</p>
+                    <p>B/L Date&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;10-09-2024</p>
+                    <p>MBL No&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;EGLV142454931100</p>
+                    <p>Gross Weight &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;26000.000KGS</p>
+                    <p>Measurment &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;37.800 CBM</p>
+                    <p>Origin &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;CHINA POD: SHANGHAI </p>
+                    <p>De-Stuff.Stn&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;NHAVA SHEVA</p>
+                    <p>Currency &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;USD</p>
+                    <p>Ex. Rate &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;&nbsp;&nbsp;85.21</p>
+                </div>
+              </div>
+
+              <div  class="r5" >
+                <p style="font-weight: bold;">Container No (s)&nbsp;&nbsp;: &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;TCLU9306010/ SUDU6569380</p>
+              </div>
+
+              <div  class="r6" >
+                 <div id="c1">
+                    <p>S/N</p>
+                 </div>
+                 <div id="c2">
+                    <p>Service Charge <br>
+                        Description</p>
+                 </div>
+                 <div id="c3">
+                    <p>SAC</p>
+                 </div>
+                 <div id="c4">
+                    <p>P/C</p>
+                 </div>
+                 <div id="c5">
+                    <p>CUR</p>
+                 </div>
+                 <div id="c6">
+                    <p>RATE <br>INT</p>
+                 </div>
+                 <div id="c7">
+                    <p>AMOUNT <br>INR</p>
+                 </div>
+                 <div id="c8">
+                    <p>GST <br>RATE</p>
+                 </div>
+                 <div id="c9">
+                    <p>IGST <br>AMT</p>
+                 </div>
+                 <div id="c10">
+                    <p>SGST <br>AMT</p>
+                 </div>
+                 <div id="c11">
+                    <p>TOTAL <br>AMOUNT</p>
+                 </div>
+              </div>
+              <div  class="r7" >
+                <div class="tr" id="tr1">
+                    <div id="tr11" ><p>1</p></div>
+                    <div id="tr12" ><p>Ocean Freight </p></div>
+                    <div id="tr13" ><p></p></div>
+                    <div id="tr14" ><p></p></div>
+                    <div id="tr15" ><p>USD </p></div>
+                    <div id="tr16" ><p>1150</p></div>
+                    <div id="tr17" ><p>97991.5 </p></div>
+                    <div id="tr18" ><p>5% </p></div>
+                    <div id="tr19" ><p>4899.575</p></div>
+                    <div id="tr110"><p></p></div>
+                    <div id="tr111"><p>102891.08</p></div>
+                </div>
+                <div class="tr" id="tr2">
+                    <div id="tr21" ><p>2</p></div>
+                    <div id="tr22" ><p>S/Line charges</p></div>
+                    <div id="tr23" ><p></p></div>
+                    <div id="tr24" ><p></p></div>
+                    <div id="tr25" ><p>INR</p></div>
+                    <div id="tr26" ><p>36,500</p></div>
+                    <div id="tr27" ><p>36500</p></div>
+                    <div id="tr28" ><p>18%</p></div>
+                    <div id="tr29" ><p>6570</p></div>
+                    <div id="tr210"><p></p></div>
+                    <div id="tr211"><p>43070</p></div>
+                </div>
+                <div class="tr" id="tr3">
+                    <div id="tr31" ><p>3</p></div>
+                    <div id="tr32" ><p>Delivery Order</p></div>
+                    <div id="tr33" ><p></p></div>
+                    <div id="tr34" ><p></p></div>
+                    <div id="tr35" ><p>INR</p></div>
+                    <div id="tr36" ><p>2000 </p></div>
+                    <div id="tr37" ><p>2000 </p></div>
+                    <div id="tr38" ><p>18%</p></div>
+                    <div id="tr39" ><p>360</p></div>
+                    <div id="tr310"><p></p></div>
+                    <div id="tr311"><p>2360</p></div>
+                </div>
+                <div class="tr" id="tr4">
+                    <div id="tr41" ><p>4</p></div>
+                    <div id="tr42" ><p></p></div>
+                    <div id="tr43" ><p></p></div>
+                    <div id="tr44" ><p></p></div>
+                    <div id="tr45" ><p></p></div>
+                    <div id="tr46" ><p></p></div>
+                    <div id="tr47" ><p>0</p></div>
+                    <div id="tr48" ><p>18%</p></div>
+                    <div id="tr49" ><p>0</p></div>
+                    <div id="tr410"><p></p></div>
+                    <div id="tr411"><p>0</p></div>
+                </div>
+                <div class="tr" id="tr5">
+                    <div id="tr51" ><p>5</p></div>
+                    <div id="tr52" ><p></p></div>
+                    <div id="tr53" ><p></p></div>
+                    <div id="tr54" ><p></p></div>
+                    <div id="tr55" ><p></p></div>
+                    <div id="tr56" ><p></p></div>
+                    <div id="tr57" ><p>0</p></div>
+                    <div id="tr58" ><p>18%</p></div>
+                    <div id="tr59" ><p>0</p></div>
+                    <div id="tr510"><p></p></div>
+                    <div id="tr511"><p>0</p></div>
+                </div>
+              </div>
+              <div  class="r8" >
+                <div id="r81"><p style="font-weight: bold;">TOTAL AMOUNT</p></div>
+                <div id="r82"><p>136491.5 </p></div>
+                <div id="r83"><p>11829.575</p></div>
+                <div id="r84"><p>0</p></div>
+                <div id="r85"><p>148321.08</p></div>
+              </div>
+              <div  class="r9" >
+                <div id="r91"></div>
+                <div id="r92">148321</div>
+              </div>
+              <div  class="r10">
+                <div id="r101"><p>Rupees: One Lakh Forty Eight Thousand Three Hundred and Twenty One Only.</p></div>
+              </div>
+              <div  class="r11">
+                <div id="r102"><p>NOTE: Exchange Rate is provisional and is subject to change on Final Invoice.</p></div>
+              </div>
+              <div  class="r12">
+                <div id="r121"></div>
+                <div id="r122">
+                    <p style="text-decoration: underline; margin-top: 35px;font-size: 14px;">BANK DETAILS</p>
+                    <p>Name of the Beneficiary </p>
+                    <p>Current Account No </p>
+                    <p>Name of the Bank</p>
+                    <p>RTGS / NEFT IFSC CODE</p>
+                    <p>BRANCH</p>
+                </div>
+                <div id="r123">
+                    <p style="margin-top: 60px;">:&nbsp;&nbsp;&nbsp;&nbsp;SSR LOGISTIC SOLUTIONS PVT LTD</p>
+                    <p>:</p>
+                    <p>:</p>
+                    <p>:</p>
+                    <p>:</p>
+                </div>
+              </div>
+              <div  class="r13">
+                <p>TERMS & CONDITIONS</p>
+              </div>
+              <div  class="r14">
+                <div id="r141">
+                    <p style="font-size: 14px; font-weight: bolder; margin-left: 15px; margin-top: 3px;">For SSR LOGISTIC SOLUTIONS PVT. LTD.</p>
+                    <p style="font-size: 14px; font-weight: bold;margin-left: 3px; margin-top:0px;">Stamping & Signature</p>
+                    <p style="font-size: 14px; font-weight: bold;margin-left: 3px; margin-top:120px;">Authorised Signatory
+                    </p>
+                </div>
+                <div id="r142">
+                    <p>1. Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.</p>
+                    <p>2. Interest would be charges @ 24% p.a. on the delayed payment.</p>
+                    <p>3. In case of any objection / reservation in the billed Invoice / Debit Note, the same must be 
+                        lodged (brought to our notice) by you within 5 days from the issue date of the Invoice / Debit note 
+                        and the written receipt should be taken from our Accounts Manager in respect of the said 
+                        objection(s), failing which, the billed amount shall be deemed to be correct and accepted by you</p>
+                    <p>4. Pyment to be made at Mumbai by A/c payee Cheque / Demand Draft / NEFT only and receipt 
+                        for the same must be insisted upon,</p>
+                    <p>5. Any dispute subject to Mumbai Jurisdiction only</p>
+                </div>
+              </div>     
+        </div>
+    </div>
+</body>
+</html>

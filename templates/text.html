@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quotation Details</title>
+    <script src="https://cdn.emailjs.com/dist/email.min.js"></script>
+    <script>
+        (function() {
+            emailjs.init("pIt95N4Gi1IRsmwxU"); // Replace with your EmailJS Public Key
+        })();
+    </script>
+    <style>
+
+body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #28a745;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+
+
+        /* header  */
+
+        html, body {
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: white;
+            color: black;
+            padding: 25px;
+
+            border:10px solid grey;
+            
+        }
+        header .left-section {
+            display: flex;
+            flex-direction: column; 
+            align-items: flex-start;
+        }
+        header .left-section input {
+            width: 200px; 
+            height: 30px;  
+            font-size: 15px; 
+        }
+        header .center-section {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+        header .center-section img {
+            height: 150px;
+            width: 250px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <!-- Header Content -->
+        <div class="left-section">
+            <p>Track Shipment</p><br>
+            <input type="text" placeholder="Enter BL/Container no.">
+        </div>
+        <div class="center-section">
+            <img src="/images/SSR_nobg.png" alt="Logo">
+        </div>
+        <div>
+            <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/images/whatsapp.png" height="30px"
+                    width="30px"></a>
+            <a href="https://www.facebook.com/sentil.kumar.984"><img src="/images/facebook.png" height="30px"
+                    width="30px"></a>
+            <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img src="/images/linkedin.png"
+                    height="30px" width="30px"></a>
+        </div>
+    </header>
+
+    <div class="container">
+        <h2>Quotation Details</h2>
+        <form id="quotationForm" onsubmit="sendEmail(event)">
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" placeholder="Enter email" required>
+            </div>
+            <div class="form-group">
+                <label for="pol">Port of Loading (POL)</label>
+                <input type="text" id="pol" name="pol" placeholder="Enter port of loading" required>
+            </div>
+            <div class="form-group">
+                <label for="pod">Port of Discharge (POD)</label>
+                <input type="text" id="pod" name="pod" placeholder="Enter port of discharge" required>
+            </div>
+            <div class="form-group">
+                <label for="containerSize">Size of Container</label>
+                <select id="containerSize" name="containerSize" required>
+                    <option value="">Select container size</option>
+                    <option value="20ft">20 ft</option>
+                    <option value="40ft">40 ft</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="shipperDetails">Shipper Details</label>
+                <input type="text" id="shipperDetails" name="shipperDetails" placeholder="Enter shipper details" required>
+            </div>
+            <div class="form-group">
+                <label for="consigneeDetails">Consignee Details</label>
+                <input type="text" id="consigneeDetails" name="consigneeDetails" placeholder="Enter consignee details" required>
+            </div>
+            <div class="form-group">
+                <label for="terms">Terms & Conditions</label>
+                <textarea id="terms" name="terms" placeholder="Enter terms & conditions" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="validity">Validity</label>
+                <input type="date" id="validity" name="validity" required>
+            </div>
+            <button type="submit">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        function sendEmail(event) {
+            event.preventDefault(); // Prevent form from refreshing the page
+
+            const form = document.getElementById("quotationForm");
+            const formData = new FormData(form);
+
+            // Prepare data for EmailJS
+            const templateParams = {
+                email: formData.get("email"),
+                pol: formData.get("pol"),
+                pod: formData.get("pod"),
+                containerSize: formData.get("containerSize"),
+                shipperDetails: formData.get("shipperDetails"),
+                consigneeDetails: formData.get("consigneeDetails"),
+                terms: formData.get("terms"),
+                validity: formData.get("validity")
+            };
+
+            emailjs.send("service_s0o2h6r", "template_h28juar", templateParams)
+                .then((response) => {
+                    alert("Quotation details have been emailed successfully!");
+                    form.reset(); // Reset the form after successful submission
+                })
+                .catch((error) => {
+                    console.error("Failed to send email:", error);
+                    alert("Failed to send email. Please try again later.");
+                });
+        }
+    </script>
+</body>
+</html>
