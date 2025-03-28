@@ -8,14 +8,14 @@ app.secret_key = "ssr"
 conn = mysql.connector.connect(
         host="localhost",
         user="root",
-        password="sl0110*",
+        password="12345",
         database="ssr"
     )
 
 # Configure MySQL
 app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = 'sl0110*'  # Change to your MySQL password
+app.config['MYSQL_PASSWORD'] = '12345'  # Change to your MySQL password
 app.config['MYSQL_DB'] = 'ssr'
 
 # # Database Connection Function
@@ -23,7 +23,7 @@ def get_db_connection():
     return mysql.connector.connect(
         host="localhost",
         user="root",
-        password="sl0110*",
+        password="12345",
         database="ssr"
     )
 
@@ -149,10 +149,18 @@ def kycdetails():
 @app.route("/bookinglist")
 def bookinglist():
     conn = mysql.connector.connect(
+        # Lathika
+        # host="localhost",
+        # user="root",
+        # password="sl0110*",
+        # database="ssr"
+
+        # mahalakshmi Mysql setup
         host="localhost",
         user="root",
-        password="sl0110*",
-        database="ssr"
+        password="12345",
+        database="DB"
+
     )
     cursor = conn.cursor(dictionary=True)  # Enables access by column name
     cursor.execute("SELECT * FROM booking")
