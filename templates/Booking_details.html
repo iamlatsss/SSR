@@ -221,6 +221,16 @@
                         <option value="no">No</option>
                     </select>
                 </div>
+                <div class="col-md-4">
+                    <label for="cha" class="form-label">CHA</label>
+                    <input type="text" id="cha" name="cha" class="form-control" placeholder="Enter CHA Details"
+                        required>
+                </div>
+                <div class="col-md-12">
+                    <label for="cha" class="form-label">Description Box</label>
+                    <textarea id="description_box" name="description_box" class="form-control" placeholder="Enter Query..." rows="4" ></textarea>
+                </div>
+                
             </div>
             <div class="text-center">
                 <button type="submit" action="" class="btn btn-primary btn-sm">Submit</button>
@@ -261,6 +271,125 @@
                 .catch(error => console.error("Error fetching companies:", error));
         });
     </script>
+
+
+<script>
+    // validation of booking form
+    document.getElementById("shippingForm").addEventListener("submit", function(event) {
+        let isValid = true;
+        let errorMessage = "";
+
+        // Get form values
+        let jobNumber = document.getElementById("job_number").value.trim();
+        let nominationDate = document.getElementById("nomination_date").value;
+        let consigneeDetails = document.getElementById("consignee_details").value;
+        let shipperDetails = document.getElementById("shipper_details").value.trim();
+        let hblNo = document.getElementById("hbl_no").value.trim();
+        let mblNo = document.getElementById("mbl_no").value.trim();
+        let pol = document.getElementById("pol").value.trim();
+        let pod = document.getElementById("pod").value.trim();
+        let containerSize = document.getElementById("container_size").value;
+        let agentDetails = document.getElementById("agent_details").value.trim();
+        let shippingLine = document.getElementById("shipping_line").value.trim();
+        let buyRate = document.getElementById("buy_rate").value.trim();
+        let sellRate = document.getElementById("sell_rate").value.trim();
+        let etd = document.getElementById("etd").value;
+        let eta = document.getElementById("eta").value;
+        let swb = document.getElementById("swb").value;
+        let igmFiled = document.getElementById("igm_filed").value;
+        let cha =document.getElementById("cha").value
+
+        // Check required fields
+        if (!jobNumber || jobNumber <= 0) {
+            isValid = false;
+            errorMessage += "Job Number is required and must be a positive number.\n";
+        }
+        if (!nominationDate) {
+            isValid = false;
+            errorMessage += "Nomination Date is required.\n";
+        }
+        if (!consigneeDetails) {
+            isValid = false;
+            errorMessage += "Consignee Details are required.\n";
+        }
+        if (!shipperDetails) {
+            isValid = false;
+            errorMessage += "Shipper Details are required.\n";
+        }
+        if (!hblNo) {
+            isValid = false;
+            errorMessage += "HBL Number is required.\n";
+        }
+        if (!mblNo) {
+            isValid = false;
+            errorMessage += "MBL Number is required.\n";
+        }
+        if (!pol) {
+            isValid = false;
+            errorMessage += "Port of Loading (POL) is required.\n";
+        }
+        if (!pod) {
+            isValid = false;
+            errorMessage += "Port of Discharge (POD) is required.\n";
+        }
+        if (!containerSize) {
+            isValid = false;
+            errorMessage += "Container Size is required.\n";
+        }
+        if (!agentDetails) {
+            isValid = false;
+            errorMessage += "Agent Details are required.\n";
+        }
+        if (!shippingLine) {
+            isValid = false;
+            errorMessage += "Shipping Line is required.\n";
+        }
+        if (!buyRate || buyRate <= 0) {
+            isValid = false;
+            errorMessage += "Buy Rate must be a positive number.\n";
+        }
+        if (!sellRate || sellRate <= 0) {
+            isValid = false;
+            errorMessage += "Sell Rate must be a positive number.\n";
+        }
+        if (parseFloat(sellRate) < parseFloat(buyRate)) {
+            isValid = false;
+            errorMessage += "Sell Rate must be greater than or equal to Buy Rate.\n";
+        }
+        if (!etd) {
+            isValid = false;
+            errorMessage += "ETD is required.\n";
+        }
+        if (!eta) {
+            isValid = false;
+            errorMessage += "ETA is required.\n";
+        }
+        if (new Date(eta) < new Date(etd)) {
+            isValid = false;
+            errorMessage += "ETA cannot be before ETD.\n";
+        }
+        if (!swb) {
+            isValid = false;
+            errorMessage += "SWB selection is required.\n";
+        }
+        if (!igmFiled) {
+            isValid = false;
+            errorMessage += "IGM Filed selection is required.\n";
+        }
+
+        if (!cha) {
+            isValid = false;
+            errorMessage += "CHA selection is required.\n";
+        }
+
+        // If form is invalid, prevent submission and alert user
+        if (!isValid) {
+            event.preventDefault();
+            alert(errorMessage);
+        }
+    });
+</script>
+
 </body>
 </html>
 

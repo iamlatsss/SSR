@@ -74,6 +74,7 @@ CREATE DATABASE DB;
 USE DB;
 
 CREATE TABLE booking (
+
     job_number INT AUTO_INCREMENT PRIMARY KEY,  -- New ID column as primary key
     nomination_date DATE NOT NULL,
     consignee_details VARCHAR(255) NOT NULL,
@@ -91,42 +92,40 @@ CREATE TABLE booking (
     eta DATE NOT NULL,
     swb VARCHAR(10) NOT NULL,
     igm_filed VARCHAR(10) NOT NULL,
-    cha VARCHAR(255) NOT NULL
+    cha VARCHAR(255) NOT NULL,
+
 );
+
+-- Set the starting value of AUTO_INCREMENT to 1001
+ALTER TABLE booking AUTO_INCREMENT = 1001;
+
+
+ALTER TABLE booking ADD COLUMN description_box TEXT;
 
 INSERT INTO booking (
     nomination_date, consignee_details, shipper_details, hbl_no, mbl_no, pol, pod, 
-    container_size, job_number, agent_details, shipping_line, buy_rate, sell_rate, etd, eta, 
-    swb, igm_filed, cha
+    container_size, agent_details, shipping_line, buy_rate, sell_rate, etd, eta, 
+    swb, igm_filed, cha, description_box
 ) VALUES 
 (
     '2025-03-15', 'ABC Logistics', 'XYZ Exports', 'HBL12345', 'MBL98765', 
-    'Chennai', 'New York', '40FT', '001', 'Global Shipping Agency', 'Maersk Line', 
-    1200.50, 1500.75, '2025-03-20', '2025-04-05', 'Yes', 'No', 'Customs Agent A'
-);
-
-INSERT INTO booking (
-    nomination_date, consignee_details, shipper_details, hbl_no, mbl_no, pol, pod, 
-    container_size, job_number, agent_details, shipping_line, buy_rate, sell_rate, etd, eta, 
-    swb, igm_filed, cha
-) VALUES 
+    'Chennai', 'New York', '40FT', 'Global Shipping Agency', 'Maersk Line', 
+    1200.50, 1500.75, '2025-03-20', '2025-04-05', 'Yes', 'No', 'Customs Agent A',
+    'Urgent shipment for high-value cargo.'
+),
 (
     '2025-04-10', 'DEF Logistics', 'LMN Traders', 'HBL67890', 'MBL54321', 
-    'Mumbai', 'London', '20FT', '002', 'Ocean Freight Solutions', 'CMA CGM', 
-    1350.75, 1600.90, '2025-04-15', '2025-04-30', 'No', 'Yes', 'Customs Broker B'
-);
-
-INSERT INTO booking (
-    nomination_date, consignee_details, shipper_details, hbl_no, mbl_no, pol, pod, 
-    container_size, job_number, agent_details, shipping_line, buy_rate, sell_rate, etd, eta, 
-    swb, igm_filed, cha
-) VALUES 
+    'Mumbai', 'London', '20FT', 'Ocean Freight Solutions', 'CMA CGM', 
+    1350.75, 1600.90, '2025-04-15', '2025-04-30', 'No', 'Yes', 'Customs Broker B',
+    'Special handling required for fragile goods.'
+),
 (
     '2025-05-05', 'XYZ Logistics', 'ABC Exporters', 'HBL98765', 'MBL67890', 
-    'Chennai', 'New York', '40FT', '003', 'Global Freight Services', 'Maersk Line', 
-    1800.50, 2100.75, '2025-05-10', '2025-05-25', 'Yes', 'No', 'Customs Broker C'
+    'Chennai', 'New York', '40FT', 'Global Freight Services', 'Maersk Line', 
+    1800.50, 2100.75, '2025-05-10', '2025-05-25', 'Yes', 'No', 'Customs Broker C',
+    'Temperature-controlled shipment required.'
 );
 
 
-
-select*From booking
+-- View the records
+SELECT * FROM booking;

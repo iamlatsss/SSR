@@ -90,8 +90,9 @@
                     <th>SWB</th>
                     <th>IGM Filed</th>
                     <th>CHA</th>
+                    <th>Description Box</th>
                     <th>EDIT</th>
-                    <th>DELETE</th>
+                    <!-- <th>DELETE</th> -->
                 </tr>
             </thead>
             <tbody>
@@ -115,12 +116,15 @@
                     <td>{{ booking.swb }}</td>
                     <td>{{ booking.igm_filed }}</td>
                     <td>{{ booking.cha }}</td>
+                    <td>{{ booking.description_box }}</td>
                     <td>
                         <a href="{{url_for('editUser',id=booking.job_number)}}" class="edit-btn" onclick="return confirm('Are you sure you want to edit this booking?');">Edit</a>
                     </td>
-                    <td>
+
+                    <!-- <td>
                         <a href="{{url_for('deleteUser',id=booking.job_number)}}" class="delete-btn" onclick="return confirm('Are you sure you want to delete this booking?');">Delete</a>
-                    </td>
+                    </td> --> 
+
                 </tr>
                 {% endfor %}
             </tbody>

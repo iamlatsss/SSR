@@ -190,13 +190,14 @@ def Booking_details():
         swb = request.form['swb']
         igm_filed = request.form['igm_filed']
         cha = request.form['cha']
+        description_box  = request.form['description_box']
 
         cur = get_db_connection()
         sql = """INSERT INTO booking (nomination_date, consignee_details, shipper_details, hbl_no, mbl_no, pol, pod, 
-                 container_size, agent_details, shipping_line, buy_rate, sell_rate, etd, eta, swb, igm_filed, cha)
-                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+                 container_size, agent_details, shipping_line, buy_rate, sell_rate, etd, eta, swb, igm_filed, cha,description_box)
+                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,%s)"""
         cur.execute(sql, (nomination_date, consignee_details, shipper_details, hbl_no, mbl_no, pol, pod,
-                          container_size, agent_details, shipping_line, buy_rate, sell_rate, etd, eta, swb, igm_filed, cha))
+                          container_size, agent_details, shipping_line, buy_rate, sell_rate, etd, eta, swb, igm_filed, cha,description_box))
         mysql.connection.commit()
         cur.close()
         return redirect(url_for("bookinglist"))
@@ -213,13 +214,13 @@ def editUser(id):
         updated_data = tuple(request.form[key] for key in [
             "nomination_date", "consignee_details", "shipper_details", "hbl_no", "mbl_no", "pol", "pod",
             "container_size", "agent_details", "shipping_line", "buy_rate", "sell_rate", "etd", "eta",
-            "swb", "igm_filed", "cha"
+            "swb", "igm_filed", "cha","description_box"
         ]) + (id,)
 
         cur.execute("""
             UPDATE booking SET nomination_date=%s, consignee_details=%s, shipper_details=%s,
             hbl_no=%s, mbl_no=%s, pol=%s, pod=%s, container_size=%s, agent_details=%s, 
-            shipping_line=%s, buy_rate=%s, sell_rate=%s, etd=%s, eta=%s, swb=%s, igm_filed=%s, cha=%s 
+            shipping_line=%s, buy_rate=%s, sell_rate=%s, etd=%s, eta=%s, swb=%s, igm_filed=%s, cha=%s ,description_box=%s
             WHERE job_number=%s
         """, updated_data)
         conn.commit()

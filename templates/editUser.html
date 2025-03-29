@@ -102,6 +102,10 @@
                     <label for="cha" class="form-label">CHA</label>
                     <input type="text" id="cha" name="cha" class="form-control" value="{{ booking.cha }}" required>
                 </div>
+                <div class="col-md-12">
+                    <label for="cha" class="form-label">Description Box</label>
+                    <textarea id="description_box" name="description_box" class="form-control" value="{{booking.description_box}}" rows="4" ></textarea>
+                </div>
             </div>
             <div class="text-center mt-4">
                 <button href="{{url_for('bookinglist')}}"type="submit" class="btn btn-success">Update Booking</button>
