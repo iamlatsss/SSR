@@ -127,5 +127,10 @@ INSERT INTO booking (
 );
 
 
+SELECT job_number, description_box FROM booking;
+
+
+ALTER TABLE booking ADD COLUMN status VARCHAR(50) DEFAULT 'Pending';
+
 -- View the records
 SELECT * FROM booking;

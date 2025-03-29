@@ -55,6 +55,28 @@
 <body>
     <div class="container">
         <h2 class="text-center"><b>Booking status</b></h2>
+
+        <!--Booking 2 filters-->
+
+        <div class="mb-3 d-flex justify-content-between">
+            <!-- Job Number Filter -->
+            <div>
+                <label for="jobFilter" class="form-label"><b>Filter by Job Number:</b></label>
+                <input type="text" id="jobFilter" class="form-control" onkeyup="filterTable()">
+            </div>
+        
+            <!-- Status Filter -->
+            <div>
+                <label for="statusFilter" class="form-label"><b>Filter by Status:</b></label>
+                <select id="statusFilter" class="form-select" onchange="filterTable()">
+                    <option value="all">All</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Canceled">Canceled</option>
+                </select>
+            </div>
+        </div>
+
        
         <table id="bookingTable">
             <thead>
@@ -81,43 +103,45 @@
                     <th>Save</th>
                 </tr>
             </thead>
-            <tbody>
-                {% for booking in booking %}
+             <tbody>
+                {% for b in booking %}
                 <tr>
-                    <td>{{ booking.nomination_date }}</td>
-                    <td>{{ booking.consignee_details }}</td>
-                    <td>{{ booking.shipper_details }}</td>
-                    <td>{{ booking.hbl_no }}</td>
-                    <td>{{ booking.mbl_no }}</td>
-                    <td>{{ booking.pol }}</td>
-                    <td>{{ booking.pod }}</td>
-                    <td>{{ booking.container_size }}</td>
-                    <td>{{ booking.job_number }}</td>
-                    <td>{{ booking.agent_details }}</td>
-                    <td>{{ booking.shipping_line }}</td>
-                    <td>{{ booking.buy_rate }}</td>
-                    <td>{{ booking.sell_rate }}</td>
-                    <td>{{ booking.etd }}</td>
-                    <td>{{ booking.eta }}</td>
-                    <td>{{ booking.swb }}</td>
-                    <td>{{ booking.igm_filed }}</td>
-                    <td>{{ booking.cha }}</td>
+                    <td>{{ b.nomination_date }}</td>
+                    <td>{{ b.consignee_details }}</td>
+                    <td>{{ b.shipper_details }}</td>
+                    <td>{{ b.hbl_no }}</td>
+                    <td>{{ b.mbl_no }}</td>
+                    <td>{{ b.pol }}</td>
+                    <td>{{ b.pod }}</td>
+                    <td>{{ b.container_size }}</td>
+                    <td>{{ b.job_number }}</td>
+                    <td>{{ b.agent_details }}</td>
+                    <td>{{ b.shipping_line }}</td>
+                    <td>{{ b.buy_rate }}</td>
+                    <td>{{ b.sell_rate }}</td>
+                    <td>{{ b.etd }}</td>
+                    <td>{{ b.eta }}</td>
+                    <td>{{ b.swb }}</td>
+                    <td>{{ b.igm_filed }}</td>
+                    <td>{{ b.cha }}</td>
+                    <td>{{ b.description_box }}</td>
                     <td>
-                        <form action="{{ url_for('update_status', id=booking.job_number) }}" method="POST">
-                            <select name="status" class="status-input">
-                                <option value="Pending" {% if booking.status == "Pending" %}selected{% endif %}>Pending</option>
-                                <option value="Completed" {% if booking.status == "Completed" %}selected{% endif %}>Completed</option>
-                                <option value="Canceled" {% if booking.status == "Canceled" %}selected{% endif %}>Canceled</option>
+                        <form action="{{ url_for('bookingstatus') }}" method="POST">
+                            <input type="hidden" name="job_number" value="{{ b.job_number }}">
+                            <select  name="status" class="status-input" onchange="enableSaveButton(this)">
+                                <option value="Pending" {% if b.status == "Pending" %}selected{% endif %}>Pending</option>
+                                <option value="Completed" {% if b.status == "Completed" %}selected{% endif %}>Completed</option>
+                                <option value="Canceled" {% if b.status == "Canceled" %}selected{% endif %}>Canceled</option>
                             </select>
                     </td>
                     <td>
-                            <button type="submit" class="save-btn">Save</button>
+                            <button type="submit" class="save-btn" disabled>Save</button>
                         </form>
                     </td>
-                    
                 </tr>
-                {% endfor %}
+             {% endfor %}
             </tbody>
+            
         </table>
         <div class="text-center mt-3">
             <a href="{{url_for('bookinglist')}}" class="btn btn-primary">Go Back</a>
@@ -129,5 +153,31 @@
             saveButton.disabled = false;
         }
     </script>
+
+
+  <!-- javascrpt booking filters -->
+<script>
+    function filterTable() {
+    let statusValue = document.getElementById("statusFilter").value.toLowerCase();
+    let rows = document.querySelectorAll("#bookingTable tbody tr");
+
+    rows.forEach(row => {
+        let statusSelect = row.querySelector("select[name='status']"); // ✅ Select dropdown inside the row
+
+        if (statusSelect) {
+            let statusText = statusSelect.value.toLowerCase(); // ✅ Get the selected value
+
+            let statusMatch = statusValue === "all" || statusText === statusValue; // ✅ Compare correctly
+
+            if (statusMatch) {
+                row.style.display = ""; // Show row
+            } else {
+                row.style.display = "none"; // Hide row
+            }
+        }
+    });
+}
+
+   </script>
 </body>
 </html>

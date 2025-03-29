@@ -245,6 +245,32 @@ def deleteUser(id):
     flash("Booking details deleted successfully!", "success")
     return redirect(url_for("bookinglist"))
 
+
+
+#  booking status
+@app.route('/bookingstatus', methods=['GET', 'POST'])
+def bookingstatus():
+    cur = mysql.connection.cursor()
+
+    #  If form is submitted (Updating status)
+    if request.method == 'POST':
+        job_number = request.form['job_number']  # Get job number from form
+        new_status = request.form['status']  # Get selected status
+
+        #  Update only if the status has changed
+        cur.execute("UPDATE booking SET status = %s WHERE job_number = %s", (new_status, job_number))
+        mysql.connection.commit()
+        cur.close()
+        return redirect(url_for('bookingstatus'))  # Refresh the page
+
+    # Fetch all bookings (when page loads)
+    cur.execute("SELECT * FROM booking")
+    bookings = cur.fetchall()
+    cur.close()
+    return render_template('bookingstatus.html', booking=bookings)
+
+
+
 if __name__ == '__main__':
     app.run(debug=True)
 
