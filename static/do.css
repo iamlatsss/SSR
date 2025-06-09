@@ -1,0 +1,271 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+    background: linear-gradient(to right, rgb(153, 205, 239), lightblue, lightblue, white);
+    
+}
+/* changes */
+
+.navbar {
+    background-color: #333;
+    overflow: hidden;
+}
+
+nav {
+    display: flex;
+    justify-content: flex-end;
+    background: black;
+    width: 100%;
+    
+
+
+}
+
+nav a {
+    color: white;
+    padding: 10px;
+    font-size: large;
+    margin-right: 10px;
+    text-decoration: none;
+}
+
+.nav-list {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+
+}
+
+.nav-item {
+    float: left;
+    position: relative;
+}
+
+.nav-link {
+    display: block;
+    left: 0;
+    color: white;
+    text-align: center;
+    padding: 14px 16px;
+    margin-right: 1210px;
+    text-decoration: none;
+
+}
+
+.dropdown {
+    display: none;
+    position: absolute;
+    margin: 0;
+    background-color: transparent;
+    /* Set to transparent */
+    min-width: 160px;
+    z-index: 1;
+    padding-left: 0;
+    text-align: left;
+    border: 2px solid blue;
+}
+
+
+ul li {
+    list-style-type: none;
+
+
+}
+
+.dropdown-link {
+    width: 250px;
+    height: 30px;
+    color: blue;
+    
+    text-decoration: none;
+    display: block;
+    margin: 0px;
+    background-color: transparent;
+    /* Set to transparent */
+}
+
+.dropdown-link:hover {
+    background-color: skyblue;
+    color: white;
+    font-size: larger;
+    border: 2px solid blue;
+
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+}
+
+
+.nav-item:hover .dropdown {
+    display: block;
+}
+
+.nav-link img {
+    width: 50px;
+    height: 40px;
+    margin-right: 223px;
+
+}
+
+
+.container:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+}
+
+.form-group {
+    margin-bottom: 15px;
+    margin-right: 40px;
+    margin-left: px;
+    
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+
+    color: rgb(126, 124, 124);
+
+}
+
+input {
+    width: 100%;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: medium;
+    font-family: Arial, Helvetica, sans-serif;
+}
+
+select {
+    width: 104%;
+    padding: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: medium;
+    color: rgb(126, 124, 124);
+
+}
+
+button {
+    background-color: #28a745;
+    color: #fff;
+    width: 100px;
+    height: 40px;
+    border: none;
+    margin-top: 30px;
+    margin-left: 1px;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: #0d48cf;
+}
+
+button:hover {
+    background-color: #0ac616d3;
+}
+/* header  */
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+}
+
+
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(to right, rgb(153, 205, 239), lightblue, lightblue, white);
+    color: black;
+    padding: 25px;
+
+    border: none;
+    border-bottom: 3px solid grey;
+
+}
+
+header .left-section {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+}
+
+header .left-section input {
+    width: 200px;
+    height: 30px;
+    font-size: 15px;
+}
+
+header .center-section {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+}
+
+header .center-section img {
+    height: 150px;
+    width: 250px;
+}
+
+textarea {
+    width: 101%;
+    padding: 11px;
+    font-size: medium;
+    font-family: Arial, Helvetica, sans-serif;
+
+}
+
+h2{
+    margin-bottom: 0;
+    text-align: left;
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: 100;
+    
+}
+
+hr{
+    margin-left: 0px;
+    margin-bottom: 30px;
+    margin-right: 8px;
+    height:2px;
+    background-color: rgb(55, 137, 232);
+}
+
+/*main body */
+
+.main-A4page{
+    margin-left: 350px;
+    margin-right: 100px;
+    margin-top: 30px;
+    margin-bottom: 50px;
+    background-color: white;
+    width: 800px;
+    height: 1350px;
+}
+
+.head{
+    display: flex;
+    font-family: 'Times New Roman', Times, serif;
+}
+.head span{
+    border-right:2px solid black ;
+    margin-top: 50px;
+}
+.head span img{
+    padding: 25px;
+}
+.main-content{
+    position: absolute;
+    display: block;
+    height: 1100px;
+    width: 720px;
+    margin-left: 40px;
+    margin-right: 10px;
+    border: solid 3px black;
+    border-inline: solid 3px black;
+    background-color:white;
+    font-family: 'Times New Roman', Times, serif;
+}
