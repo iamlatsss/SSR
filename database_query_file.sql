@@ -5,12 +5,18 @@ CREATE DATABASE IF NOT EXISTS SSR;
 USE SSR;
 
 -- Create `user` table
-CREATE TABLE IF NOT EXISTS user (
-    userID INT PRIMARY KEY AUTO_INCREMENT,
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) NOT NULL,
-    mobile_no BIGINT UNIQUE NOT NULL,
-    pass_word VARCHAR(100) NOT NULL
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    mobile VARCHAR(20),
+    address TEXT,
+    city VARCHAR(100),
+    state VARCHAR(100),
+    country VARCHAR(100),
+    pincode VARCHAR(10),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create `kycdetails` table

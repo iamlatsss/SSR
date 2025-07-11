@@ -1,36 +1,197 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> SSR | Booking Details </title>
-
+    <title>Booking Details</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/home.css">
-
     <style>
- 
-       .nav-items{
-        padding-top: 20px;
-       }
-       body{
-            background-color: rgb(237, 200, 120);
-            background-image: url(/static/background1.png);
-            background-size: cover;
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background:linear-gradient(to right, rgb(252, 249, 245),rgb(244, 225, 198));
+            /* background:linear-gradient(to right, rgb(236, 190, 126),white,white,white,white,white,white); */
+            color: #333;
+        }
+
+/*header*/
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(to right, rgb(236, 190, 126), white, white, white);
+            color: black;
+            padding: 25px;
+            border: none;
+            border-bottom: 3px solid grey;
 
         }
 
+        header .left-section {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        header .left-section input {
+            width: 200px;
+            height: 40px;
+            font-size: 15px;
+        }
+
+        header .center-section {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            text-align: center;
+        }
+
+        header .center-section img {
+            height: 150px;
+            width: 250px;
+        }
+
+
+        /*navbar*/
+
+        .navbar {
+            background-color: #333;
+            overflow: hidden;
+        }
+
+        nav {
+            display: flex;
+            justify-content: flex-end;
+            background: black;
+            width: 100%;
+        }
+
+        nav a {
+            color: white;
+            padding: 10px;
+            font-size: large;
+            margin-right: 10px;
+            text-decoration: none;
+        }
+
+        .nav-list {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+
+        }
+
+        .nav-item {
+            float: left;
+            position: relative;
+        }
+
+        .nav-link {
+            display: block;
+            left: 0;
+            color: white;
+            text-align: center;
+            padding: 14px 16px;
+            margin-right: 1210px;
+            text-decoration: none;
+
+        }
+
+        /* .nav-link:hover {
+            background-color: #111;
+        } */
+
+        /* .dropdown {
+            display: none;
+            position: absolute;
+            margin: 0;
+            background-color: #333;
+            min-width: 160px;
+            z-index: 1;
+        } */
+
+
+        .dropdown {
+            display: none;
+            position: absolute;
+            margin: 0;
+            background-color: transparent;
+            /* Set to transparent */
+            min-width: 160px;
+            z-index: 1;
+            padding-left: 0;
+            text-align: left;
+            border: 2px solid blue;
+        }
+
+
+        ul li {
+            list-style-type: none;
+        }
+
+        /* .dropdown-link {
+            width: 250px;
+            height: 30px;
+            color: white;
+            padding: 15px;
+            text-decoration: none;
+            display: block;
+            text-align: left;
+            margin: 0px;
+        }
+
+        .dropdown-link:hover {
+            background-color: #575757;
+        } */
+
+
+
+        .dropdown-link {
+            width: 250px;
+            height: 60px;
+            color: blue;
+            padding: 10px;
+            text-decoration: none;
+            display: block;
+            margin: 0px;
+            background-color: transparent;
+            /* Set to transparent */
+        }
+
+        .dropdown-link:hover {
+            background-color: skyblue;
+            color: white;
+            font-size: larger;
+            border: 2px solid blue;
+
+            transform: translateY(-3px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.2);
+        }
+
+
+        .nav-item:hover .dropdown {
+            display: block;
+        }
+
+        .nav-link img {
+            width: 50px;
+            height: 40px;
+            margin-right: 223px;
+
+        }
+
+
+
         .container {
-            max-width: 800px;
-            margin: 30px auto;
+            max-width: 900px;
+            margin: 20px auto;
             background: #ffffff;
             padding: 25px;
             box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
             border-radius: 10px;
-            background-color: #ffffff;
             border: 1px solid #ced4da;
-           
         }
 
         .form-title {
@@ -40,13 +201,12 @@
             margin-bottom: 20px;
             text-align: center;
         }
-
         button {
             background-color: #007bff;
             color: white;
             font-size: 14px;
             width: auto;
-            padding: 8px 20px;
+            padding: 8px 20px; 
             border: none;
             border-radius: 5px;
             cursor: pointer;
@@ -57,375 +217,81 @@
             background-color: #0056b3;
         }
 
-        hr {
+        hr{
             margin-left: 0px;
             margin-bottom: 30px;
-            margin-right: 8px
+            margin-right: 8px;
         }
-        
+</style>
+
     </style>
 </head>
-
 <body>
-    <header class="header">
+    <!-- /*header and nav bar */  -->
 
-        <div class="box box1">
-            <div class="first">
-                Track Shipment
-            </div>
-
-            <div class="first">
-                <input type="text" placeholder="Enter BL/Container no.">
-            </div>
+    <header>
+        <div class="left-section">
+            <h3 >Track Shipment</h3><br>
+            <input type="text" placeholder="Enter BL/Container no.">
         </div>
-
-        <div class="box box2">
-            <img src="/static/SSR_nobg.png" alt="logo">
+        <div class="center-section">
+            <img src="/static/SSR_nobg.png" alt="Logo">
         </div>
-
-        <div class="box box3">
-
-            <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img
-                    src="/static/linkedin.png"></a>
-            <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/whatsapp.png"></a>
-            <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/facebook.png"></a>
+        <div>
+            <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/whatsapp.png" height="30px"
+                    width="30px"></a>
+            <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/facebook.png" height="30px"
+                    width="30px"></a>
+            <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img src="/static/linkedin.png"
+                    height="30px" width="30px"></a>
         </div>
     </header>
+
     <nav>
-        <div class="nav-link " onclick="toggleDropdown()">
-            <span class="one"> </span>
-            <span class="two"></span>
-            <span class="two"></span>
-        </div>
-        <div class="nav-items">
-            <ul>
-                <li><a href="home.html">home</a></li>
-                <li><a href="/templates/">about</a></li>
-                <li><a href="/templates/">service</a></li>
-                <li><a href="/templates/">contact</a></li>
-                <li><a href="#" onclick="toggleUserDropdown(event)"><img src="/static/user.png" alt=""
-                            style="width: 20px; height: 20px;" class="user-icon"></a></li>
-            </ul>
-        </div>
+        <ul class="nav-list">
+            <li class="nav-item">
+                <a href="#" class="nav-link"><img src="static/hamberger.png" alt="hambergericon"></a>
+                <ul class="dropdown">
+                    <!-- <li><a href="Login.html" class="dropdown-link">Login</a></li>
+                    <li><a href="Signup.html" class="dropdown-link">Signup</a></li> -->
+                    <li><a href="KYC Webpage.html" class="dropdown-link">KYC details</a></li>
+                    <li><a href="Quotation_details.html" class="dropdown-link">Quotation details </a></li>
+                    <li><a href="#" class="dropdown-link">Booking details</a></li>
+                    <li><a href="#" class="dropdown-link">Invoice Format</a></li>
+                    <li><a href="#" class="dropdown-link">Pre-Alert</a></li>
+                    <li><a href="#" class="dropdown-link">BL Details</a></li>
+                </ul>
+            </li>
+
+        </ul>
     </nav>
 
 
-    <ul class="dropdown" id="dropdownMenu">
-        <li><a href="/templates/kycdetails.html" class="dropdown-link" target="_blank"> 💁 KYC details</a></li>
-        <li><a href="/templates/quotationdetails.html" class="dropdown-link" target="_blank">📇 Quotation details </a>
-        </li>
-        <li><a href="/templates/bookingdetails.html" class="dropdown-link" target="_blank">🧾 Booking details</a></li>
-        <li><a href="#" class="dropdown-link" target="_blank">🧾 Invoice Format</a></li>
-        <li><a href="#" class="dropdown-link" target="_blank">⚠ Pre-Alert</a></li>
-        <li><a href="#" class="dropdown-link" target="_blank">📇 BL Details</a></li>
-    </ul>
-
-
-    <ul class="dropdown user" id="userDropdown">
-        <li><a href="/templates/login.html" class="dropdown-link">Login</a></li>
-        <li><a href="/templates/signup.html" class="dropdown-link">SignUp</a></li>
-        <li><a href="#" class="dropdown-link">Profile</a></li>
-    </ul>
 
     <div class="container">
         <div class="form-title">Booking Details</div>
         <hr>
-        <form id="shippingForm"  action=""  method="POST" >
+        <form id="shippingForm">
             <div class="row g-3">
                 <div class="col-md-4">
                     <label for="nominationDate" class="form-label">Nomination Date</label>
-                    <input type="date" id="nominationDate" name="nominationDate" class="form-control">
+                    <input type="date" id="nominationDate" name="nominationDate" class="form-control" required>
                 </div>
                 <div class="col-md-4">
                     <label for="consigneeDetails" class="form-label">Consignee Details</label>
-                    <select id="consignee" name="consigneeDetails" class="form-select" required>
-                        <option value="">Select Consignee</option>
-                    </select>
+                    <input type="text" id="consigneeDetails" name="consigneeDetails" class="form-control" placeholder="Enter Consignee Details" required>
                 </div>
                 <div class="col-md-4">
                     <label for="shipperDetails" class="form-label">Shipper Details</label>
-                    <input type="text" id="shipperDetails" name="shipperDetails" class="form-control"
-                        placeholder="Enter Shipper Details" required>
+                    <input type="text" id="shipperDetails" name="shipperDetails" class="form-control" placeholder="Enter Shipper Details" required>
                 </div>
                 <div class="col-md-4">
                     <label for="hblNo" class="form-label">HBL No.</label>
-                    <input type="text" id="hblNo" name="hblNo" class="form-control" placeholder="Enter HBL Number">
+                    <input type="text" id="hblNo" name="hblNo" class="form-control" placeholder="Enter HBL Number" required>
                 </div>
                 <div class="col-md-4">
                     <label for="mblNo" class="form-label">MBL No.</label>
-                    <input type="text" id="mblNo" name="mblNo" class="form-control" placeholder="Enter MBL Number">
-                </div>
-                <div class="col-md-4">
-                    <label for="pol" class="form-label">Port of Loading (POL)</label>
-                    <input type="text" id="pol" name="pol" class="form-control" placeholder="Enter POL">
-                </div>
-                <div class="col-md-4">
-                    <label for="pod" class="form-label">Port of Discharge (POD)</label>
-                    <input type="text" id="pod" name="pod" class="form-control" placeholder="Enter POD">
-                </div>
-                <div class="col-md-4">
-                    <label for="containerSize" class="form-label">Size of Container</label>
-                    <select id="containerSize" name="containerSize" class="form-select" required>
-                        <option value="20ft">20 ft</option>
-                        <option value="40ft">40 ft</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="job_number" class="form-label">Job Number</label>
-                    <input type="number" id="job_number" name="job_number" class="form-control"
-                        placeholder="Enter Job Number" required>
-                </div>
-                <!-- <div class="col-md-4">
-                    <label for="job_number" class="form-label">Job Number</label>
-                    <input type="number" id="job_number" name="job_number" class="form-control" readonly>
-                </div> -->
-                <div class="col-md-4">
-                    <label for="agentDetails" class="form-label">Agent Details</label>
-                    <input type="text" id="agentDetails" name="agentDetails" class="form-control"
-                        placeholder="Enter Agent Details">
-                </div>
-                <div class="col-md-4">
-                    <label for="shippingLine" class="form-label">Shipping Line</label>
-                    <input type="text" id="shippingLine" name="shippingLine" class="form-control"
-                        placeholder="Enter Shipping Line">
-                </div>
-                <div class="col-md-4">
-                    <label for="buyRate" class="form-label">Buy Rate</label>
-                    <input type="number" id="buyRate" name="buyRate" class="form-control" placeholder="Enter Buy Rate"
-                        required>
-                </div>
-                <div class="col-md-4">
-                    <label for="sellRate" class="form-label">Sell Rate</label>
-                    <input type="number" id="sellRate" name="sellRate" class="form-control"
-                        placeholder="Enter Sell Rate">
-                </div>
-                <div class="col-md-4">
-                    <label for="etd" class="form-label">ETD</label>
-                    <input type="date" id="etd" name="etd" class="form-control">
-                </div>
-                <div class="col-md-4">
-                    <label for="eta" class="form-label">ETA</label>
-                    <input type="date" id="eta" name="eta" class="form-control">
-                </div>
-                <div class="col-md-4">
-                    <label for="swb" class="form-label">SWB</label>
-                    <select id="swb" name="swb" class="form-select">
-                        <option value="yes">Yes</option>
-                        <option value="no">No</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="igmFiled" class="form-label">IGM Filed</label>
-                    <select id="igmFiled" name="igmFiled" class="form-select">
-                        <option value="yes">Yes</option>
-                        <option value="no">No</option>
-                    </select>
-                </div>
-                <div class="col-md-4">
-                    <label for="cha" class="form-label">CHA</label>
-                    <input type="text" id="cha" name="cha" class="form-control" placeholder="Enter CHA Details"
-                        required>
-                </div>
-                <div class="col-md-12">
-                    <label for="cha" class="form-label">Description Box</label>
-                    <textarea id="description_box" name="description_box" class="form-control" placeholder="Enter Query..." rows="4" ></textarea>
-                </div>
-                
-            </div>
-            <div class="text-center">
-                <button type="submit" action="" class="btn btn-primary btn-sm">Submit</button>
-                <br><br>
-                <a href="{{url_for('bookinglist')}}"  class="btn btn-secondary btn-sm">View Details</a>
-            </div>
-        </form>
-    </div>
-
-    <script>
-        // Auto-increment job number
-        document.addEventListener("DOMContentLoaded", function () {
-            let jobNumberField = document.getElementById("jobNumber");
-
-            // Fetch last job number from backend (replace with actual logic)
-            fetch('/get-last-job-number')
-                .then(response => response.json())
-                .then(data => {
-                    jobNumberField.value = data.lastJobNumber + 1;
-                })
-                .catch(error => {
-                    console.error("Error fetching job number:", error);
-                    jobNumberField.value = 1; // Default to 1 if backend fails
-                });
-        });
-        document.addEventListener("DOMContentLoaded", function () {
-            fetch("/api/companies")  // API to fetch company names
-                .then(response => response.json())
-                .then(data => {
-                    let dropdown = document.getElementById("consignee");
-                    data.companies.forEach(company => {
-                        let option = document.createElement("option");
-                        option.value = company;
-                        option.textContent = company;
-                        dropdown.appendChild(option);
-                    });
-                })
-                .catch(error => console.error("Error fetching companies:", error));
-        });
-    </script>
-
-
-<script>
-    // validation of booking form
-    document.getElementById("shippingForm").addEventListener("submit", function(event) {
-        let isValid = true;
-        let errorMessage = "";
-
-        // Get form values
-        let jobNumber = document.getElementById("job_number").value.trim();
-        let nominationDate = document.getElementById("nomination_date").value;
-        let consigneeDetails = document.getElementById("consignee_details").value;
-        let shipperDetails = document.getElementById("shipper_details").value.trim();
-        let hblNo = document.getElementById("hbl_no").value.trim();
-        let mblNo = document.getElementById("mbl_no").value.trim();
-        let pol = document.getElementById("pol").value.trim();
-        let pod = document.getElementById("pod").value.trim();
-        let containerSize = document.getElementById("container_size").value;
-        let agentDetails = document.getElementById("agent_details").value.trim();
-        let shippingLine = document.getElementById("shipping_line").value.trim();
-        let buyRate = document.getElementById("buy_rate").value.trim();
-        let sellRate = document.getElementById("sell_rate").value.trim();
-        let etd = document.getElementById("etd").value;
-        let eta = document.getElementById("eta").value;
-        let swb = document.getElementById("swb").value;
-        let igmFiled = document.getElementById("igm_filed").value;
-        let cha =document.getElementById("cha").value
-
-        // Check required fields
-        if (!jobNumber || jobNumber <= 0) {
-            isValid = false;
-            errorMessage += "Job Number is required and must be a positive number.\n";
-        }
-        if (!nominationDate) {
-            isValid = false;
-            errorMessage += "Nomination Date is required.\n";
-        }
-        if (!consigneeDetails) {
-            isValid = false;
-            errorMessage += "Consignee Details are required.\n";
-        }
-        if (!shipperDetails) {
-            isValid = false;
-            errorMessage += "Shipper Details are required.\n";
-        }
-        if (!hblNo) {
-            isValid = false;
-            errorMessage += "HBL Number is required.\n";
-        }
-        if (!mblNo) {
-            isValid = false;
-            errorMessage += "MBL Number is required.\n";
-        }
-        if (!pol) {
-            isValid = false;
-            errorMessage += "Port of Loading (POL) is required.\n";
-        }
-        if (!pod) {
-            isValid = false;
-            errorMessage += "Port of Discharge (POD) is required.\n";
-        }
-        if (!containerSize) {
-            isValid = false;
-            errorMessage += "Container Size is required.\n";
-        }
-        if (!agentDetails) {
-            isValid = false;
-            errorMessage += "Agent Details are required.\n";
-        }
-        if (!shippingLine) {
-            isValid = false;
-            errorMessage += "Shipping Line is required.\n";
-        }
-        if (!buyRate || buyRate <= 0) {
-            isValid = false;
-            errorMessage += "Buy Rate must be a positive number.\n";
-        }
-        if (!sellRate || sellRate <= 0) {
-            isValid = false;
-            errorMessage += "Sell Rate must be a positive number.\n";
-        }
-        if (parseFloat(sellRate) < parseFloat(buyRate)) {
-            isValid = false;
-            errorMessage += "Sell Rate must be greater than or equal to Buy Rate.\n";
-        }
-        if (!etd) {
-            isValid = false;
-            errorMessage += "ETD is required.\n";
-        }
-        if (!eta) {
-            isValid = false;
-            errorMessage += "ETA is required.\n";
-        }
-        if (new Date(eta) < new Date(etd)) {
-            isValid = false;
-            errorMessage += "ETA cannot be before ETD.\n";
-        }
-        if (!swb) {
-            isValid = false;
-            errorMessage += "SWB selection is required.\n";
-        }
-        if (!igmFiled) {
-            isValid = false;
-            errorMessage += "IGM Filed selection is required.\n";
-        }
-
-        if (!cha) {
-            isValid = false;
-            errorMessage += "CHA selection is required.\n";
-        }
-
-        // If form is invalid, prevent submission and alert user
-        if (!isValid) {
-            event.preventDefault();
-            alert(errorMessage);
-        }
-    });
-</script>
-
-</body>
-</html>
-
-    <!-- <div class="container">
-        <div class="form-title">Booking Details</div>
-        <hr>
-        <form id="shippingForm"  action=""  method="POST" >
-            <div class="row g-3">
-                <div class="col-md-4">
-                    <label for="job_number" class="form-label">Job Number</label>
-                    <input type="number" id="job_number" name="job_number" class="form-control"
-                        placeholder="Enter Job Number" required>
-                </div>
-                <div class="col-md-4">
-                    <label for="nomination_date" class="form-label">Nomination Date</label>
-                    <input type="date" id="nomination_date" name="nomination_date" class="form-control" required>
-                </div>
-                <div class="col-md-4">
-                    <label for="consignee_details" class="form-label">Consignee Details</label>
-                    <input type="text" id="consignee_details" name="consignee_details" class="form-control"
-                        placeholder="Enter Consignee Details" required>
-                </div>
-                <div class="col-md-4">
-                    <label for="shipper_details" class="form-label">Shipper Details</label>
-                    <input type="text" id="shipper_details" name="shipper_details" class="form-control"
-                        placeholder="Enter Shipper Details" required>
-                </div>
-                <div class="col-md-4">
-                    <label for="hbl_no" class="form-label">HBL No.</label>
-                    <input type="text" id="hbl_no" name="hbl_no" class="form-control" placeholder="Enter HBL Number"
-                        required>
-                </div>
-                <div class="col-md-4">
-                    <label for="mbl_no" class="form-label">MBL No.</label>
-                    <input type="text" id="mbl_no" name="mbl_no" class="form-control" placeholder="Enter MBL Number"
-                        required>
+                    <input type="text" id="mblNo" name="mblNo" class="form-control" placeholder="Enter MBL Number" required>
                 </div>
                 <div class="col-md-4">
                     <label for="pol" class="form-label">Port of Loading (POL)</label>
@@ -436,31 +302,31 @@
                     <input type="text" id="pod" name="pod" class="form-control" placeholder="Enter POD" required>
                 </div>
                 <div class="col-md-4">
-                    <label for="container_size" class="form-label">Size of Container</label>
-                    <select id="container_size" name="container_size" class="form-select" required>
+                    <label for="containerSize" class="form-label">Size of Container</label>
+                    <select id="containerSize" name="containerSize" class="form-select" required>
                         <option value="20ft">20 ft</option>
                         <option value="40ft">40 ft</option>
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label for="agent_details" class="form-label">Agent Details</label>
-                    <input type="text" id="agent_details" name="agent_details" class="form-control"
-                        placeholder="Enter Agent Details" required>
+                    <label for="jobNumber" class="form-label">Job Number</label>
+                    <input type="number" id="jobNumber" name="jobNumber" class="form-control" placeholder="Enter Job Number" required>
                 </div>
                 <div class="col-md-4">
-                    <label for="shipping_line" class="form-label">Shipping Line</label>
-                    <input type="text" id="shipping_line" name="shipping_line" class="form-control"
-                        placeholder="Enter Shipping Line" required>
+                    <label for="agentDetails" class="form-label">Agent Details</label>
+                    <input type="text" id="agentDetails" name="agentDetails" class="form-control" placeholder="Enter Agent Details" required>
                 </div>
                 <div class="col-md-4">
-                    <label for="buy_rate" class="form-label">Buy Rate</label>
-                    <input type="number" id="buy_rate" name="buy_rate" class="form-control" placeholder="Enter Buy Rate"
-                        required>
+                    <label for="shippingLine" class="form-label">Shipping Line</label>
+                    <input type="text" id="shippingLine" name="shippingLine" class="form-control" placeholder="Enter Shipping Line" required>
                 </div>
                 <div class="col-md-4">
-                    <label for="sell_rate" class="form-label">Sell Rate</label>
-                    <input type="number" id="sell_rate" name="sell_rate" class="form-control"
-                        placeholder="Enter Sell Rate" required>
+                    <label for="buyRate" class="form-label">Buy Rate</label>
+                    <input type="number" id="buyRate" name="buyRate" class="form-control" placeholder="Enter Buy Rate" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="sellRate" class="form-label">Sell Rate</label>
+                    <input type="number" id="sellRate" name="sellRate" class="form-control" placeholder="Enter Sell Rate" required>
                 </div>
                 <div class="col-md-4">
                     <label for="etd" class="form-label">ETD</label>
@@ -478,21 +344,53 @@
                     </select>
                 </div>
                 <div class="col-md-4">
-                    <label for="igm_filed" class="form-label">IGM Filed</label>
-                    <select id="igm_filed" name="igm_filed" class="form-select" required>
+                    <label for="igmFiled" class="form-label">IGM Filed</label>
+                    <select id="igmFiled" name="igmFiled" class="form-select" required>
                         <option value="yes">Yes</option>
                         <option value="no">No</option>
                     </select>
                 </div>
                 <div class="col-md-4">
                     <label for="cha" class="form-label">CHA</label>
-                    <input type="text" id="cha" name="cha" class="form-control" placeholder="Enter CHA Details"
-                        required>
+                    <input type="text" id="cha" name="cha" class="form-control" placeholder="Enter CHA Details" required>
                 </div>
             </div>
             <div class="text-center">
-                <button type="submit" action="" class="btn btn-primary btn-sm">Submit</button>
-                <br><br>
-                <a href=""  class="btn btn-secondary btn-sm">View Details</a>
-            </div> -->
+                <button type="submit" class="btn btn-primary btn-sm">Submit</button>
+            </div>
+            
+            <!-- <button type="submit">Submit</button> -->
+        </form>
+    </div>
 
+
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const jobNumberField = document.getElementById("jobNumber");
+            const form = document.getElementById("shippingForm");
+
+            const lastJobNumber = localStorage.getItem("lastJobNumber");
+
+            if (lastJobNumber) {
+                jobNumberField.value = parseInt(lastJobNumber) + 1;
+                jobNumberField.readOnly = true;
+            }
+
+            form.addEventListener("submit", (e) => {
+                e.preventDefault();
+
+                const currentJobNumber = parseInt(jobNumberField.value);
+                localStorage.setItem("lastJobNumber", currentJobNumber);
+
+                alert("Form submitted successfully with Job Number: " + currentJobNumber);
+
+                form.reset();
+                jobNumberField.value = currentJobNumber + 1;
+                jobNumberField.readOnly = true;
+            });
+        });
+    </script>
+</body>
+</html>

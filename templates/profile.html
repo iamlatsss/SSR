@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>User Profile - SSR Logistics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(to right, rgb(153, 205, 239), white, white, rgb(153, 205, 239));
+      font-family: Arial, sans-serif;
+      margin: 0;
+    }
+
+    header {
+      background: linear-gradient(to right, rgb(153, 205, 239), white, white);
+      padding: 15px 30px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .center-section img {
+      height: 80px;
+    }
+
+    nav {
+      background-color: black;
+      padding: 10px 30px;
+    }
+
+    nav a {
+      color: white;
+      margin-right: 15px;
+      text-decoration: none;
+    }
+
+    nav a:hover {
+      color: skyblue;
+    }
+
+    .profile-box {
+      padding: 30px;
+      background-color: white;
+      width: 400px;
+      margin: 40px auto;
+      border-radius: 10px;
+      box-shadow: 0 0 10px gray;
+      text-align: center;
+    }
+
+    .avatar-circle {
+      width: 100px;
+      height: 100px;
+      background-color: #007bff;
+      color: white;
+      font-size: 36px;
+      font-weight: bold;
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 0 auto 20px;
+    }
+
+    .logout-btn {
+      padding: 10px 20px;
+      background-color: #ff6961;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin-top: 20px;
+      cursor: pointer;
+    }
+
+    .info {
+      text-align: left;
+      margin-top: 20px;
+    }
+
+    .info p {
+      margin: 8px 0;
+    }
+
+    .dropdown-item:hover {
+      background-color: #0d6efd;
+      color: white;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div>
+      <h6 class="mb-1">Track Shipment</h6>
+      <input class="form-control form-control-sm" type="text" placeholder="Enter BL/Container no.">
+    </div>
+    <div class="text-center center-section">
+      <img src="/static/SSR_nobg.png" alt="Logo">
+    </div>
+    <div class="d-flex gap-2">
+      <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/whatsapp.png" width="30"></a>
+      <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/facebook.png" width="30"></a>
+      <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img src="/static/linkedin.png" width="30"></a>
+    </div>
+  </header>
+
+  <!-- Navigation -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse justify-content-between" id="navbarMenu">
+        <ul class="navbar-nav">
+          {% if session.user_logged_in %}
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Menu</a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="/kycwebpage">KYC Details</a></li>
+              <li><a class="dropdown-item" href="#">Quotation Details</a></li>
+              <li><a class="dropdown-item" href="#">Booking Details</a></li>
+              <li><a class="dropdown-item" href="#">Invoice Format</a></li>
+              <li><a class="dropdown-item" href="#">Pre-Alert</a></li>
+              <li><a class="dropdown-item" href="#">BL Details</a></li>
+            </ul>
+          </li>
+          {% endif %}
+        </ul>
+
+        <ul class="navbar-nav">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+              <img src="/static/user.png" width="30" alt="User">
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              {% if session.user_logged_in %}
+                <li><a class="dropdown-item" href="#">👤 {{ session.name }}</a></li>
+                <li><a class="dropdown-item" href="/profile">Profile</a></li>
+                <li><a class="dropdown-item" href="/Logout">Logout</a></li>
+              {% else %}
+                <li><a class="dropdown-item" href="/Log_in">Login</a></li>
+                <li><a class="dropdown-item" href="/sign_up">Sign Up</a></li>
+              {% endif %}
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Profile Info -->
+  <div class="profile-box">
+    <div class="avatar-circle">
+      {{ user.name[0]|upper }}{{ user.name[-1]|upper }}
+    </div>
+
+    <h2>Welcome, {{ user.name }}</h2>
+
+    <div class="info">
+      <p><strong>Email:</strong> {{ user.email }}</p>
+      <p><strong>Mobile:</strong> {{ user.mobile or 'Not Provided' }}</p>
+      <p><strong>Address:</strong> {{ user.address or 'Not Provided' }}</p>
+      <p><strong>City:</strong> {{ user.city or 'Not Provided' }}</p>
+      <p><strong>State:</strong> {{ user.state or 'Not Provided' }}</p>
+      <p><strong>Country:</strong> {{ user.country or 'Not Provided' }}</p>
+      <p><strong>Pincode:</strong> {{ user.pincode or 'Not Provided' }}</p>
+    </div>
+
+    <a href="{{ url_for('logout') }}">
+      <button class="logout-btn">Logout</button>
+    </a>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

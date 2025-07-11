@@ -1,204 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title> SSR | Login </title>
-    <link rel="stylesheet" href="/static/home.css">
-</head>
-
-<style>
-    /* login page style */
-
+  <meta charset="UTF-8">
+  <title>Login - SSR Logistics</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
     body {
-        
-        background-image: url(/static/images/background1.png);
-        background-size: cover;
-
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to right, rgb(153, 205, 239), white, white, rgb(153, 205, 239));
     }
 
-    .container {
-            display: flex;
+    header {
+      background: linear-gradient(to right, rgb(153, 205, 239), white, white);
+      padding: 15px;
+    }
 
-            background-image: url(/static/images/background1.png) ;
-            
-            background-size: cover;
-           
-            justify-content: center;
-            /* background:linear-gradient(to right, rgb(153, 205, 239),white,white,white); */
-        }
+    .center-section img {
+      height: 100px;
+    }
 
-        .login {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            background-color: white;
-            padding: 20px;
-            margin: 70px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-            width: 300px;
-            text-align: center;
-        }
-
-        .login h1 {
-            margin-bottom: 20px;
-            font-size: 24px;
-            color: #333;
-        }
-
-        .login input[type="email"]{
-            width: 200px;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-
-        .login input[type="password"] {
-            width: 200px;
-            padding: 10px;
-            margin: 10px 0;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-
-        .login button {
-            width: 100px;
-            /* Set a fixed width */
-            padding: 10px;
-            margin: 0 auto;
-            /* Center the button */
-            border: none;
-            border-radius: 5px;
-            background-color: #5cb85c;
-            color: white;
-            font-size: 15px;
-            cursor: pointer;
-            text-align: center;
-        }
-
-        .login button:hover {
-            background-color: #4cae4c;
-        }
-
-        .forgot-password {
-            display: block;
-            margin-top: 10px;
-            color: #007bff;
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .forgot-password:hover {
-            text-decoration: underline;
-        }
-</style>
-
+    .dropdown-item:hover {
+      background-color: #0d6efd;
+      color: white;
+    }
+  </style>
+</head>
 <body>
-    <header class="header">
 
-        <div class="box box1">
-            <div class="first">
-                Track Shipment
-            </div>
+  <!-- Header -->
+  <header class="d-flex justify-content-between align-items-center px-4">
+    <div>
+      <h6 class="mb-1">Track Shipment</h6>
+      <input class="form-control form-control-sm" type="text" placeholder="Enter BL/Container no.">
+    </div>
+    <div class="text-center center-section">
+      <img src="/static/SSR_nobg.png" alt="Logo">
+    </div>
+    <div class="d-flex gap-2">
+      <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/whatsapp.png" width="30"></a>
+      <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/facebook.png" width="30"></a>
+      <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img src="/static/linkedin.png" width="30"></a>
+    </div>
+  </header>
 
-            <div class="first">
-                <input type="text" placeholder="Enter BL/Container no.">
-            </div>
-        </div>
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
+        <span class="navbar-toggler-icon"></span>
+      </button>
 
-        <div class="box box2">
-            <img src="/static/images/SSR_nobg.png" alt="logo">
-        </div>
-
-        <div class="box box3">
-
-            <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img
-                    src="/static/images/linkedin.png"></a>
-            <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/images/whatsapp.png"></a>
-            <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/images/facebook.png"></a>
-        </div>
-    </header>
-    <nav>
-        <div class="nav-link " onclick="toggleDropdown()">
-            <span class="one"> </span>
-            <span class="two"></span>
-            <span class="two"></span>
-        </div>
-        <div class="nav-items">
-            <ul>
-                <li><a href="Home_screen.html">home</a></li>
-                <li><a href="#">about</a></li>
-                <li><a href="#">service</a></li>
-                <li><a href="#">contact</a></li>
-                <li><a href="#" onclick="toggleUserDropdown(event)"><img src="/static/images/user.png" alt=""
-                            style="width: 20px; height: 20px;" class="user-icon"></a></li>
+      <div class="collapse navbar-collapse justify-content-between" id="navbarMenu">
+        <ul class="navbar-nav">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Menu</a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="#">KYC Details</a></li>
+              <li><a class="dropdown-item" href="#">Quotation Details</a></li>
+              <li><a class="dropdown-item" href="#">Booking Details</a></li>
+              <li><a class="dropdown-item" href="#">Invoice Format</a></li>
+              <li><a class="dropdown-item" href="#">Pre-Alert</a></li>
+              <li><a class="dropdown-item" href="#">BL Details</a></li>
             </ul>
-        </div>
-    </nav>
-    <ul class="dropdown" id="dropdownMenu">
-        <li><a href="/Log_in" class="dropdown-link" target="_blank"> 💁 KYC details</a></li>
-        <li><a href="/Log_in" class="dropdown-link" target="_blank">📇 Quotation details </a>
-        </li>
-        <li><a href="/Log_in" class="dropdown-link" target="_blank">🧾 Booking details</a></li>
-        <li><a href="/Log_in" class="dropdown-link" target="_blank">🧾 Invoice Format</a></li>
-        <li><a href="/Log_in" class="dropdown-link" target="_blank">⚠️ Pre-Alert</a></li>
-        <li><a href="/Log_in" class="dropdown-link" target="_blank">📇 BL Details</a></li>
-    </ul>
+          </li>
+        </ul>
+        <ul class="navbar-nav">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+              <img src="/static/user.png" width="30" alt="User">
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li><a class="dropdown-item" href="/Log_in">Login</a></li>
+              <li><a class="dropdown-item" href="/sign_up">Sign Up</a></li>
+              <li><a class="dropdown-item" href="#">Profile</a></li>
+            </ul>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
 
-    <!--  changes login -->
+  <!-- Login Form -->
+  <div class="container d-flex justify-content-center align-items-center" style="min-height: 70vh;">
+    <div class="card p-4 shadow" style="width: 100%; max-width: 400px;">
+      <h2 class="text-center mb-4">Login</h2>
 
-    <div class="container">
-        <form action="/Logindetails" method="post">
-            <div class="login">
-                <h1>Login</h1>
-                <input type="email" placeholder="E-mail Address" name="email"><br>
-                <input type="password" placeholder="Password" name="password"><br>
-                <button type="submit">Submit</button><br>
-                <a href="/forget_password" class="forgot-password">Forgot Password?</a>
-    
-                <h4 style="color: #333;">Not a Member? <a href="sign_up.html"  style="color: #007bff; text-decoration: none;">SignUp</a> Now</h4>
-                
-                
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
-        </form>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+
+      <form method="POST" action="/Log_in">
+        <div class="mb-3">
+          <input type="email" class="form-control" name="email" placeholder="Email address" required>
         </div>
+        <div class="mb-3">
+          <input type="password" class="form-control" name="password" placeholder="Password" required>
+        </div>
+        <div class="d-grid mb-2">
+          <button type="submit" class="btn btn-success">Login</button>
+        </div>
+        <div class="text-center">
+          <a href="./forgot_password" class="text-decoration-none">Forgot Password?</a><br>
+          <span>Not a member? <a href="/sign_up" class="text-primary text-decoration-none">Sign up now</a></span>
+        </div>
+      </form>
+    </div>
+  </div>
 
-        <script>
-            function toggleDropdown() {
-                const dropdown = document.getElementById('dropdownMenu');
-                dropdown.style.display = (dropdown.style.display === 'block') ? 'none' : 'block';
-            }
-
-            // Optional: Close the dropdown if clicked outside
-            window.onclick = function (event) {
-                if (!event.target.closest('.nav-link')) {
-                    document.getElementById('dropdownMenu').style.display = 'none';
-                }
-            }
-
-
-            function toggleUserDropdown(event) {
-                event.preventDefault();
-                const dropdown = document.getElementById('userDropdown');
-                dropdown.style.display = (dropdown.style.display === 'block') ? 'none' : 'block';
-            }
-
-            // Optional: Close the dropdown if clicked outside
-            window.onclick = function (event) {
-                if (!event.target.closest('.user-icon')) {
-                    const dropdown = document.getElementById('userDropdown');
-                    if (dropdown.style.display === 'block') {
-                        dropdown.style.display = 'none';
-                    }
-                }
-            }
-        </script>
-
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
-
 </html>
