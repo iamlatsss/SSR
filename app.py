@@ -41,12 +41,12 @@ def sign_up():
         cur.close()
 
         flash('Signup successful. Please login.', 'success')
-        return redirect(url_for('log_in'))
+        return redirect(url_for('Log_in'))
 
     return render_template('sign_up.html')
 
 @app.route('/Log_in', methods=['GET', 'POST'])
-def log_in():
+def Log_in():
     if request.method == 'POST':
         email = request.form['email']
         password_input = request.form['password']
@@ -71,13 +71,13 @@ def log_in():
         else:
             flash('Invalid email or password.', 'danger')
 
-    return render_template('log_in.html')
+    return render_template('Log_in.html')
 
 @app.route('/profile')
 def profile():
     if not session.get('user_logged_in'):
         flash('Please log in to view your profile.', 'warning')
-        return redirect(url_for('log_in'))
+        return redirect(url_for('Log_in'))
 
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cur.execute("SELECT * FROM users WHERE email = %s", [session['email']])
@@ -86,7 +86,7 @@ def profile():
 
     if not user:
         flash("User not found.", "danger")
-        return redirect(url_for('log_in'))
+        return redirect(url_for('Log_in'))
 
     return render_template('profile.html', user=user)
 
@@ -116,7 +116,7 @@ def forgot_password():
 @app.route('/complete_profile', methods=['GET', 'POST'])
 def complete_profile():
     if not session.get('user_logged_in'):
-        return redirect(url_for('log_in'))
+        return redirect(url_for('Log_in'))
 
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
 
@@ -151,7 +151,7 @@ def complete_profile():
 def kyc_webpage():
     if not session.get('user_logged_in'):
         flash("Please login first", "danger")
-        return redirect(url_for('log_in'))
+        return redirect(url_for('Log_in'))
     return render_template('kyc.html')
 
 @app.route('/kycdetails', methods=['POST'])
@@ -185,7 +185,7 @@ def kycdetails():
 def quotation_page():
     if not session.get('user_logged_in'):
         flash("Please login first", "danger")
-        return redirect(url_for('log_in'))
+        return redirect(url_for('Log_in'))
     return render_template('quotation.html')
 
 @app.route('/quotation_submit', methods=['POST'])
