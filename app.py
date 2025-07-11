@@ -1,17 +1,23 @@
-import mysql.connector
+import mysql.connector , os
 from flask import Flask, render_template, session, redirect, request, flash, jsonify, url_for
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = "ssr"
+app.secret_key = os.environ.get("SECRET_KEY", "default-secret-key")
+
 
 # Database Connection Function
 def get_db_connection():
     return mysql.connector.connect(
-        host="localhost",
-        user="root",
-        password="sl0110*",
-        database="ssr"
+        host=os.environ.get("DB_HOST"),
+        port=int(os.environ.get("DB_PORT", 3306)),  # Include this!
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASSWORD"),
+        database=os.environ.get("DB_NAME")
     )
+)
 
 # Home Page
 @app.route('/')
