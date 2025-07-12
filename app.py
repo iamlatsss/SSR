@@ -25,17 +25,17 @@ def login_required(f):
     return wrapper
 
 # MySQL Configuration
-# app.config['MYSQL_HOST'] = os.environ.get("DB_HOST")
-# app.config['MYSQL_PORT'] = int(os.environ.get("DB_PORT", 3306))
-# app.config['MYSQL_USER'] = os.environ.get("DB_USER")
-# app.config['MYSQL_PASSWORD'] = os.environ.get("DB_PASSWORD")
-# app.config['MYSQL_DB'] = os.environ.get("DB_NAME")
+app.config['MYSQL_HOST'] = os.environ.get("DB_HOST")
+app.config['MYSQL_PORT'] = int(os.environ.get("DB_PORT", 3306))
+app.config['MYSQL_USER'] = os.environ.get("DB_USER")
+app.config['MYSQL_PASSWORD'] = os.environ.get("DB_PASSWORD")
+app.config['MYSQL_DB'] = os.environ.get("DB_NAME")
 
-app.config['MYSQL_HOST'] = 'localhost'
-app.config['MYSQL_USER'] = 'root'
-app.config['MYSQL_PASSWORD'] = '12345'
-app.config['MYSQL_DB'] = 'ssr_db'
-app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+# app.config['MYSQL_HOST'] = 'localhost'
+# app.config['MYSQL_USER'] = 'root'
+# app.config['MYSQL_PASSWORD'] = '12345'
+# app.config['MYSQL_DB'] = 'ssr_db'
+# app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 
 mysql = MySQL(app)
@@ -279,7 +279,7 @@ def bookingwebpage():
 @app.route("/bookinglist")
 @login_required
 def bookinglist():
-    cur = mysql.connection.cursor()
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cur.execute("SELECT * FROM booking")
     res = cur.fetchall()
     cur.close()
@@ -289,10 +289,10 @@ def bookinglist():
 @app.route("/edit_booking/<int:id>", methods=["GET", "POST"])
 @login_required
 def edit_booking(id):
-    cur = mysql.connection.cursor()
-
     if request.method == "POST":
         form = request.form
+        cur = mysql.connection.cursor()  # No need for DictCursor here; you're just updating
+
         cur.execute("""
             UPDATE booking SET
                 nomination_date=%s,
@@ -326,15 +326,16 @@ def edit_booking(id):
         return redirect(url_for("bookinglist"))
 
     # GET request: fetch existing booking
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)  # ✅ FIXED: use DictCursor here
     cur.execute("SELECT * FROM booking WHERE job_number = %s", (id,))
-    booking = cur.fetchone()
+    bookings = cur.fetchone()
     cur.close()
 
-    if not booking:
+    if not bookings:
         flash("Booking not found.", "danger")
         return redirect(url_for("bookinglist"))
 
-    return render_template("editUser.html", booking=booking)
+    return render_template("editUser.html", booking=bookings)
 
 # ---------- Delete Booking ----------
 @app.route("/delete_booking/<int:id>", methods=["GET"])
@@ -371,17 +372,6 @@ def bookingstatus():
     return render_template('bookingstatus.html', booking=bookings)
 
 @app.route("/delivery_order/<int:job_number>")
-def delivery_order(job_number):
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cur.execute("SELECT * FROM booking WHERE job_number = %s", (job_number,))
-    booking = cur.fetchone()
-    cur.close()
-
-    if booking:
-        return render_template("delivery_order.html", booking=booking)
-    else:
-        flash("Booking not found.", "danger")
-        return redirect(url_for("bookinglist"))
     
 def delivery_order(job_number):
     try:
@@ -399,7 +389,24 @@ def delivery_order(job_number):
     except Exception as e:
         flash(f"Error: {str(e)}", "danger")
         return redirect(url_for("bookinglist"))
+    
+@app.route("/freight_certificate/<int:job_number>")
+def freight_certificate(job_number):
+    try:
+        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cur.execute("SELECT * FROM booking WHERE job_number = %s", (job_number,))
+        booking = cur.fetchone()
+        cur.close()
 
+        if booking:
+            return render_template("fc.html", booking=booking)
+        else:
+            flash("Booking not found.", "danger")
+            return redirect(url_for("bookinglist"))
+        
+    except Exception as e:
+        flash(f"Error: {str(e)}", "danger")
+        return redirect(url_for("bookinglist"))
 
 if __name__ == '__main__':
     app.run(debug=True)
