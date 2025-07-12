@@ -2,13 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Booking Status</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/static/home.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         body {
-            background-color: rgb(237, 200, 120);
+            background: linear-gradient(to right, rgb(237, 200, 120), white);
         }
 
         .container {
@@ -18,16 +17,14 @@
             padding: 20px;
             box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
             border-radius: 10px;
-            box-sizing: border-box;
-            overflow-x: auto; 
-            white-space: nowrap; 
+            overflow-x: auto;
         }
 
         table {
             width: 100%;
-            margin-top: 20px;
-            min-width: 1200px; 
+            min-width: 1200px;
             text-transform: uppercase;
+            border-collapse: collapse;
         }
 
         th, td {
@@ -39,7 +36,6 @@
         .status-input {
             width: 100%;
             padding: 5px;
-            text-align: center;
         }
 
         .save-btn {
@@ -50,22 +46,85 @@
             border-radius: 5px;
             cursor: pointer;
         }
+
+        nav a:hover {
+            color: skyblue;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2 class="text-center"><b>Booking status</b></h2>
 
-        <!--Booking 2 filters-->
+    <!-- Header -->
+    <header>
+        <div class="container-fluid d-flex justify-content-between align-items-center p-3 bg-white shadow-sm">
+            <div>
+                <h6 class="mb-1">Track Shipment</h6>
+                <input class="form-control form-control-sm" type="text" placeholder="Enter BL/Container no.">
+            </div>
+            <div class="text-center">
+                <img src="/static/SSR_nobg.png" height="80" alt="Logo">
+            </div>
+            <div class="d-flex gap-2">
+                <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/whatsapp.png" width="30"></a>
+                <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/facebook.png" width="30"></a>
+                <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img src="/static/linkedin.png" width="30"></a>
+            </div>
+        </div>
+    </header>
 
-        <div class="mb-3 d-flex justify-content-between">
-            <!-- Job Number Filter -->
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+        <div class="container-fluid">
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse justify-content-between" id="navbarMenu">
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Menu</a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/kycwebpage">📇 KYC Details</a></li>
+                            <li><a class="dropdown-item" href="/quotationwebpage">📇 Quotation Details</a></li>
+                            <li><a class="dropdown-item" href="/bookingwebpage">🧾 Booking Details</a></li>
+                            <li><a class="dropdown-item" href="/invoice">🧾 Invoice Format</a></li>
+                            <li><a class="dropdown-item" href="/prealert">⚠️ Pre-Alert</a></li>
+                            <li><a class="dropdown-item" href="/bldetails">📇 BL Details</a></li>
+                        </ul>
+                    </li>
+                </ul>
+
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <img src="/static/images/user.png" width="30" alt="User">
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% if session.user_logged_in %}
+                            <li><a class="dropdown-item" href="#">👤 {{ session.name }}</a></li>
+                            <li><a class="dropdown-item" href="/profile">Profile</a></li>
+                            <li><a class="dropdown-item" href="/Logout">Logout</a></li>
+                            {% else %}
+                            <li><a class="dropdown-item" href="/Log_in">Login</a></li>
+                            <li><a class="dropdown-item" href="/sign_up">Sign Up</a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Booking Status Section -->
+    <div class="container mt-4">
+        <h2 class="text-center mb-4"><b>Booking Status</b></h2>
+
+        <!-- Filters -->
+        <div class="mb-3 d-flex justify-content-between flex-wrap gap-3">
             <div>
                 <label for="jobFilter" class="form-label"><b>Filter by Job Number:</b></label>
                 <input type="text" id="jobFilter" class="form-control" onkeyup="filterTable()">
             </div>
-        
-            <!-- Status Filter -->
             <div>
                 <label for="statusFilter" class="form-label"><b>Filter by Status:</b></label>
                 <select id="statusFilter" class="form-select" onchange="filterTable()">
@@ -77,59 +136,35 @@
             </div>
         </div>
 
-       
-        <table id="bookingTable">
-            <thead>
+        <!-- Table -->
+        <table id="bookingTable" class="table table-bordered table-striped">
+            <thead class="table-dark">
                 <tr>
-                    <th>Nomination Date</th>
-                    <th>Consignee Details</th>
-                    <th>Shipper Details</th>
-                    <th>HBL No</th>
-                    <th>MBL No</th>
+                    <th>Job No.</th>
+                    <th>Consignee</th>
+                    <th>Shipper</th>
                     <th>POL</th>
                     <th>POD</th>
-                    <th>Container Size</th>
-                    <th>Job Number</th>
-                    <th>Agent Details</th>
-                    <th>Shipping Line</th>
-                    <th>Buy Rate</th>
-                    <th>Sell Rate</th>
                     <th>ETD</th>
                     <th>ETA</th>
-                    <th>SWB</th>
-                    <th>IGM Filed</th>
-                    <th>CHA</th>
-                    <th>Description Box </th>
-                    <th>Status of Booking</th>
+                    <th>Status</th>
                     <th>Save</th>
                 </tr>
             </thead>
-             <tbody>
+            <tbody>
                 {% for b in booking %}
                 <tr>
-                    <td>{{ b.nomination_date }}</td>
+                    <td>{{ b.job_number }}</td>
                     <td>{{ b.consignee_details }}</td>
                     <td>{{ b.shipper_details }}</td>
-                    <td>{{ b.hbl_no }}</td>
-                    <td>{{ b.mbl_no }}</td>
                     <td>{{ b.pol }}</td>
                     <td>{{ b.pod }}</td>
-                    <td>{{ b.container_size }}</td>
-                    <td>{{ b.job_number }}</td>
-                    <td>{{ b.agent_details }}</td>
-                    <td>{{ b.shipping_line }}</td>
-                    <td>{{ b.buy_rate }}</td>
-                    <td>{{ b.sell_rate }}</td>
                     <td>{{ b.etd }}</td>
                     <td>{{ b.eta }}</td>
-                    <td>{{ b.swb }}</td>
-                    <td>{{ b.igm_filed }}</td>
-                    <td>{{ b.cha }}</td>
-                    <td>{{ b.description_box }}</td>
                     <td>
                         <form action="{{ url_for('bookingstatus') }}" method="POST">
                             <input type="hidden" name="job_number" value="{{ b.job_number }}">
-                            <select  name="status" class="status-input" onchange="enableSaveButton(this)">
+                            <select name="status" class="status-input" onchange="enableSaveButton(this)">
                                 <option value="Pending" {% if b.status == "Pending" %}selected{% endif %}>Pending</option>
                                 <option value="Completed" {% if b.status == "Completed" %}selected{% endif %}>Completed</option>
                                 <option value="Canceled" {% if b.status == "Canceled" %}selected{% endif %}>Canceled</option>
@@ -140,46 +175,40 @@
                         </form>
                     </td>
                 </tr>
-             {% endfor %}
+                {% endfor %}
             </tbody>
-            
         </table>
+
         <div class="text-center mt-3">
-            <a href="{{url_for('bookinglist')}}" class="btn btn-primary">Go Back</a>
+            <a href="{{ url_for('bookinglist') }}" class="btn btn-secondary">Go Back</a>
         </div>
     </div>
+
+    <!-- JavaScript -->
     <script>
         function enableSaveButton(selectElement) {
-            let saveButton = selectElement.closest('tr').querySelector('.save-btn');
+            const saveButton = selectElement.closest('tr').querySelector('.save-btn');
             saveButton.disabled = false;
+        }
+
+        function filterTable() {
+            const statusValue = document.getElementById("statusFilter").value.toLowerCase();
+            const jobValue = document.getElementById("jobFilter").value.toLowerCase();
+            const rows = document.querySelectorAll("#bookingTable tbody tr");
+
+            rows.forEach(row => {
+                const jobCell = row.cells[0].textContent.toLowerCase();
+                const statusSelect = row.querySelector("select[name='status']");
+                const statusText = statusSelect.value.toLowerCase();
+
+                const statusMatch = statusValue === "all" || statusText === statusValue;
+                const jobMatch = jobCell.includes(jobValue);
+
+                row.style.display = (statusMatch && jobMatch) ? "" : "none";
+            });
         }
     </script>
 
-
-  <!-- javascrpt booking filters -->
-<script>
-    function filterTable() {
-    let statusValue = document.getElementById("statusFilter").value.toLowerCase();
-    let rows = document.querySelectorAll("#bookingTable tbody tr");
-
-    rows.forEach(row => {
-        let statusSelect = row.querySelector("select[name='status']"); // ✅ Select dropdown inside the row
-
-        if (statusSelect) {
-            let statusText = statusSelect.value.toLowerCase(); // ✅ Get the selected value
-
-            let statusMatch = statusValue === "all" || statusText === statusValue; // ✅ Compare correctly
-
-            if (statusMatch) {
-                row.style.display = ""; // Show row
-            } else {
-                row.style.display = "none"; // Hide row
-            }
-        }
-    });
-}
-
-   </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
-

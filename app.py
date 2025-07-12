@@ -4,6 +4,10 @@ from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import MySQLdb.cursors
+from flask_mysqldb import MySQL
+from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+from functools import wraps
 
 # Load .env variables
 load_dotenv()
@@ -11,12 +15,28 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "default-secret-key")
 
+def login_required(f):
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        if not session.get('user_logged_in'):
+            flash("Please login first", "danger")
+            return redirect(url_for('log_in'))
+        return f(*args, **kwargs)
+    return wrapper
+
 # MySQL Configuration
 app.config['MYSQL_HOST'] = os.environ.get("DB_HOST")
 app.config['MYSQL_PORT'] = int(os.environ.get("DB_PORT", 3306))
 app.config['MYSQL_USER'] = os.environ.get("DB_USER")
 app.config['MYSQL_PASSWORD'] = os.environ.get("DB_PASSWORD")
 app.config['MYSQL_DB'] = os.environ.get("DB_NAME")
+
+# app.config['MYSQL_HOST'] = 'localhost'
+# app.config['MYSQL_USER'] = 'root'
+# app.config['MYSQL_PASSWORD'] = '12345'
+# app.config['MYSQL_DB'] = 'ssr_db'
+# app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+
 
 mysql = MySQL(app)
 
@@ -207,7 +227,7 @@ def booking_page():
         flash("Please login first", "danger")
         return redirect(url_for('Log_in'))
 
-    return render_template('booking.html')
+    return render_template('booking_details.html')
 
 
 @app.route('/invoice')
@@ -233,6 +253,136 @@ def bl_details_page():
         return redirect(url_for('Log_in'))
 
     return render_template('bl_details.html')
+
+# ---------- Booking Page ----------
+@app.route("/bookingwebpage", methods=['GET', 'POST'])
+@login_required
+def bookingwebpage():
+    if request.method == 'POST':
+        fields = ["nomination_date", "consignee_details", "shipper_details", "hbl_no", "mbl_no",
+                  "pol", "pod", "container_size", "job_number", "agent_details", "shipping_line",
+                  "buy_rate", "sell_rate", "etd", "eta", "swb", "igm_filed", "cha", "description_box"]
+        values = [request.form.get(field) for field in fields]
+
+        cur = mysql.connection.cursor()
+        sql = f"INSERT INTO booking ({', '.join(fields)}) VALUES ({', '.join(['%s'] * len(fields))})"
+        cur.execute(sql, values)
+        mysql.connection.commit()
+        cur.close()
+
+        flash("Booking submitted successfully!", "success")
+        return redirect(url_for("bookinglist"))
+
+    return render_template("Booking_details.html")
+
+# ---------- Booking List ----------
+@app.route("/bookinglist")
+@login_required
+def bookinglist():
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT * FROM booking")
+    res = cur.fetchall()
+    cur.close()
+    return render_template("bookinglist.html", booking=res)
+
+
+@app.route("/edit_booking/<int:id>", methods=["GET", "POST"])
+@login_required
+def edit_booking(id):
+    cur = mysql.connection.cursor()
+
+    if request.method == "POST":
+        form = request.form
+        cur.execute("""
+            UPDATE booking SET
+                nomination_date=%s,
+                consignee_details=%s,
+                shipper_details=%s,
+                hbl_no=%s,
+                mbl_no=%s,
+                pol=%s,
+                pod=%s,
+                container_size=%s,
+                agent_details=%s,
+                shipping_line=%s,
+                buy_rate=%s,
+                sell_rate=%s,
+                etd=%s,
+                eta=%s,
+                swb=%s,
+                igm_filed=%s,
+                cha=%s,
+                description_box=%s
+            WHERE job_number=%s
+        """, (
+            form['nomination_date'], form['consignee_details'], form['shipper_details'], form['hbl_no'],
+            form['mbl_no'], form['pol'], form['pod'], form['container_size'], form['agent_details'],
+            form['shipping_line'], form['buy_rate'], form['sell_rate'], form['etd'], form['eta'],
+            form['swb'], form['igm_filed'], form['cha'], form['description_box'], id
+        ))
+        mysql.connection.commit()
+        cur.close()
+        flash("Booking updated successfully!", "success")
+        return redirect(url_for("bookinglist"))
+
+    # GET request: fetch existing booking
+    cur.execute("SELECT * FROM booking WHERE job_number = %s", (id,))
+    booking = cur.fetchone()
+    cur.close()
+
+    if not booking:
+        flash("Booking not found.", "danger")
+        return redirect(url_for("bookinglist"))
+
+    return render_template("editUser.html", booking=booking)
+
+# ---------- Delete Booking ----------
+@app.route("/delete_booking/<int:id>", methods=["GET"])
+@login_required
+def delete_booking(id):
+    cur = mysql.connection.cursor()
+    cur.execute("DELETE FROM booking WHERE job_number = %s", (id,))
+    mysql.connection.commit()
+    cur.close()
+    flash("Booking deleted successfully!", "success")
+    return redirect(url_for("bookinglist"))
+
+# Booking Status Page
+@app.route('/bookingstatus', methods=['GET', 'POST'])
+def bookingstatus():
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)  # Use dictionary cursor
+
+    if request.method == 'POST':
+        # Get job number and status from form
+        job_number = request.form['job_number']
+        new_status = request.form['status']
+
+        # Update booking status
+        cur.execute("UPDATE booking SET status = %s WHERE job_number = %s", (new_status, job_number))
+        mysql.connection.commit()
+        flash("Status updated successfully!", "success")
+
+    # Fetch all booking data
+    cur.execute("SELECT * FROM booking")
+    bookings = cur.fetchall()
+
+    cur.close()
+
+    return render_template('bookingstatus.html', booking=bookings)
+
+@app.route("/delivery_order/<int:job_number>")
+def delivery_order(job_number):
+    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+    cur.execute("SELECT * FROM booking WHERE job_number = %s", (job_number,))
+    booking = cur.fetchone()
+    cur.close()
+
+    if booking:
+        return render_template("delivery_order.html", booking=booking)
+    else:
+        flash("Booking not found.", "danger")
+        return redirect(url_for("bookinglist"))
+
 
 if __name__ == '__main__':
     app.run(debug=True)

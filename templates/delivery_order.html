@@ -3,77 +3,119 @@
 <head>
   <meta charset="UTF-8">
   <title>Delivery Order</title>
-  <link rel="stylesheet" href="/static/delivery_order.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background-color: #f8f9fa;
+    }
+    .stamp {
+      height: 80px;
+    }
+    @media print {
+      .print-btn, nav, header {
+        display: none !important;
+      }
+    }
+  </style>
 </head>
 <body>
 
-<div class="page">
-
-  <div class="header">
-    <div class="logo">
-      <img src="/static/SSR_nobg.png" alt="SSR Logo">
+<!-- Header -->
+<header class="bg-white shadow-sm p-3 mb-4">
+  <div class="container-fluid d-flex justify-content-between align-items-center">
+    <div>
+      <h6 class="mb-1">Track Shipment</h6>
+      <input class="form-control form-control-sm" type="text" placeholder="Enter BL/Container no.">
     </div>
-    <div class="header-text">
-      <h2>SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</h2>
-      <p><strong>CIN NO:</strong> U52220MH2023PTC414525,</p>
-      <p>Office No. 612, 6th Floor, Vashi Infotech Park , Sector - 30 A, Near Raghuleela Mall, Vashi ,</p>
-      <p>Navi Mumbai-400703, Maharashtra, India</p>
-      <p><strong>E-mail ID:</strong> customerservice@ssrlogistic.net</p>
-      <p><strong>Tel.No :</strong> 7700990630, 7700990630</p>
+    <div class="text-center">
+      <img src="/static/SSR_nobg.png" height="60" alt="Logo">
+    </div>
+    <div class="d-flex gap-2">
+      <a href="https://api.whatsapp.com/send?phone=917700990630"><img src="/static/whatsapp.png" width="30"></a>
+      <a href="https://www.facebook.com/sentil.kumar.984"><img src="/static/facebook.png" width="30"></a>
+      <a href="https://www.linkedin.com/in/sentilkumar-a-s-a-mumbai-a2770915/"><img src="/static/linkedin.png" width="30"></a>
     </div>
   </div>
+</header>
 
-  <h3 class="center">DELIVERY ORDER</h3>
+<!-- Navigation -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3 mb-4">
+  <div class="container-fluid">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarMenu">
+      <ul class="navbar-nav">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Menu</a>
+          <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="/kycwebpage">KYC Details</a></li>
+            <li><a class="dropdown-item" href="/quotationwebpage">Quotation Details</a></li>
+            <li><a class="dropdown-item" href="/bookingwebpage">Booking Details</a></li>
+            <li><a class="dropdown-item" href="/invoice">Invoice Format</a></li>
+            <li><a class="dropdown-item" href="/prealert">Pre-Alert</a></li>
+            <li><a class="dropdown-item" href="/bldetails">BL Details</a></li>
+          </ul>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>
 
-  <p><strong>To,</strong><br>UNIFEEDER AGENCIES INDIA PRIVATE LIMITED</p>
-  <p>DO NO. XGG/NSA/25/07128</p>
-  <p>DO Date 26-05-2025</p>
+<!-- Delivery Order Content -->
+<div class="container bg-white p-4 shadow rounded">
+  <div class="text-center mb-3">
+    <h4 class="text-decoration-underline">DELIVERY ORDER</h4>
+  </div>
+
+  <p><strong>To,</strong><br>{{ booking.shipping_line }}</p>
+  <p><strong>DO NO:</strong> {{ booking.mbl_no }}</p>
+  <p><strong>DO Date:</strong> {{ booking.etd }}</p>
 
   <p><strong>Dear Sir,</strong></p>
+  <p>You are requested to kindly make delivery of the below mentioned container(s), whose details are as follows:</p>
 
-  <p>
-    You are requested to kindly make delivery of the below mentioned container(s), whose details are as follows:
-  </p>
-
-  <table>
-    <tr><td><strong>HBL No:</strong></td><td>QLD202505249</td><td><strong>Date:</strong></td><td>16-05-2025</td></tr>
-    <tr><td><strong>MBL No:</strong></td><td>XGG/NSA/25/07128</td><td><strong>Date:</strong></td><td>16-05-2025</td></tr>
-    <tr><td><strong>Container No.:</strong></td><td colspan="3">TCKU3335591, LYGU3196667</td></tr>
+  <table class="table table-bordered">
+    <tr><td><strong>HBL No:</strong></td><td>{{ booking.hbl_no }}</td><td><strong>Date:</strong></td><td>{{ booking.nomination_date }}</td></tr>
+    <tr><td><strong>MBL No:</strong></td><td>{{ booking.mbl_no }}</td><td><strong>Date:</strong></td><td>{{ booking.nomination_date }}</td></tr>
+    <tr><td><strong>Container No.:</strong></td><td colspan="3">{{ booking.container_size }}</td></tr>
     <tr><td><strong>MBL Consignee:</strong></td><td colspan="3">SSR LOGISTIC SOLUTIONS PVT LTD</td></tr>
-    <tr><td><strong>HBL Consignee:</strong></td><td colspan="3">ZOSHAB INTERNATIONAL POWER TOOLS LLP</td></tr>
-    <tr><td><strong>Notify Party:</strong></td><td colspan="3">SSR LOGISTIC SOLUTIONS PVT LTD</td></tr>
-    <tr><td><strong>CHA:</strong></td><td colspan="3">NA</td></tr>
-    <tr><td><strong>Cargo Description:</strong></td><td colspan="3">1100 WEBBING SLING HS 56074900 SPARE PARTS HS 84311000</td></tr>
+    <tr><td><strong>HBL Consignee:</strong></td><td colspan="3">{{ booking.consignee_details }}</td></tr>
+    <tr><td><strong>Notify Party:</strong></td><td colspan="3">{{ booking.shipper_details }}</td></tr>
+    <tr><td><strong>CHA:</strong></td><td colspan="3">{{ booking.cha }}</td></tr>
+    <tr><td><strong>Cargo Description:</strong></td><td colspan="3">{{ booking.description_box }}</td></tr>
     <tr><td><strong>Delivery:</strong></td><td colspan="3">Full</td></tr>
-    <tr><td><strong>No of Packages:</strong></td><td colspan="3">2637 PACKAGES</td></tr>
-    <tr><td><strong>Measurement:</strong></td><td colspan="3">55.262</td></tr>
-    <tr><td><strong>Gross Weight:</strong></td><td colspan="3">51010.600</td></tr>
-    <tr><td><strong>Vessel Voyage:</strong></td><td colspan="3">ONE MAESTRO V.0081W</td></tr>
-    <tr><td><strong>IGM No.:</strong></td><td colspan="3"></td></tr>
-    <tr><td><strong>Line NO.:</strong></td><td colspan="3"></td></tr>
-    <tr><td><strong>Sub-Line No.:</strong></td><td colspan="3"></td></tr>
-    <tr><td><strong>Marks & Nos.:</strong></td><td colspan="3">NIL</td></tr>
-    <tr><td><strong>This Delivery Order is Valid Till:</strong></td><td colspan="3">NOT</td></tr>
+    <tr><td><strong>No of Packages:</strong></td><td colspan="3">-</td></tr>
+    <tr><td><strong>Measurement:</strong></td><td colspan="3">-</td></tr>
+    <tr><td><strong>Gross Weight:</strong></td><td colspan="3">-</td></tr>
+    <tr><td><strong>Vessel Voyage:</strong></td><td colspan="3">-</td></tr>
+    <tr><td><strong>ETA:</strong></td><td colspan="3">{{ booking.eta }}</td></tr>
+    <tr><td><strong>Marks & Nos.:</strong></td><td colspan="3">-</td></tr>
+    <tr><td><strong>Status:</strong></td><td colspan="3">{{ booking.status }}</td></tr>
+    <tr><td><strong>This Delivery Order is Valid Till:</strong></td><td colspan="3">-</td></tr>
   </table>
 
-  <p class="note">
-    <strong>NOTE:</strong> NO MANUAL REVALIDATION OF DATE IS ALLOWED ON THIS DELIVERY ORDER, ONLY FRESH DELIVERY ORDER TO BE ACCEPTED.
-  </p>
+  <p class="text-danger small"><strong>NOTE:</strong> NO MANUAL REVALIDATION OF DATE IS ALLOWED ON THIS DELIVERY ORDER. ONLY FRESH DELIVERY ORDER TO BE ACCEPTED.</p>
 
-  <p><strong>Remarks:</strong> na</p>
+  <p><strong>Remarks:</strong> -</p>
 
-  <div class="footer">
-    <div class="left">
+  <div class="d-flex justify-content-between mt-4">
+    <div>
       <p>Thanking you,<br>Yours Faithfully,</p>
     </div>
-    <div class="right">
+    <div>
       <p><strong>FOR SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</strong></p>
       <img src="/static/stamp.png" class="stamp" alt="Signature & Stamp">
-      <p class="auth">Authorized Signatory</p>
+      <p>Authorized Signatory</p>
     </div>
   </div>
 
+  <div class="text-center mt-4">
+    <button class="btn btn-primary print-btn" onclick="window.print()">🖨️ Print Delivery Order</button>
+  </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
