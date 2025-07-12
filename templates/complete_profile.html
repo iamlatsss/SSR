@@ -43,28 +43,52 @@
 </header>
 
 <!-- Navigation -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3 mb-4">
-  <div class="container-fluid">
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarMenu">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse" id="navbarMenu">
-      <ul class="navbar-nav">
-        <li class="nav-item dropdown">
-          <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">Menu</a>
-          <ul class="dropdown-menu">
-            <li><a class="dropdown-item" href="/kycwebpage">KYC Details</a></li>
-            <li><a class="dropdown-item" href="/quotationwebpage">Quotation Details</a></li>
-            <li><a class="dropdown-item" href="/bookingwebpage">Booking Details</a></li>
-            <li><a class="dropdown-item" href="/invoice">Invoice Format</a></li>
-            <li><a class="dropdown-item" href="/prealert">Pre-Alert</a></li>
-            <li><a class="dropdown-item" href="/bldetails">BL Details</a></li>
-          </ul>
-        </li>
-      </ul>
+ <nav class="navbar navbar-expand-lg navbar-dark bg-dark px-3">
+    <div class="container-fluid">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse justify-content-between" id="navbarNavDropdown">
+        <ul class="navbar-nav">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">Menu</a>
+            <ul class="dropdown-menu">
+              <li><a class="dropdown-item" href="/kycwebpage">💁 KYC Details</a></li>
+              <li><a class="dropdown-item" href="/quotationwebpage">📇 Quotation Details</a></li>
+              <li><a class="dropdown-item" href="/bookingwebpage">🧾 Booking Details</a></li>
+              <li><a class="dropdown-item" href="/invoice">📄 Invoice Format</a></li>
+              <li><a class="dropdown-item" href="/prealert">⚠️ Pre-Alert</a></li>
+              <li><a class="dropdown-item" href="/bldetails">📇 BL Details</a></li>
+            </ul>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="#">Service</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">About</a></li>
+          <li class="nav-item"><a class="nav-link" href="#">Contact</a></li>
+        </ul>
+
+        <!-- User Dropdown -->
+        <ul class="navbar-nav">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle d-flex align-items-center" href="#" data-bs-toggle="dropdown">
+              <img src="/static/user.png" width="30" alt="User">
+            </a>
+            <ul class="dropdown-menu dropdown-menu-end">
+              {% if session.user_logged_in %}
+                <li><a class="dropdown-item" href="#">👤 {{ session.name }}</a></li>
+                <li><a class="dropdown-item" href="/profile">Profile</a></li>
+                <li><a class="dropdown-item" href="/settings">Settings</a></li>
+                <li><a class="dropdown-item" href="/logout">Logout</a></li>
+              {% else %}
+                <li><a class="dropdown-item" href="{{ url_for('Log_in') }}">Login</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('sign_up') }}">Sign Up</a></li>
+              {% endif %}
+            </ul>
+          </li>
+        </ul>
+      </div>
     </div>
-  </div>
-</nav>
+  </nav>
 
     <div class="container">
         <h2 class="text-center">Complete Your Profile</h2>

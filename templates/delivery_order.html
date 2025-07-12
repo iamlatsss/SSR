@@ -5,21 +5,25 @@
   <title>Delivery Order</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
   <style>
     body {
       font-family: Calibri, sans-serif;
+      background-color: #fff;
+      font-size: 14px;
       margin: 0;
       padding: 0;
-      background-color: #fff;
-      font-size: 11px;
+      line-height: 1.3;
     }
 
     .container {
-      border: 1px solid black;
-      padding: 12px;
-      width: 100%;
+      width: 950%;
+      max-width: 95%;
       box-sizing: border-box;
-      background: white;
+      padding: 30px;
+      font-size: 15px;
+      border: 2px solid black;
+      background-color: white;
     }
 
     .header {
@@ -27,7 +31,7 @@
       justify-content: space-between;
       align-items: center;
       border-bottom: 1px solid black;
-      padding-bottom: 6px;
+      padding-bottom: 10px;
     }
 
     .header img {
@@ -40,43 +44,43 @@
 
     .header-details h2 {
       margin: 0;
-      font-size: 15px;
+      font-size: 18px;
+      font-weight: bold;
     }
 
     .header-details p {
       margin: 2px 0;
-      font-size: 10px;
+      font-size: 13px;
     }
 
     h3 {
       text-align: center;
-      margin: 16px 0;
-      font-size: 13px;
-      letter-spacing: 0.5px;
+      margin: 20px 0;
+      font-size: 16px;
       text-decoration: underline;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 14px;
+      margin-bottom: 16px;
     }
 
     th, td {
       border: 1px solid black;
-      padding: 5px 6px;
-      font-size: 10px;
+      padding: 6px 8px;
+      font-size: 13px;
       vertical-align: top;
     }
 
     th {
-      background-color: #f2f2f2;
+      background-color: #f8f9fa;
       font-weight: bold;
       text-align: left;
     }
 
     .footer {
-      font-size: 10px;
+      font-size: 13px;
       margin-top: 20px;
     }
 
@@ -84,83 +88,102 @@
       margin: 6px 0;
     }
 
-    .print-btn {
-      margin-top: 20px;
-    }
-
     .stamp {
       height: 80px;
     }
 
+    .print-btn {
+      margin-top: 20px;
+    }
+
     @media print {
+      body {
+        margin: 0;
+      }
+
       .print-btn {
         display: none !important;
+      }
+
+      .container {
+        margin: 0;
+        padding: 60px;
+        border: 1px solid black;
+        width: 100%;
+      }
+
+      @page {
+        size: A4;
+        margin-left:30px;
+        margin-right: 5px;
+        margin-bottom: 30px ;
+
       }
     }
   </style>
 </head>
 <body>
-<div class="page">
-  <div class="container">
+  <div class="page">
+    <div class="container">
 
-    <div class="header">
-      <img src="https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg" alt="Logo">
-      <div class="header-details">
-        <h2>SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</h2>
-        <p>E-mail ID: customerservice@ssrlogistic.net / sentil.kumar@ssrlogistic.net</p>
-        <p>Tel No: 7700990630, 7700990630</p>
+      <!-- Header -->
+      <div class="header" ">
+        <img src="https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg" alt="Logo">
+        <div class="header-details">
+          <h2>SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</h2>
+          <p>E-mail ID: customerservice@ssrlogistic.net / sentil.kumar@ssrlogistic.net</p>
+          <p>Tel No: 7700990630, 7700990630</p>
+        </div>
+      </div>
+
+      <h3>DELIVERY ORDER</h3>
+
+      <p><strong>To,</strong><br>{{ booking.shipping_line }}</p>
+      <p><strong>DO NO:</strong> {{ booking.mbl_no }}</p>
+      <p><strong>DO Date:</strong> {{ booking.etd }}</p>
+
+      <p><strong>Dear Sir,</strong></p>
+      <p>You are requested to kindly make delivery of the below mentioned container(s), whose details are as follows:</p>
+
+      <table>
+        <tr><th>HBL No</th><td>{{ booking.hbl_no }}</td><th>Date</th><td>{{ booking.nomination_date }}</td></tr>
+        <tr><th>MBL No</th><td>{{ booking.mbl_no }}</td><th>Date</th><td>{{ booking.nomination_date }}</td></tr>
+        <tr><th>Container No.</th><td colspan="3">{{ booking.container_size }}</td></tr>
+        <tr><th>MBL Consignee</th><td colspan="3">SSR LOGISTIC SOLUTIONS PVT LTD</td></tr>
+        <tr><th>HBL Consignee</th><td colspan="3">{{ booking.consignee_details }}</td></tr>
+        <tr><th>Notify Party</th><td colspan="3">{{ booking.shipper_details }}</td></tr>
+        <tr><th>CHA</th><td colspan="3">{{ booking.cha }}</td></tr>
+        <tr><th>Cargo Description</th><td colspan="3">{{ booking.description_box }}</td></tr>
+        <tr><th>Delivery</th><td colspan="3">Full</td></tr>
+        <tr><th>No of Packages</th><td colspan="3">-</td></tr>
+        <tr><th>Measurement</th><td colspan="3">-</td></tr>
+        <tr><th>Gross Weight</th><td colspan="3">-</td></tr>
+        <tr><th>Vessel Voyage</th><td colspan="3">-</td></tr>
+        <tr><th>ETA</th><td colspan="3">{{ booking.eta }}</td></tr>
+        <tr><th>Marks & Nos.</th><td colspan="3">-</td></tr>
+        <tr><th>Status</th><td colspan="3">{{ booking.status }}</td></tr>
+        <tr><th>This Delivery Order is Valid Till</th><td colspan="3">-</td></tr>
+      </table>
+
+      <p class="text-danger" style="font-size: 14px;"><strong>NOTE:</strong> NO MANUAL REVALIDATION OF DATE IS ALLOWED ON THIS DELIVERY ORDER. ONLY FRESH DELIVERY ORDER TO BE ACCEPTED.</p>
+
+      <p><strong>Remarks:</strong> -</p>
+
+      <div class="d-flex justify-content-between mt-4">
+        <div>
+          <p>Thanking you,<br>Yours Faithfully,</p>
+        </div>
+        <div>
+          <p><strong>FOR SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</strong></p>
+          <br>
+          <p>Authorized Signatory</p>
+        </div>
       </div>
     </div>
 
-    <h3>DELIVERY ORDER</h3>
-
-    <p><strong>To,</strong><br>{{ booking.shipping_line }}</p>
-    <p><strong>DO NO:</strong> {{ booking.mbl_no }}</p>
-    <p><strong>DO Date:</strong> {{ booking.etd }}</p>
-
-    <p><strong>Dear Sir,</strong></p>
-    <p>You are requested to kindly make delivery of the below mentioned container(s), whose details are as follows:</p>
-
-    <table>
-      <tr><th>HBL No</th><td>{{ booking.hbl_no }}</td><th>Date</th><td>{{ booking.nomination_date }}</td></tr>
-      <tr><th>MBL No</th><td>{{ booking.mbl_no }}</td><th>Date</th><td>{{ booking.nomination_date }}</td></tr>
-      <tr><th>Container No.</th><td colspan="3">{{ booking.container_size }}</td></tr>
-      <tr><th>MBL Consignee</th><td colspan="3">SSR LOGISTIC SOLUTIONS PVT LTD</td></tr>
-      <tr><th>HBL Consignee</th><td colspan="3">{{ booking.consignee_details }}</td></tr>
-      <tr><th>Notify Party</th><td colspan="3">{{ booking.shipper_details }}</td></tr>
-      <tr><th>CHA</th><td colspan="3">{{ booking.cha }}</td></tr>
-      <tr><th>Cargo Description</th><td colspan="3">{{ booking.description_box }}</td></tr>
-      <tr><th>Delivery</th><td colspan="3">Full</td></tr>
-      <tr><th>No of Packages</th><td colspan="3">-</td></tr>
-      <tr><th>Measurement</th><td colspan="3">-</td></tr>
-      <tr><th>Gross Weight</th><td colspan="3">-</td></tr>
-      <tr><th>Vessel Voyage</th><td colspan="3">-</td></tr>
-      <tr><th>ETA</th><td colspan="3">{{ booking.eta }}</td></tr>
-      <tr><th>Marks & Nos.</th><td colspan="3">-</td></tr>
-      <tr><th>Status</th><td colspan="3">{{ booking.status }}</td></tr>
-      <tr><th>This Delivery Order is Valid Till</th><td colspan="3">-</td></tr>
-    </table>
-
-    <p class="text-danger small"><strong>NOTE:</strong> NO MANUAL REVALIDATION OF DATE IS ALLOWED ON THIS DELIVERY ORDER. ONLY FRESH DELIVERY ORDER TO BE ACCEPTED.</p>
-
-    <p><strong>Remarks:</strong> -</p>
-
-    <div class="d-flex justify-content-between mt-4">
-      <div>
-        <p>Thanking you,<br>Yours Faithfully,</p>
-      </div>
-      <div>
-        <p><strong>FOR SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</strong></p>
-        <img src="/static/stamp.png" class="stamp" alt="Signature & Stamp">
-        <p>Authorized Signatory</p>
-      </div>
+    <div class="text-center print-btn">
+      <button class="btn btn-primary" onclick="window.print()">🖨️ Print Delivery Order</button>
     </div>
-
   </div>
-  <div class="text-center print-btn">
-    <button class="btn btn-primary" onclick="window.print()">🖸️ Print Delivery Order</button>
-  </div>
-</div>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
