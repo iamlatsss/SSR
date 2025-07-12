@@ -25,17 +25,17 @@ def login_required(f):
     return wrapper
 
 # MySQL Configuration
-app.config['MYSQL_HOST'] = os.environ.get("DB_HOST")
-app.config['MYSQL_PORT'] = int(os.environ.get("DB_PORT", 3306))
-app.config['MYSQL_USER'] = os.environ.get("DB_USER")
-app.config['MYSQL_PASSWORD'] = os.environ.get("DB_PASSWORD")
-app.config['MYSQL_DB'] = os.environ.get("DB_NAME")
+# app.config['MYSQL_HOST'] = os.environ.get("DB_HOST")
+# app.config['MYSQL_PORT'] = int(os.environ.get("DB_PORT", 3306))
+# app.config['MYSQL_USER'] = os.environ.get("DB_USER")
+# app.config['MYSQL_PASSWORD'] = os.environ.get("DB_PASSWORD")
+# app.config['MYSQL_DB'] = os.environ.get("DB_NAME")
 
-# app.config['MYSQL_HOST'] = 'localhost'
-# app.config['MYSQL_USER'] = 'root'
-# app.config['MYSQL_PASSWORD'] = '12345'
-# app.config['MYSQL_DB'] = 'ssr_db'
-# app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
+app.config['MYSQL_HOST'] = 'localhost'
+app.config['MYSQL_USER'] = 'root'
+app.config['MYSQL_PASSWORD'] = '12345'
+app.config['MYSQL_DB'] = 'ssr_db'
+app.config['MYSQL_CURSORCLASS'] = 'DictCursor'
 
 
 mysql = MySQL(app)
@@ -381,6 +381,23 @@ def delivery_order(job_number):
         return render_template("delivery_order.html", booking=booking)
     else:
         flash("Booking not found.", "danger")
+        return redirect(url_for("bookinglist"))
+    
+def delivery_order(job_number):
+    try:
+        cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+        cur.execute("SELECT * FROM booking WHERE job_number = %s", (job_number,))
+        booking = cur.fetchone()
+        cur.close()
+
+        if booking:
+            return render_template("delivery_order.html", booking=booking)
+        else:
+            flash("Booking not found.", "danger")
+            return redirect(url_for("bookinglist"))
+
+    except Exception as e:
+        flash(f"Error: {str(e)}", "danger")
         return redirect(url_for("bookinglist"))
 
 

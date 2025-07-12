@@ -171,7 +171,7 @@
                             </select>
                     </td>
                     <td>
-                            <button type="submit" class="save-btn" disabled>Save</button>
+                            <button type="submit" class="save-btn" disabled> <a href="{{ url_for('delivery_order', job_number=b.job_number) }}" class="btn btn-sm btn-primary"></a></button>
                         </form>
                     </td>
                 </tr>

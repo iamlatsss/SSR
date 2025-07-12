@@ -155,6 +155,7 @@
                     <th>Description</th>
                     <th>Actions</th>
                     <th>Delete</th>
+                    <th>Delivery Order</th>
                 </tr>
             </thead>
             <tbody>
@@ -184,6 +185,7 @@
                       
                     </td>
                     <td>  <a href="{{ url_for('delete_booking', id=booking.job_number) }}" class="delete-btn" onclick="return confirm('Are you sure you want to delete this booking?');">Delete</a></td>
+                    <td>   <a href="{{ url_for('bookingstatus', job_number=booking.job_number) }}" class="btn btn-sm btn-primary">📄 Delivery Order</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
