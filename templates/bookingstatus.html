@@ -149,6 +149,7 @@
                     <th>ETA</th>
                     <th>Status</th>
                     <th>Save</th>
+                    <th>print</th>
                 </tr>
             </thead>
             <tbody>
@@ -171,9 +172,10 @@
                             </select>
                     </td>
                     <td>
-                            <button type="submit" class="save-btn" disabled> <a href="{{ url_for('delivery_order', job_number=b.job_number) }}" class="btn btn-sm btn-primary"></a></button>
+                            <button type="submit" class="save-btn" disabled>Save</button>
                         </form>
                     </td>
+                    <td> <a href="{{ url_for('delivery_order', job_number=b.job_number) }}" class="btn btn-sm btn-primary">print</a></td>
                 </tr>
                 {% endfor %}
             </tbody>
