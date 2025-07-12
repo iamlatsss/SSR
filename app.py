@@ -8,7 +8,6 @@ import MySQLdb.cursors
 # Load .env variables
 load_dotenv()
 
-# Flask App Setup
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "default-secret-key")
 
@@ -19,14 +18,13 @@ app.config['MYSQL_USER'] = os.environ.get("DB_USER")
 app.config['MYSQL_PASSWORD'] = os.environ.get("DB_PASSWORD")
 app.config['MYSQL_DB'] = os.environ.get("DB_NAME")
 
-# Initialize MySQL
 mysql = MySQL(app)
 
 # ---------- Routes ----------
 
 @app.route('/')
 def home():
-    return render_template('index.html', name=session.get('name'))
+    return render_template('index.html')
 
 @app.route('/sign_up', methods=['GET', 'POST'])
 def sign_up():
@@ -73,6 +71,14 @@ def Log_in():
 
     return render_template('Log_in.html')
 
+
+@app.route('/logout')  # lowercase
+def logout():
+    session.clear()
+    flash('Logged out successfully.', 'info')
+    return redirect(url_for('home'))
+
+
 @app.route('/profile')
 def profile():
     if not session.get('user_logged_in'):
@@ -90,32 +96,11 @@ def profile():
 
     return render_template('profile.html', user=user)
 
-@app.route('/Logout')
-def logout():
-    session.clear()
-    flash('Logged out successfully.', 'info')
-    return redirect(url_for('home'))
-
-@app.route('/forgot_password', methods=['GET', 'POST'])
-def forgot_password():
-    if request.method == 'POST':
-        email = request.form['email']
-
-        cur = mysql.connection.cursor()
-        cur.execute("SELECT * FROM users WHERE email = %s", [email])
-        user = cur.fetchone()
-        cur.close()
-
-        if user:
-            flash("Reset link has been sent to your email (simulated).", "success")
-        else:
-            flash("Email not registered.", "danger")
-
-    return render_template('forgot_password.html')
 
 @app.route('/complete_profile', methods=['GET', 'POST'])
 def complete_profile():
     if not session.get('user_logged_in'):
+        flash('Please log in to complete your profile.', 'warning')
         return redirect(url_for('Log_in'))
 
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -145,17 +130,22 @@ def complete_profile():
 
     return render_template('complete_profile.html', user=user_data)
 
-# ---------- KYC Form ----------
 
 @app.route('/kycwebpage')
 def kyc_webpage():
     if not session.get('user_logged_in'):
         flash("Please login first", "danger")
         return redirect(url_for('Log_in'))
+
     return render_template('kyc.html')
+
 
 @app.route('/kycdetails', methods=['POST'])
 def kycdetails():
+    if not session.get('user_logged_in'):
+        flash("Please login first", "danger")
+        return redirect(url_for('Log_in'))
+
     data = request.form
     cur = mysql.connection.cursor()
     cur.execute("""
@@ -179,17 +169,21 @@ def kycdetails():
     flash("KYC submitted successfully!", "success")
     return redirect(url_for('kyc_webpage'))
 
-# ---------- Quotation ----------
 
 @app.route('/quotationwebpage')
 def quotation_page():
     if not session.get('user_logged_in'):
         flash("Please login first", "danger")
         return redirect(url_for('Log_in'))
+
     return render_template('quotation.html')
 
 @app.route('/quotation_submit', methods=['POST'])
 def quotation_submit():
+    if not session.get('user_logged_in'):
+        flash("Please login first", "danger")
+        return redirect(url_for('Log_in'))
+
     data = request.form
     cur = mysql.connection.cursor()
     cur.execute("""
@@ -206,24 +200,39 @@ def quotation_submit():
     flash("Quotation submitted successfully!", "success")
     return redirect(url_for('quotation_page'))
 
-# ---------- Static Pages ----------
 
 @app.route('/bookingwebpage')
 def booking_page():
+    if not session.get('user_logged_in'):
+        flash("Please login first", "danger")
+        return redirect(url_for('Log_in'))
+
     return render_template('booking.html')
+
 
 @app.route('/invoice')
 def invoice_page():
+    if not session.get('user_logged_in'):
+        flash("Please login first", "danger")
+        return redirect(url_for('Log_in'))
+
     return render_template('invoice.html')
+
 
 @app.route('/prealert')
 def prealert_page():
+    if not session.get('user_logged_in'):
+        flash("Please login first", "danger")
+        return redirect(url_for('Log_in'))
     return render_template('prealert.html')
 
 @app.route('/bldetails')
 def bl_details_page():
+    if not session.get('user_logged_in'):
+        flash("Please login first", "danger")
+        return redirect(url_for('Log_in'))
+
     return render_template('bl_details.html')
 
-# ---------- Run ----------
 if __name__ == '__main__':
     app.run(debug=True)
