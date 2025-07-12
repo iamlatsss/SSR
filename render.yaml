@@ -6,15 +6,16 @@ services:
     startCommand: gunicorn app:app
     envVars:
       - key: DB_HOST
-        value: caboose.proxy.rlwy.net        # replace with actual MySQL host (e.g. from Railway/db4free)
+        value: maglev.proxy.rlwy.net        # replace with actual MySQL host (e.g. from Railway/db4free)
       - key: DB_USER
         value: root
       - key: DB_PASSWORD
-        value: DnwADTqVfhFdXCcsUOSLgxcxGcsvzYbH
+        value: MEkSODiBVejHpvZNqqIdByGrYEdymuah
       - key: DB_NAME
         value: railway
       - key: SECRET_KEY
         value: ssr
       - key: DB_PORT
-        value: 44936
+        value: 32901
 
+#url : mysql://root:MEkSODiBVejHpvZNqqIdByGrYEdymuah@maglev.proxy.rlwy.net:32901/railway

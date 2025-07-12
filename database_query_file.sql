@@ -140,3 +140,53 @@ ALTER TABLE booking ADD COLUMN status VARCHAR(50) DEFAULT 'Pending';
 
 -- View the records
 SELECT * FROM booking;
+
+
+-- Step 1: Create the database
+CREATE DATABASE IF NOT EXISTS ssr_db;
+
+-- Step 2: Use the database
+USE ssr_db;
+
+-- Step 3: Create the users table (improved version)
+CREATE TABLE users (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Update your users table to include more profile fields:
+ALTER TABLE users
+ADD COLUMN mobile VARCHAR(20),
+ADD COLUMN address TEXT,
+ADD COLUMN city VARCHAR(100),
+ADD COLUMN state VARCHAR(100),
+ADD COLUMN country VARCHAR(100),
+ADD COLUMN pincode VARCHAR(10);
+
+CREATE TABLE booking (
+    job_number INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    nomination_date DATE NOT NULL,
+    consignee_details VARCHAR(255) NOT NULL,
+    shipper_details VARCHAR(255) NOT NULL,
+    hbl_no VARCHAR(50) NOT NULL,
+    mbl_no VARCHAR(50) NOT NULL,
+    pol VARCHAR(100) NOT NULL,
+    pod VARCHAR(100) NOT NULL,
+    container_size VARCHAR(10) NOT NULL,
+    agent_details VARCHAR(255) NOT NULL,
+    shipping_line VARCHAR(255) NOT NULL,
+    buy_rate DECIMAL(10,2) NOT NULL,
+    sell_rate DECIMAL(10,2) NOT NULL,
+    etd DATE NOT NULL,
+    eta DATE NOT NULL,
+    swb VARCHAR(10) NOT NULL,
+    igm_filed VARCHAR(10) NOT NULL,
+    cha VARCHAR(255) NOT NULL,
+    description_box TEXT
+) AUTO_INCREMENT=1001;
+
+
+
