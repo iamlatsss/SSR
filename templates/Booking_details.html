@@ -227,6 +227,7 @@
    <!-- Auto-fill Job Number & Consignee Dropdown -->
 <script>
     document.addEventListener("DOMContentLoaded", function () {
+        // Auto-fill Job Number
         fetch('/get-last-job-number')
             .then(response => response.json())
             .then(data => {
@@ -236,17 +237,20 @@
                 document.getElementById("job_number").value = 1;
             });
 
+        // Populate Consignee Dropdown from /api/companies
         fetch("/api/companies")
             .then(response => response.json())
             .then(data => {
-                let dropdown = document.getElementById("consigneeDetails");
+                let dropdown = document.getElementById("consignee_details");
+                dropdown.innerHTML = '<option value="">Select Customer</option>'; // clear and add default
                 data.companies.forEach(company => {
                     let option = document.createElement("option");
                     option.value = company;
                     option.textContent = company;
                     dropdown.appendChild(option);
                 });
-            });
+            })
+            .catch(error => console.error("Error loading customers:", error));
     });
 </script>
 

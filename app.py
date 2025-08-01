@@ -8,6 +8,7 @@ from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from functools import wraps
+import pymysql
 
 # Load .env variables
 load_dotenv()
@@ -31,6 +32,24 @@ app.config['MYSQL_USER'] = os.environ.get("DB_USER")
 app.config['MYSQL_PASSWORD'] = os.environ.get("DB_PASSWORD")
 app.config['MYSQL_DB'] = os.environ.get("DB_NAME")
 
+# Database connection
+def get_db_connection():
+    return pymysql.connect(
+        host='localhost',
+        user='root',
+        password='sl0110*',
+        db='ssr',
+        cursorclass=pymysql.cursors.DictCursor
+    )
+
+@app.route('/api/customers', methods=['GET'])
+def get_customers():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT Name of the Customer FROM kyc")  
+    customers = cursor.fetchall()
+    conn.close()
+    return jsonify(customers)
 
 
 mysql = MySQL(app)
@@ -146,17 +165,8 @@ def complete_profile():
     return render_template('complete_profile.html', user=user_data)
 
 
-@app.route('/kycwebpage')
-def kyc_webpage():
-    if not session.get('user_logged_in'):
-        flash("Please login first", "danger")
-        return redirect(url_for('Log_in'))
-
-    return render_template('kyc.html')
-
-
-@app.route('/kycdetails', methods=['POST'])
-def kycdetails():
+@app.route('/submit_kyc', methods=['POST'])
+def submit_kyc():
     if not session.get('user_logged_in'):
         flash("Please login first", "danger")
         return redirect(url_for('Log_in'))
@@ -165,18 +175,15 @@ def kycdetails():
     cur = mysql.connection.cursor()
     cur.execute("""
         INSERT INTO kyc_details (
-            date, branch, customer_name, customer_address, customer_state, customer_pincode, customer_mob, customer_website,
-            type_of_customer, customer_status, year_of_establishment,
-            name_of_director, director_address, director_email,
-            pan_number, aadhar_number, branch_offices, branch_address,
+            date, branch, customer_name, customer_address, customer_type, customer_status, year_of_establishment,
+            pan_number, name_of_director, aadhar_number, branch_offices,
             office_address, gst_state, gstin, remarks
-        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
     """, (
-        data['date'], data['branch'], data['customer_name'], data['customer_address'], data['customer_state'],
-        data['customer_pincode'], data['customer_mob'], data['customer_website'], data['type_of_customer'],
-        data['customer_status'], data['year_of_establishment'], data['name_of_director'], data['director_address'],
-        data['director_email'], data['pan_number'], data['aadhar_number'], data['branch_offices'],
-        data['branch_address'], data['office_address'], data['gst_state'], data['gstin'], data['remarks']
+        data['date'], data['branch'], data['name'], data['address'], data['customer_type'],
+        data['status'], data['year'], data['pan'], data['director'],
+        data['aadhar'], data['branch_office'], data['office_address'], data['state'],
+        data['gstin'], data['remarks']
     ))
     mysql.connection.commit()
     cur.close()
@@ -184,7 +191,11 @@ def kycdetails():
     flash("KYC submitted successfully!", "success")
     return redirect(url_for('kyc_webpage'))
 
+@app.route('/kycwebpage')
+def kyc_webpage():
+    return redirect(url_for('kyc_webpage'))
 
+    
 @app.route('/quotationwebpage')
 def quotation_page():
     if not session.get('user_logged_in'):
