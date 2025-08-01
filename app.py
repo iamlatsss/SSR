@@ -191,11 +191,16 @@ def submit_kyc():
     flash("KYC submitted successfully!", "success")
     return redirect(url_for('kyc_webpage'))
 
+
 @app.route('/kycwebpage')
 def kyc_webpage():
-    return redirect(url_for('kyc_webpage'))
+    if not session.get('user_logged_in'):
+        flash("Please login first", "danger")
+        return redirect(url_for('Log_in'))
 
-    
+    return render_template('kyc.html')
+
+
 @app.route('/quotationwebpage')
 def quotation_page():
     if not session.get('user_logged_in'):
