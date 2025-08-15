@@ -9,6 +9,45 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
 from functools import wraps
 import pymysql
+from flask import jsonify
+import jwt, datetime
+from flask import Flask
+import os
+# from dotenv import load_dotenv
+# # Load .env file
+# load_dotenv()
+# app = Flask(__name__)
+# # Get secret key from .env
+# app.secret_key = os.getenv("SECRET_KEY")
+# @app.route('/')
+# def home():
+#     return "Secret key loaded from .env!"
+
+# if __name__ == "__main__":
+#     app.run(debug=True)
+
+# # SECRET_KEY = "your_secret_key"
+
+# @app.route('/login', methods=['POST'])
+# def login():
+#     data = request.json
+#     user = User.query.filter_by(email=data['email']).first()
+
+#     if not user or not check_password_hash(user.password, data['password']):
+#         return jsonify({"message": "Invalid credentials"}), 401
+
+#     token = jwt.encode({
+#         "user_id": user.id,
+#         "exp": datetime.datetime.utcnow() + datetime.timedelta(hours=1)
+#     }, SECRET_KEY, algorithm="HS256")
+
+#     return jsonify({"token": token})
+
+# fetch('/protected', {
+#   headers: { Authorization: `Bearer ${token}` }
+# })
+
+
 
 # Load .env variables
 load_dotenv()
@@ -60,22 +99,48 @@ mysql = MySQL(app)
 def home():
     return render_template('index.html')
 
+# @app.route('/sign_up', methods=['GET', 'POST'])
+# def sign_up():
+#     if request.method == 'POST':
+#         name = request.form['name']
+#         email = request.form['email']
+#         password = generate_password_hash(request.form['password'])
+
+#         cur = mysql.connection.cursor()
+#         cur.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, password))
+#         mysql.connection.commit()
+#         cur.close()
+
+#         flash('Signup successful. Please login.', 'success')
+#         return redirect(url_for('Log_in'))
+
+#     return render_template('sign_up.html')
+
 @app.route('/sign_up', methods=['GET', 'POST'])
 def sign_up():
+    allowed_code = "MY_SECRET_INVITE"
+    
     if request.method == 'POST':
-        name = request.form['name']
-        email = request.form['email']
-        password = generate_password_hash(request.form['password'])
+        invite_code = request.form.get('invite_code')
+        if invite_code != allowed_code:
+            flash("Invalid invite code", "danger")
+            return redirect(url_for('sign_up'))
 
-        cur = mysql.connection.cursor()
-        cur.execute("INSERT INTO users (name, email, password) VALUES (%s, %s, %s)", (name, email, password))
-        mysql.connection.commit()
-        cur.close()
+def role_required(*roles):
+    """Decorator to allow only specific roles to access a route."""
+    def wrapper(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if not session.get('user_logged_in'):
+                flash("Please login first", "danger")
+                return redirect(url_for('Log_in'))
+            if session.get('role') not in roles:
+                flash("You do not have permission to access this page.", "danger")
+                return redirect(url_for('home'))
+            return f(*args, **kwargs)
+        return decorated_function
+    return wrapper
 
-        flash('Signup successful. Please login.', 'success')
-        return redirect(url_for('Log_in'))
-
-    return render_template('sign_up.html')
 
 @app.route('/Log_in', methods=['GET', 'POST'])
 def Log_in():
@@ -93,6 +158,7 @@ def Log_in():
             session['user_id'] = user['id']
             session['name'] = user['name']
             session['email'] = user['email']
+            session['role'] = user['role']  # ✅ Store role in session
 
             if not user.get('mobile') or not user.get('address'):
                 flash('Please complete your profile.', 'warning')
@@ -104,6 +170,34 @@ def Log_in():
             flash('Invalid email or password.', 'danger')
 
     return render_template('Log_in.html')
+
+# @app.route('/Log_in', methods=['GET', 'POST'])
+# def Log_in():
+#     if request.method == 'POST':
+#         email = request.form['email']
+#         password_input = request.form['password']
+
+#         cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
+#         cur.execute("SELECT * FROM users WHERE email = %s", [email])
+#         user = cur.fetchone()
+#         cur.close()
+
+#         if user and check_password_hash(user['password'], password_input):
+#             session['user_logged_in'] = True
+#             session['user_id'] = user['id']
+#             session['name'] = user['name']
+#             session['email'] = user['email']
+
+#             if not user.get('mobile') or not user.get('address'):
+#                 flash('Please complete your profile.', 'warning')
+#                 return redirect(url_for('complete_profile'))
+
+#             flash('Login successful!', 'success')
+#             return redirect(url_for('profile'))
+#         else:
+#             flash('Invalid email or password.', 'danger')
+
+#     return render_template('Log_in.html')
 
 
 @app.route('/logout')  # lowercase
@@ -242,13 +336,10 @@ def booking_page():
 
 
 @app.route('/invoice')
+@login_required
+@role_required('Admin')  # ✅ Only Admin can see invoices
 def invoice_page():
-    if not session.get('user_logged_in'):
-        flash("Please login first", "danger")
-        return redirect(url_for('Log_in'))
-
     return render_template('invoice.html')
-
 
 @app.route('/prealert')
 def prealert_page():
@@ -286,9 +377,28 @@ def bookingwebpage():
 
     return render_template("Booking_details.html")
 
+@app.route('/get-last-job-number')
+def get_last_job_number():
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT MAX(job_number) FROM booking")
+    result = cur.fetchone()
+    cur.close()
+    last_job_number = result[0] if result[0] is not None else 0
+    return {"lastJobNumber": last_job_number}
+
+@app.route('/api/companies')
+def api_companies():
+    cur = mysql.connection.cursor()
+    cur.execute("SELECT DISTINCT customer_name FROM kyc_details")  # Adjust if needed
+    rows = cur.fetchall()
+    cur.close()
+    companies = [row[0] for row in rows]
+    return jsonify({"companies": companies})
+
 # ---------- Booking List ----------
-@app.route("/bookinglist")
+@app.route('/bookinglist')
 @login_required
+@role_required('Admin', 'Staff')  # ✅ Only Admin & Staff can see booking list
 def bookinglist():
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cur.execute("SELECT * FROM booking")
@@ -421,3 +531,4 @@ def freight_certificate(job_number):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
