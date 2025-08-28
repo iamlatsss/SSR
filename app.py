@@ -10,9 +10,10 @@ from datetime import datetime
 from functools import wraps
 import pymysql
 from flask import jsonify
-import jwt, datetime
+# import jwt, datetime
 from flask import Flask
-import os
+from werkzeug.security import check_password_hash, generate_password_hash
+import MySQLdb.cursors
 # from dotenv import load_dotenv
 # # Load .env file
 # load_dotenv()
@@ -141,34 +142,43 @@ def role_required(*roles):
         return decorated_function
     return wrapper
 
-
 @app.route('/Log_in', methods=['GET', 'POST'])
 def Log_in():
     if request.method == 'POST':
         email = request.form['email']
         password_input = request.form['password']
 
+        # Open cursor
         cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
         cur.execute("SELECT * FROM users WHERE email = %s", [email])
         user = cur.fetchone()
-        cur.close()
 
-        if user and check_password_hash(user['password'], password_input):
-            session['user_logged_in'] = True
-            session['user_id'] = user['id']
-            session['name'] = user['name']
-            session['email'] = user['email']
-            session['role'] = user['role']  # ✅ Store role in session
+        if user:  
+            # ✅ User exists → check password
+            if check_password_hash(user['password_hash'], password_input):
+                session['user_logged_in'] = True
+                session['user_id'] = user['id']
+                session['email'] = user['email']
+                session['role'] = user['role']
+                cur.close()
+                flash('Login successful!', 'success')
+                return redirect(url_for('profile'))
+            else:
+                cur.close()
+                flash('Invalid password.', 'danger')
+                return redirect(url_for('Log_in'))
 
-            if not user.get('mobile') or not user.get('address'):
-                flash('Please complete your profile.', 'warning')
-                return redirect(url_for('complete_profile'))
-
-            flash('Login successful!', 'success')
-            return redirect(url_for('profile'))
         else:
-            flash('Invalid email or password.', 'danger')
+            # ❌ No user → create new one
+            hashed_pw = generate_password_hash(password_input)
+            cur.execute("INSERT INTO users (email, password_hash, role) VALUES (%s, %s, %s)", 
+                        (email, hashed_pw, 'user'))
+            mysql.connection.commit()
+            cur.close()
+            flash('Account created! Please log in again.', 'success')
+            return redirect(url_for('Log_in'))
 
+    # If GET request → show login form
     return render_template('Log_in.html')
 
 # @app.route('/Log_in', methods=['GET', 'POST'])
