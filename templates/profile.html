@@ -137,7 +137,7 @@
             </a>
             <ul class="dropdown-menu dropdown-menu-end">
               {% if session.user_logged_in %}
-                <li><a class="dropdown-item" href="#">👤 {{ session.name }}</a></li>
+                <li><a class="dropdown-item" href="#">👤 {{ session.email }}</a></li>
                 <li><a class="dropdown-item" href="/profile">Profile</a></li>
                 <li><a class="dropdown-item" href="/logout">Logout</a></li>
               {% else %}
@@ -154,10 +154,10 @@
   <!-- Profile Info -->
   <div class="profile-box">
     <div class="avatar-circle">
-      {{ user.name[0]|upper }}{{ user.name[-1]|upper }}
+      {{ user.email[0]|upper }}{{ user.email[-1]|upper }}
     </div>
 
-    <h2>Welcome, {{ user.name }}</h2>
+    <h2>Welcome, {{ user.email }}</h2>
 
     <div class="info">
       <p><strong>Email:</strong> {{ user.email }}</p>
