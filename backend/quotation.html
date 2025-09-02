@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>SSR | Quotation Details</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background: linear-gradient(to right, rgb(236, 190, 126), white, white);
+        }
+
+        .container {
+            background-color: #ffffff;
+            padding: 30px;
+            border-radius: 10px;
+            margin-top: 30px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+
+        nav a:hover {
+            color: skyblue !important;
+        }
+
+        .form-label {
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background-color: #0d48cf;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background-color: #0ac616d3;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h3 class="mb-4">Quotation Details</h3>
+        <form id="quotationForm">
+            <div class="row mb-3">
+                <div class="col-md-6">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" name="email" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Port of Loading (POL)</label>
+                    <input type="text" class="form-control" name="pol" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Port of Discharge (POD)</label>
+                    <input type="text" class="form-control" name="pod" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Container Size</label>
+                    <select class="form-select" name="containerSize" required>
+                        <option value="">Select size</option>
+                        <option value="20'GP">20'GP</option>
+                        <option value="20'HQ">20'HQ</option>
+                        <option value="40'DRY">40'DRY</option>
+                        <option value="40'HQ">40'HQ</option>
+                        <option value="20'Reefer">20'Reefer</option>
+                        <option value="40'Reefer">40'Reefer</option>
+                        <option value="20'Flat rack">20'Flat rack</option>
+                        <option value="40'Flat rack">40'Flat rack</option>
+                        <option value="20'Open top">20'Open top</option>
+                        <option value="40'Open top">40'Open top</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Rate</label>
+                    <input type="text" class="form-control" name="rate" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Ocean Freight</label>
+                    <input type="text" class="form-control" name="Ocean_freight" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Shipping Line Charges</label>
+                    <input type="number" class="form-control" name="Shipping_line_charges" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">DO Charges</label>
+                    <input type="number" class="form-control" name="DO_charges" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Shipper Details</label>
+                    <input type="text" class="form-control" name="shipperDetails" required>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Consignee Details</label>
+                    <input type="text" class="form-control" name="consigneeDetails" required>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Terms & Conditions</label>
+                    <textarea class="form-control" name="terms" rows="3" required></textarea>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Validity</label>
+                    <input type="date" class="form-control" name="validity" required>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('quotationForm');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+
+            try {
+                const response = await fetch('/send-quotation', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Quotation details have been emailed successfully to ' + data.email);
+                    form.reset();
+                } else {
+                    alert('Failed to send email: ' + result.error);
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Error sending email. Try again.');
+            }
+        });
+    </script>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>
