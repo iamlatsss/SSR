@@ -10,3 +10,7 @@ __pycache__/
 
 # Ignore macOS system files (optional)
 .DS_Store
+
+node_modules/
+
+LocalTemp/
