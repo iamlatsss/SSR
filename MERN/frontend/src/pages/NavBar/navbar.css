@@ -1,4 +1,3 @@
-/* Navbar.css */
 .navbar {
   background-color: #bcbcbc;
   padding: 10px 20px;
@@ -8,12 +7,21 @@
   width: 100%;
   z-index: 1000;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .navbar-logo {
-  height: 50px;       /* Adjust logo height */
-  width: auto;        /* Maintain aspect ratio */
-  margin-right: 20px; /* Space between logo and links */
+  height: 50px;
+  width: auto;
+  margin-right: 20px;
   vertical-align: middle;
 }
 
@@ -34,16 +42,21 @@
   transition: color 0.3s ease;
 }
 
+.navbar-social-icon {
+  height: 40px;
+  width: auto;
+  margin-right: 5px;
+  vertical-align: middle;
+}
+
 .navbar-link:hover {
-  color: #007BFF; /* Bootstrap primary blue */
+  color: #007BFF;
   text-decoration: underline;
 }
 
-/* .navbar-list li a {
-  color: rgb(0, 0, 0);
-  text-decoration: none;
+.navbar-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-left: auto;
 }
-
-.navbar-list li a:hover {
-  text-decoration: underline;
-} */

@@ -1,6 +1,5 @@
 import os
 from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
-from flask import Flask, render_template, request, redirect, url_for, flash, session, jsonify
 from flask_mysqldb import MySQL
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
@@ -24,21 +23,11 @@ app.config['MYSQL_DB'] = os.environ.get("DB_NAME", "ssr")
 
 mysql = MySQL(app)
 
-# MySQL Configuration
-app.config['MYSQL_HOST'] = os.environ.get("DB_HOST", "localhost")
-app.config['MYSQL_PORT'] = int(os.environ.get("DB_PORT", 3306))
-app.config['MYSQL_USER'] = os.environ.get("DB_USER", "root")
-app.config['MYSQL_PASSWORD'] = os.environ.get("DB_PASSWORD", "")
-app.config['MYSQL_DB'] = os.environ.get("DB_NAME", "ssr")
-
-mysql = MySQL(app)
-
 def login_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not session.get('user_logged_in'):
             flash("Please login first", "danger")
-            return redirect(url_for('Log_in'))
             return redirect(url_for('Log_in'))
         return f(*args, **kwargs)
     return wrapper
@@ -77,26 +66,6 @@ def sign_up():
     return render_template('sign_up.html')
 
 # Route: Log In
-# Route: Home page
-@app.route('/')
-def home():
-    return render_template('index.html')
-
-# Route: Sign up page
-@app.route('/sign_up', methods=['GET', 'POST'])
-def sign_up():
-    allowed_code = "MY_SECRET_INVITE"
-    if request.method == 'POST':
-        invite_code = request.form.get('invite_code')
-        if invite_code != allowed_code:
-            flash("Invalid invite code", "danger")
-            return redirect(url_for('sign_up'))
-        # Implement actual signup logic here, with form values 
-        # (Not required per request – leaving blank so you can extend)
-
-    return render_template('sign_up.html')
-
-# Route: Log In
 @app.route('/Log_in', methods=['GET', 'POST'])
 def Log_in():
     if request.method == 'POST':
@@ -107,7 +76,6 @@ def Log_in():
         cur.execute("SELECT * FROM users WHERE email = %s", [email])
         user = cur.fetchone()
 
-        if user:
         if user:
             if check_password_hash(user['password_hash'], password_input):
                 session['user_logged_in'] = True
@@ -123,7 +91,6 @@ def Log_in():
                 return redirect(url_for('Log_in'))
         else:
             # Auto-create user (for demo; remove in production)
-            # Auto-create user (for demo; remove in production)
             hashed_pw = generate_password_hash(password_input)
             cur.execute("INSERT INTO users (email, password_hash, role) VALUES (%s, %s, %s)", 
                         (email, hashed_pw, 'user'))
@@ -136,14 +103,11 @@ def Log_in():
 
 # Route: Logout
 @app.route('/logout')
-# Route: Logout
-@app.route('/logout')
 def logout():
     session.clear()
     flash('Logged out successfully.', 'info')
     return redirect(url_for('home'))
 
-# Route: Profile page
 # Route: Profile page
 @app.route('/profile')
 def profile():
@@ -162,7 +126,6 @@ def profile():
 
     return render_template('profile.html', user=user)
 
-# Route: Complete profile page
 # Route: Complete profile page
 @app.route('/complete_profile', methods=['GET', 'POST'])
 def complete_profile():
@@ -196,7 +159,6 @@ def complete_profile():
     return render_template('complete_profile.html', user=user_data)
 
 # Route: Submit KYC
-# Route: Submit KYC
 @app.route('/submit_kyc', methods=['POST'])
 def submit_kyc():
     if not session.get('user_logged_in'):
@@ -224,7 +186,6 @@ def submit_kyc():
     return redirect(url_for('kyc_webpage'))
 
 # Route: KYC webpage
-# Route: KYC webpage
 @app.route('/kycwebpage')
 def kyc_webpage():
     if not session.get('user_logged_in'):
@@ -233,7 +194,6 @@ def kyc_webpage():
     return render_template('kyc.html')
 
 # Route: Quotation page
-# Route: Quotation page
 @app.route('/quotationwebpage')
 def quotation_page():
     if not session.get('user_logged_in'):
@@ -241,7 +201,6 @@ def quotation_page():
         return redirect(url_for('Log_in'))
     return render_template('quotation.html')
 
-# Route: Submit quotation
 # Route: Submit quotation
 @app.route('/quotation_submit', methods=['POST'])
 def quotation_submit():
@@ -266,7 +225,6 @@ def quotation_submit():
     return redirect(url_for('quotation_page'))
 
 # Route: Booking webpage
-# Route: Booking webpage
 @app.route('/bookingwebpage')
 def booking_page():
     if not session.get('user_logged_in'):
@@ -275,15 +233,12 @@ def booking_page():
     return render_template('booking_details.html')
 
 # Route: Invoice page, Admin only
-# Route: Invoice page, Admin only
 @app.route('/invoice')
 @login_required
-@role_required('Admin')
 @role_required('Admin')
 def invoice_page():
     return render_template('invoice.html')
 
-# Route: Pre-Alert page
 # Route: Pre-Alert page
 @app.route('/prealert')
 def prealert_page():
@@ -293,7 +248,6 @@ def prealert_page():
     return render_template('prealert.html')
 
 # Route: BL details page
-# Route: BL details page
 @app.route('/bldetails')
 def bl_details_page():
     if not session.get('user_logged_in'):
@@ -302,16 +256,10 @@ def bl_details_page():
     return render_template('bl_details.html')
 
 # Route: Add booking (POST) and show booking form (GET)
-# Route: Add booking (POST) and show booking form (GET)
 @app.route("/bookingwebpage", methods=['GET', 'POST'])
 @login_required
 def bookingwebpage():
     if request.method == 'POST':
-        fields = [
-            "nomination_date", "consignee_details", "shipper_details", "hbl_no", "mbl_no",
-            "pol", "pod", "container_size", "job_number", "agent_details", "shipping_line",
-            "buy_rate", "sell_rate", "etd", "eta", "swb", "igm_filed", "cha", "description_box"
-        ]
         fields = [
             "nomination_date", "consignee_details", "shipper_details", "hbl_no", "mbl_no",
             "pol", "pod", "container_size", "job_number", "agent_details", "shipping_line",
@@ -342,17 +290,14 @@ def get_last_job_number():
 def api_companies():
     cur = mysql.connection.cursor()
     cur.execute("SELECT DISTINCT customer_name FROM kyc_details")
-    cur.execute("SELECT DISTINCT customer_name FROM kyc_details")
     rows = cur.fetchall()
     cur.close()
     companies = [row[0] for row in rows]
     return jsonify({"companies": companies})
 
 # Route: Booking List page (Admin, Staff only)
-# Route: Booking List page (Admin, Staff only)
 @app.route('/bookinglist')
 @login_required
-@role_required('Admin', 'Staff')
 @role_required('Admin', 'Staff')
 def bookinglist():
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
@@ -362,13 +307,11 @@ def bookinglist():
     return render_template("bookinglist.html", booking=res)
 
 # Route: Edit booking
-# Route: Edit booking
 @app.route("/edit_booking/<int:id>", methods=["GET", "POST"])
 @login_required
 def edit_booking(id):
     if request.method == "POST":
         form = request.form
-        cur = mysql.connection.cursor()
         cur = mysql.connection.cursor()
 
         cur.execute("""
@@ -404,7 +347,6 @@ def edit_booking(id):
         return redirect(url_for("bookinglist"))
 
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cur.execute("SELECT * FROM booking WHERE job_number = %s", (id,))
     bookings = cur.fetchone()
     cur.close()
@@ -415,7 +357,6 @@ def edit_booking(id):
 
     return render_template("editUser.html", booking=bookings)
 
-# Route: Delete booking
 # Route: Delete booking
 @app.route("/delete_booking/<int:id>", methods=["GET"])
 @login_required
@@ -428,10 +369,8 @@ def delete_booking(id):
     return redirect(url_for("bookinglist"))
 
 # Route: Booking Status page
-# Route: Booking Status page
 @app.route('/bookingstatus', methods=['GET', 'POST'])
 def bookingstatus():
-    cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     cur = mysql.connection.cursor(MySQLdb.cursors.DictCursor)
     if request.method == 'POST':
         job_number = request.form['job_number']
@@ -445,7 +384,6 @@ def bookingstatus():
     cur.close()
     return render_template('bookingstatus.html', booking=bookings)
 
-# Route: Delivery Order page
 # Route: Delivery Order page
 @app.route("/delivery_order/<int:job_number>")
 def delivery_order(job_number):
@@ -463,8 +401,6 @@ def delivery_order(job_number):
     except Exception as e:
         flash(f"Error: {str(e)}", "danger")
         return redirect(url_for("bookinglist"))
-
-# Route: Freight Certificate page
 
 # Route: Freight Certificate page
 @app.route("/freight_certificate/<int:job_number>")
