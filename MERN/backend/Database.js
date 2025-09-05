@@ -1,7 +1,5 @@
 import mysql from 'mysql2';
-import dotenv from 'dotenv';
-
-dotenv.config();
+import './config.js';
 
 // Create a MySQL pool for connection reuse
 export const pool = mysql.createPool({
@@ -158,3 +156,5 @@ export async function getFreightCertificate(jobNumber) {
     return getBookingByJobNumber(jobNumber);
 }
 
+const t = await getUserByEmail("latikasc11@gmail.com")
+console.log(t)
