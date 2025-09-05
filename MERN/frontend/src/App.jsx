@@ -4,7 +4,8 @@ import Home from './pages/Dashboard/Home/home.jsx';
 import Login from './pages/UserAuth/Login.jsx';
 import Quotation from './pages/Quotation/quotation.jsx';
 import Bookingdetails from './pages/Booking/bookingdetails.jsx';
-import Bookings from './pages/Booking/bookinglist.jsx';
+import Bookings from './pages/Booking/bookings.jsx';
+import Bookingstatus from './pages/Booking/bookingstatus.jsx';
 
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
       <Route path="/Quotation" element={<Quotation />} />
       <Route path="/Bookingdetails" element={<Bookingdetails />} />
       <Route path="/Bookings" element={<Bookings />} />
+      <Route path="/Bookingstatus" element={<Bookingstatus />} />
 
     </Routes>
   );
