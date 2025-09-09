@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import Navbar from "../NavBar/navbar";
 import Bookingdetails from "./bookingdetails";
-import Bookings from "./bookings";
+// import Bookings from "./bookings";
 
 const Bookingstatus = ({ bookings = [] }) => {
   const [statusFilter, setStatusFilter] = useState("all");
