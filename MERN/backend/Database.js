@@ -15,17 +15,50 @@ export const pool = mysql.createPool({
 // ------------------------
 
 export async function getUserByEmail(email) {
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
-    return rows[0];
+  const query = 'SELECT user_id, password, email, role, is_active FROM users WHERE email = ?';
+
+  try {
+    const [[rows]] = await pool.query(query, [email]);
+
+    if (rows.length === 0) {
+      return { ok: false, message: 'User not found' };
+    }
+
+    if (!rows.is_active) {
+        return { ok: false, message: 'User is not active'};
+    }
+
+    return { ok: true, data: rows };
+
+  } catch (error) {
+    console.error('Error fetching user by email:', error);
+    return { ok: false, message: 'Database error' };
+  }
 }
 
-export async function createUser(email, passwordHash, role = 'user') {
-    const [result] = await pool.query(
-        'INSERT INTO users (email, password_hash, role) VALUES (?, ?, ?)',
-        [email, passwordHash, role]
-    );
-    return result.insertId;
+
+export async function createUser(email, passwordHash, role = 'viewer') {
+  const query = 'INSERT INTO users (email, password, role) VALUES (?, ?, ?)';
+  try {
+    const [result] = await pool.query(query, [email, passwordHash, role]);
+
+    if (!result.insertId) {
+      return { ok: false, message: 'Failed to create user' };
+    }
+
+    return { ok: true, data: { userId: result.insertId } };
+
+  } catch (error) {
+    console.error('Error creating user:', error);
+
+    if (error.code === 'ER_DUP_ENTRY' || error.errno === 1062) {
+      return { ok: false, message: 'User with this email already exists' };
+    }
+
+    return { ok: false, message: 'Database error', error };
+  }
 }
+
 
 export async function updateUserProfile(email, { mobile, address, city, state, country, pincode }) {
     await pool.query(
@@ -156,5 +189,7 @@ export async function getFreightCertificate(jobNumber) {
     return getBookingByJobNumber(jobNumber);
 }
 
-const t = await getUserByEmail("latikasc11@gmail.com")
-console.log(t)
+
+// const t = await createUser("manobharathi189@gmail.com", "nice bike");
+// console.log(t)
+

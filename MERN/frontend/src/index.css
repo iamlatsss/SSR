@@ -20,3 +20,10 @@
   scrollbar-width: thin;
   scrollbar-color: #1f3557 #1f2937;
 }
+
+body {
+  background-color: #172132; /* bluish gray */
+  color: #eaeef3;           /* optional: light text */
+}
+
+
