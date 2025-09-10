@@ -42,7 +42,7 @@ function Navbar() {
     navigate("/Login", { replace: true });
   };
 
-  if (!user) return (null);
+  if (!user) return null;
 
   return (
     <nav className="navbar">
@@ -68,6 +68,13 @@ function Navbar() {
               Contact
             </Link>
           </li>
+          {user.role === "admin" && (
+            <li>
+              <Link to="/admin" className="navbar-link">
+                Admin
+              </Link>
+            </li>
+          )}
         </ul>
       </div>
       <div className="navbar-right">

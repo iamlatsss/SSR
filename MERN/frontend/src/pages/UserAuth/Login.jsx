@@ -22,14 +22,12 @@ const LoginForm = ({ onSwitch }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
+      console.log(loginData)
       const response = await fetch(`http://${API_URI}:${PORT}/auth/login/`, {
         method: "POST",
         credentials: 'include',
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          email: loginData.email,
-          password: loginData.password,
-        }),
+        body: JSON.stringify(loginData)
       }); 
       
       if (!response.ok) throw new Error(`Network error: ${response.status}`);
