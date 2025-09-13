@@ -11,6 +11,8 @@ import Quotation from './pages/Quotation/quotation.jsx';
 import Bookingdetails from './pages/Booking/bookingdetails.jsx';
 import Bookings from './pages/Booking/bookings.jsx';
 import Bookingstatus from './pages/Booking/bookingstatus.jsx';
+import DOPage from './pages/DO_FC/dopage.jsx';
+import FCPage from './pages/DO_FC/fcpage.jsx';
 
 
 function App() {
@@ -28,6 +30,8 @@ function App() {
       <Route path="/Bookingdetails" element={<ProtectedRoute><Bookingdetails /></ProtectedRoute>} />
       <Route path="/Bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
       <Route path="/Bookingstatus" element={<ProtectedRoute><Bookingstatus /></ProtectedRoute>} />
+      <Route path="/DOPage" element={<ProtectedRoute><DOPage /></ProtectedRoute>} />
+      <Route path="/FCPage" element={<ProtectedRoute><FCPage /></ProtectedRoute>} />
 
     </Routes>
   );
