@@ -8,7 +8,7 @@ import Login from './pages/UserAuth/Login.jsx';
 import Admin from './pages/Admin/admin.jsx';
 import Quotation from './pages/Quotation/quotation.jsx';
 import Bookingdetails from './pages/Booking/bookingdetails.jsx';
-// import Bookings from './pages/Booking/bookings.jsx';
+import Bookings from './pages/Booking/bookings.jsx';
 import Bookingstatus from './pages/Booking/bookingstatus.jsx';
 
 
@@ -24,7 +24,7 @@ function App() {
 
       <Route path="/Quotation" element={<ProtectedRoute><Quotation /></ProtectedRoute>} />
       <Route path="/Bookingdetails" element={<ProtectedRoute><Bookingdetails /></ProtectedRoute>} />
-      {/* <Route path="/Bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} /> */}
+      <Route path="/Bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
       <Route path="/Bookingstatus" element={<ProtectedRoute><Bookingstatus /></ProtectedRoute>} />
 
     </Routes>
