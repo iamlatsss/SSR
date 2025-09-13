@@ -1,7 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-import ProtectedRoute from './context/protection.jsx'
+import ProtectedRoute from './context/protection.jsx';
+// import PublicRoute from './context/publicRoute.jsx';
 
 import Home from './pages/Dashboard/Home/home.jsx';
 import Login from './pages/UserAuth/Login.jsx';
@@ -16,11 +17,12 @@ function App() {
   return (
     <Routes>
 
+      {/* <Route path="/Login" element={<PublicRoute> <Login /> </PublicRoute>} /> */}
       <Route path="/Login" element={<Login />} />
       
       <Route path="/" element={<Navigate to="/Home" replace />} />
-      <Route path="/Home" element={<ProtectedRoute allowedRoles={[]}><Home /></ProtectedRoute>} />
-      <Route path="/Admin" element={<ProtectedRoute><Admin /></ProtectedRoute>} />
+      <Route path="/Home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+      <Route path="/Admin" element={<ProtectedRoute  allowedRoles={['admin']}><Admin /></ProtectedRoute>} />
 
       <Route path="/Quotation" element={<ProtectedRoute><Quotation /></ProtectedRoute>} />
       <Route path="/Bookingdetails" element={<ProtectedRoute><Bookingdetails /></ProtectedRoute>} />

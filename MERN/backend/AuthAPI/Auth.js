@@ -25,7 +25,6 @@ export async function authenticateJWT(req, res, next) {
       return res.status(401).json({ message: "Unauthorized: No token provided" });
     }
 
-
     jwt.verify(token, process.env.JWT_SECRET, (err, decodedUser) => {
       if (err) {
         console.error("JWT verification failed:", err.message);
@@ -34,7 +33,8 @@ export async function authenticateJWT(req, res, next) {
 
       req.user = {
         user_id: decodedUser.user_id,
-        email: decodedUser.email
+        email: decodedUser.email,
+        role: decodedUser.role
       };
 
       next();
@@ -147,7 +147,7 @@ router.post('/register', async (req, res) => {
 // Get call to authenticate the user
 router.get('/me', authenticateJWT, (req, res) => {
   res.json({
-    id: req.user.id,
+    id: req.user.user_id,
     email: req.user.email,
     role: req.user.role
   });

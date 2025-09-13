@@ -1,42 +1,31 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { toast } from "react-toastify";
+import { useAuth } from "./AuthContext.jsx";
 
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
-  const [authChecked, setAuthChecked] = useState(false);
-  const [user, setUser] = useState(null); // Will hold verified user info
+  const { user, authChecked } = useAuth();
   const [showRedirect, setShowRedirect] = useState(false);
 
   useEffect(() => {
-    async function verifyUser() {
-      try {
-        const res = await fetch("/auth/me", { credentials: "include" });
-        
-        if (!res.ok) throw new Error("Unauthenticated");
-        const userData = await res.json();
-        
-        console.log(userData)
-        // Check if user role is allowed
-        if (allowedRoles.length > 0 && !allowedRoles.includes(userData.role)) {
-          toast.error("You do not have permission to access this page.");
-          setShowRedirect(true);
-        } else {
-          setUser(userData);
-        }
-      } catch (error) {
+    if (authChecked) {
+      if (!user) {
         toast.warn("Please login first to access this page!", {
           toastId: "login-required",
         });
         setShowRedirect(true);
-      } finally {
-        setAuthChecked(true);
+        return;
+      }
+      // Check user roles 
+      console.log(allowedRoles, user.role)
+      if (allowedRoles.length > 0 && !allowedRoles.includes(user.role)) {
+        toast.error("You do not have permission to access this page.");
+        setShowRedirect(true);
       }
     }
-    verifyUser();
-  }, [allowedRoles]);
+  }, [user, authChecked, allowedRoles]);
 
   if (!authChecked) {
-    // Or return a spinner/loader while verifying
     return null;
   }
 
