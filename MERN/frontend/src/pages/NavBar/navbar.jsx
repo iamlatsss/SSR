@@ -1,27 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../../context/AuthContext";
 import "./Navbar.css";
 
 function Navbar() {
-  const [user, setUser] = useState(null);
+  // const [user, setUser] = useState(null);
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    const session = localStorage.getItem("session");
-    if (session) {
-      const sessionData = JSON.parse(session);
-      if (sessionData.expiry > Date.now()) {
-        setUser({ email: sessionData.email });
-      } else {
-        setUser(null);
-        localStorage.removeItem("session");
-      }
-    } else {
-      setUser(null);
-    }
-  }, []);
+  const { user, logout } = useAuth();
 
   // Outside click closes the dropdown
   useEffect(() => {
@@ -33,14 +20,6 @@ function Navbar() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  // Logout handler
-  const handleLogout = () => {
-    localStorage.removeItem("session");
-    setUser(null);
-    setOpen(false);
-    navigate("/Login", { replace: true });
-  };
 
   if (!user) return null;
 
@@ -68,7 +47,7 @@ function Navbar() {
               Contact
             </Link>
           </li>
-          {user.role === "admin" && (
+          {user.role === "Admin" && (
             <li>
               <Link to="/admin" className="navbar-link">
                 Admin
@@ -109,7 +88,7 @@ function Navbar() {
               >
                 Profile
               </button>
-              <button className="dropdown-item" onClick={handleLogout}>
+              <button className="dropdown-item" onClick={logout}>
                 Logout
               </button>
             </div>

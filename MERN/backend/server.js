@@ -3,7 +3,8 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser';
 import './config.js';
 
-import Auth from './AuthAPI/Auth.js'
+import Auth from './AuthAPI/Auth.js';
+import Admin from './Admin/admin.js';
 
 const app = express();
 const PORT = 5001;
@@ -27,9 +28,10 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json())
-app.use('/auth', Auth)
-  
+app.use(express.json());
+app.use('/api/auth', Auth);
+app.use('/api/admin', Admin);
+
 
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');

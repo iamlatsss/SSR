@@ -32,6 +32,7 @@ export async function authenticateJWT(req, res, next) {
       }
 
       req.user = {
+        user_name: decodedUser.user_name,
         user_id: decodedUser.user_id,
         email: decodedUser.email,
         role: decodedUser.role
@@ -50,7 +51,7 @@ export async function generateJWT(user_data) {
 }
 
 // Post call to Log out
-router.post('/api/auth/logout', (req, res) => {
+router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
     secure: false, // true if HTTPS in production
@@ -71,22 +72,22 @@ router.post("/login", async (req, res) => {
     if (!user_data.ok && user_data.message === "User not found") {
       return res.status(401).json({ message: "Invalid username" });
     }
-    
+
     const isMatch = await bcrypt.compare(password, user_data.data.password);
     if (!isMatch) {
       return res.status(401).json({ message: "Incorrect password" });
     }
-    
+
     if (!user_data.ok && user_data.message === "User is not active") {
       return res.status(401).json({ message: "Account inactive. Contact support." });
     }
-    
+
     const response_data = {
+      user_name: user_data.data.user_name,
       user_id: user_data.data.user_id,
       email: user_data.data.email,
       role: user_data.data.role
     };
-
     const token = await generateJWT(response_data);
 
     res.cookie('token', token, {
@@ -109,9 +110,9 @@ router.post("/login", async (req, res) => {
 });
 
 // Post call to create new user
-router.post('/register', async (req, res) => {
+router.post('/addUser', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { user_name, email, password } = req.body;
     let role = req.body.role;
 
     if (!USER_ROLES.has(role)) {
@@ -125,7 +126,7 @@ router.post('/register', async (req, res) => {
     // Hash the plain password before saving
     const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);  
 
-    const result = await DB.createUser(email, passwordHash, role);
+    const result = await DB.createUser(user_name, email, passwordHash, role);
 
     if (!result.ok) {
       // Possible duplicate email or DB error
@@ -146,11 +147,7 @@ router.post('/register', async (req, res) => {
 
 // Get call to authenticate the user
 router.get('/me', authenticateJWT, (req, res) => {
-  res.json({
-    id: req.user.user_id,
-    email: req.user.email,
-    role: req.user.role
-  });
+  res.json(req.user);
 });
 
 

@@ -4,7 +4,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import ProtectedRoute from './context/protection.jsx';
 // import PublicRoute from './context/publicRoute.jsx';
 
-import Home from './pages/Dashboard/Home/home.jsx';
+import Home from './pages/Home/home.jsx';
 import Login from './pages/UserAuth/Login.jsx';
 import Admin from './pages/Admin/admin.jsx';
 import Quotation from './pages/Quotation/quotation.jsx';
@@ -24,7 +24,7 @@ function App() {
       
       <Route path="/" element={<Navigate to="/Home" replace />} />
       <Route path="/Home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-      <Route path="/Admin" element={<ProtectedRoute  allowedRoles={['admin']}><Admin /></ProtectedRoute>} />
+      <Route path="/Admin" element={<ProtectedRoute  allowedRoles={['Admin']}><Admin /></ProtectedRoute>} />
 
       <Route path="/Quotation" element={<ProtectedRoute><Quotation /></ProtectedRoute>} />
       <Route path="/Bookingdetails" element={<ProtectedRoute><Bookingdetails /></ProtectedRoute>} />

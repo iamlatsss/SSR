@@ -1,182 +1,309 @@
-import React, { useState } from "react";
-
-const defaultUsers = [
-  {
-    email: "admin@example.com",
-    role: "admin",
-    active: true,
-  },
-  {
-    email: "sales@example.com",
-    role: "sales",
-    active: false,
-  },
-];
-
-const ROLES = [
-  { label: "Admin", value: "admin" },
-  { label: "Operations", value: "operations" },
-  { label: "Customer Service", value: "customer_service" },
-  { label: "Viewer", value: "viewer" },
-  { label: "Sales", value: "sales" },
-];
+import React, { useState, useEffect } from "react";
+import Navbar from "../NavBar/navbar";
 
 function AdminUserManagement() {
-  const [users, setUsers] = useState(defaultUsers);
+  const [users, setUsers] = useState([]);
+  const [roles, setRoles] = useState([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [form, setForm] = useState({
+    user_name: "",
     email: "",
     password: "",
     role: "",
     active: true,
   });
+  const [originalForm, setOriginalForm] = useState({});
   const [isEdit, setIsEdit] = useState(false);
-  const [editIdx, setEditIdx] = useState(null);
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Open modal & optionally fill form for edit
-  function openModal(user = null, idx = null) {
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  async function fetchUsers() {
+    try {
+      const res = await fetch("/api/admin/users", { credentials: "include" });
+      const data = await res.json();
+      setUsers(data.users || []);
+      setRoles(data.roles || []);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+    }
+  }
+
+  function openModal(user = null) {
     if (user) {
       setForm({
+        user_name: user.user_name || "",
         email: user.email,
         password: "",
         role: user.role,
-        active: user.active,
+        active: !!user.is_active,
+      });
+      setOriginalForm({
+        user_name: user.user_name || "",
+        email: user.email,
+        role: user.role,
+        active: !!user.is_active,
       });
       setIsEdit(true);
-      setEditIdx(idx);
+      setEditingUserId(user.user_id);
     } else {
       setForm({
+        user_name: "",
         email: "",
         password: "",
         role: "",
         active: true,
       });
+      setOriginalForm({});
       setIsEdit(false);
-      setEditIdx(null);
+      setEditingUserId(null);
     }
+    setShowPassword(false);
     setModalOpen(true);
   }
 
-  // Save user action (add or edit)
-  function handleFormSubmit(e) {
+  async function handleFormSubmit(e) {
     e.preventDefault();
-    if (isEdit && editIdx !== null) {
-      const updatedUsers = users.map((u, i) =>
-        i === editIdx ? { email: form.email, role: form.role, active: form.active } : u
-      );
-      setUsers(updatedUsers);
-    } else {
-      setUsers(users.concat({ email: form.email, role: form.role, active: form.active }));
+    try {
+      let changes = {};
+      if (isEdit) {
+        if (form.user_name !== originalForm.user_name) changes.user_name = form.user_name;
+        if (form.email !== originalForm.email) changes.email = form.email;
+        if (form.role !== originalForm.role) changes.role = form.role;
+        if (form.active !== originalForm.active) changes.is_active = form.active ? 1 : 0;
+        if (form.password && form.password.trim() !== "") changes.password = form.password;
+        if (Object.keys(changes).length === 0) {
+          alert("No changes detected.");
+          setModalOpen(false);
+          return;
+        }
+        const res = await fetch(`/api/admin/user/${editingUserId}`, {
+          method: "PUT",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(changes),
+        });
+        if (!res.ok) throw new Error("Failed to update user");
+      } else {
+        let payload = {
+          user_name: form.user_name,
+          email: form.email,
+          role: form.role,
+          is_active: form.active ? 1 : 0,
+          password: form.password,
+        };
+        const res = await fetch("/api/auth/addUser", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error("Failed to create user");
+      }
+      setModalOpen(false);
+      setForm({ user_name: "", email: "", password: "", role: "", active: true });
+      fetchUsers();
+    } catch (error) {
+      console.error("Error saving user:", error);
+      alert("Failed to save user. Check console for details.");
     }
-    setModalOpen(false);
-    setForm({ email: "", password: "", role: "", active: true });
   }
 
-  // Fill form for editing
-  function handleEdit(idx) {
-    openModal(users[idx], idx);
+  async function handleDelete(user_id) {
+    const ok = window.confirm(
+      "Are you sure you want to delete this user? This action cannot be undone."
+    );
+    if (!ok) return;
+    try {
+      const res = await fetch(`/api/admin/user/${user_id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to delete user");
+      fetchUsers();
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      alert("Failed to delete user. Check console for details.");
+    }
   }
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "linear-gradient(to right, rgb(236, 190, 126), white, white)"
-    }}>
-      <div className="container" style={{
-        background: "#fff", padding: 30, borderRadius: 10, marginTop: 30,
-        boxShadow: "0 0 15px rgba(0,0,0,0.1)"
-      }}>
-        <div className="d-flex justify-content-between align-items-center admin-heading" style={{ marginBottom: "1.5em" }}>
-          <h3>Admin: User Management</h3>
-          <button className="btn btn-primary"
-            onClick={() => openModal()}>
+    <div>
+      <Navbar />
+      <div className="container mx-auto bg-white rounded-lg p-8 mt-8 shadow-lg text-black  mt-30">
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-2xl font-bold">Admin: User Management</h3>
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            onClick={() => openModal()}
+          >
             + Add User
           </button>
         </div>
-        <table className="table table-bordered align-middle">
-          <thead className="table-dark">
-            <tr>
-              <th>Email</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user, idx) => (
-              <tr key={user.email}>
-                <td>{user.email}</td>
-                <td>{ROLES.find(r => r.value === user.role)?.label || user.role}</td>
-                <td>
-                  <span className={`badge bg-${user.active ? "success" : "secondary"}`}>
-                    {user.active ? "Active" : "Inactive"}
-                  </span>
-                </td>
-                <td>
-                  <button className="btn btn-sm btn-warning" onClick={() => handleEdit(idx)}>
-                    Edit
-                  </button>
-                </td>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200 text-sm border">
+            <thead className="bg-gray-100">
+              <tr>
+                <th className="px-4 py-2 font-semibold text-left">User Name</th>
+                <th className="px-4 py-2 font-semibold text-left">Email</th>
+                <th className="px-4 py-2 font-semibold text-left">Role</th>
+                <th className="px-4 py-2 font-semibold text-left">Status</th>
+                <th className="px-4 py-2 font-semibold text-left">Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {users.map((user) => (
+                <tr key={user.user_id} className="border-t">
+                  <td className="px-4 py-2">{user.user_name}</td>
+                  <td className="px-4 py-2">{user.email}</td>
+                  <td className="px-4 py-2">{user.role}</td>
+                  <td className="px-4 py-2">
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-bold ${user.is_active
+                        ? "bg-green-100 text-green-800"
+                        : "bg-gray-200 text-gray-600"
+                        }`}
+                    >
+                      {user.is_active ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td className="px-4 py-2 flex gap-2">
+                    <button
+                      className="text-xs px-3 py-1 bg-yellow-500 text-white rounded hover:bg-yellow-600"
+                      title="Edit"
+                      onClick={() => openModal(user)}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      className="text-xs px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                      title="Delete"
+                      onClick={() => handleDelete(user.user_id)}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-        {/* Modal, simple implementation (show/hide with modalOpen) */}
+        {/* Modal */}
         {modalOpen && (
-          <div className="modal show fade" tabIndex={-1} style={{
-            display: "block",
-            background: "rgba(0,0,0,0.3)"
-          }}>
-            <div className="modal-dialog">
-              <form className="modal-content" onSubmit={handleFormSubmit}>
-                <div className="modal-header">
-                  <h5 className="modal-title">{isEdit ? "Edit User" : "Add User"}</h5>
-                  <button type="button" className="btn-close"
-                    onClick={() => setModalOpen(false)}></button>
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-black bg-opacity-30">
+            <div className="bg-white p-6 rounded shadow-lg min-w-[320px] max-w-sm w-full">
+              <form onSubmit={handleFormSubmit}>
+                <div className="mb-4">
+                  <label className="block text-gray-700 mb-1">User Name</label>
+                  <input
+                    type="text"
+                    className="w-full border px-3 py-2 rounded"
+                    required
+                    value={form.user_name}
+                    onChange={(e) =>
+                      setForm({ ...form, user_name: e.target.value })
+                    }
+                  />
                 </div>
-                <div className="modal-body row g-3">
-                  <div className="col-12">
-                    <label className="form-label">Email</label>
-                    <input type="email" className="form-control"
-                      required value={form.email}
-                      onChange={e => setForm({ ...form, email: e.target.value })} />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Password</label>
-                    <input type="password" className="form-control"
-                      required value={form.password}
-                      onChange={e => setForm({ ...form, password: e.target.value })} />
-                  </div>
-                  <div className="col-12">
-                    <label className="form-label">Role</label>
-                    <select className="form-select" required
-                      value={form.role}
-                      onChange={e => setForm({ ...form, role: e.target.value })}>
-                      <option value="">Select role</option>
-                      {ROLES.map(role =>
-                        <option value={role.value} key={role.value}>{role.label}</option>
+                <div className="mb-4">
+                  <label className="block text-gray-700 mb-1">Email</label>
+                  <input
+                    type="email"
+                    className="w-full border px-3 py-2 rounded"
+                    required
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-gray-700 mb-1">Password{" "}
+                    {isEdit && (
+                      <span className="text-xs text-gray-400">
+                        (Leave blank to keep unchanged)
+                      </span>
+                    )}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      className="w-full border px-3 py-2 rounded pr-10"
+                      value={form.password}
+                      onChange={(e) =>
+                        setForm({ ...form, password: e.target.value })
+                      }
+                      required={!isEdit}
+                    />
+                    <button
+                      type="button"
+                      className="absolute inset-y-0 right-2 flex items-center text-gray-500"
+                      onClick={() => setShowPassword((prev) => !prev)}
+                      tabIndex={-1}
+                    >
+                      {showPassword ? (
+                        // Eye off SVG
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor"
+                          viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M13.875 18.825A10.05 10.05 0 0112 19c-5.523 0-10-4.03-10-9a9.978 9.978 0 011.682-5.722M20.683 14.653a9.967 9.967 0 01-1.658 2.822M15.232 17.786A9.953 9.953 0 0112 19c-5.523 0-10-4.03-10-9 .02-.268.055-.533.1-.797M23 3L1 21"/>
+                        </svg>
+                      ) : (
+                        // Eye SVG
+                        <svg className="h-5 w-5" fill="none" stroke="currentColor"
+                          viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0zm-5.2 6.6a9.987 9.987 0 0014.4-7.6c-1-4.4-6.1-9-11.2-9S2.6 6.2 1.6 10.6A10.016 10.016 0 002.8 15M17.8 18.6a10.05 10.05 0 00-2.6 1.4"/>
+                        </svg>
                       )}
-                    </select>
-                  </div>
-                  <div className="col-12">
-                    <div className="form-check form-switch">
-                      <input className="form-check-input" type="checkbox"
-                        checked={form.active}
-                        id="activeSwitch"
-                        onChange={e => setForm({ ...form, active: e.target.checked })} />
-                      <label className="form-check-label" htmlFor="activeSwitch">
-                        Active User
-                      </label>
-                    </div>
+                    </button>
                   </div>
                 </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary"
-                    onClick={() => setModalOpen(false)}>
+                <div className="mb-4">
+                  <label className="block text-gray-700 mb-1">Role</label>
+                  <select
+                    className="w-full border px-3 py-2 rounded"
+                    required
+                    value={form.role}
+                    onChange={(e) => setForm({ ...form, role: e.target.value })}
+                  >
+                    <option value="">Select role</option>
+                    {roles.map((role) => (
+                      <option value={role} key={role}>
+                        {role.charAt(0).toUpperCase() +
+                          role.slice(1).replace(/_/g, " ")}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="mb-6">
+                  <label className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={form.active}
+                      onChange={(e) =>
+                        setForm({ ...form, active: e.target.checked })
+                      }
+                    />
+                    <span>Active User</span>
+                  </label>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
+                    onClick={() => setModalOpen(false)}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" className="btn btn-primary">
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                  >
                     Save User
                   </button>
                 </div>
@@ -185,8 +312,6 @@ function AdminUserManagement() {
           </div>
         )}
       </div>
-      {/* Bootstrap 5 CSS */}
-      <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     </div>
   );
 }

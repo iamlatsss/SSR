@@ -1,48 +1,30 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {toast, ToastContainer} from "react-toastify";
-
-const API_URI = import.meta.env.VITE_API_URI;
-const PORT = import.meta.env.VITE_BACKEND_PORT;
+import { toast, ToastContainer } from "react-toastify";
+import { useAuth } from "../../context/AuthContext.jsx"; // Adjust the import as needed
 
 const LoginForm = ({ onSwitch }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [loginData, setLoginData] = useState({
     email: "",
     password: "",
+    rememberMe: false
   });
+  const [loggingIn, setLoggingIn] = useState(false);
   const navigate = useNavigate();
-
-  const setSession = (email, user_id, role) => {
-    const expiryTime = Date.now() + 7 * 24 * 60 * 60 * 1000;
-    const sessionData = { user_id, email, role, expiry: expiryTime };
-    localStorage.setItem("session", JSON.stringify(sessionData));
-  };
+  const { login } = useAuth();
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoggingIn(true);
     try {
-      console.log(loginData)
-      const response = await fetch(`http://${API_URI}:${PORT}/auth/login/`, {
-        method: "POST",
-        credentials: 'include',
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(loginData)
-      }); 
-      
-      if (!response.ok) throw new Error(`Network error: ${response.status}`);
-      const data = await response.json();
-
-      if (data.message === "Login successful") {
-        setSession(data.user_data.email, data.user_data.user_id, data.user_data.role);
-        toast.success("Login successful!");
-        navigate("/Home");
-      } else {
-        toast.error(data.message || "Login failed");
-      }
+      await login(loginData.email, loginData.password, loginData.rememberMe);
+      toast.success("Login successful!");
+      navigate("/Home");
     } catch (err) {
-      console.error("Login error:", err);
-      toast.error("Login failed. Try again.");
+      toast.error("Login failed. Check credentials and try again.");
+    } finally {
+      setLoggingIn(false);
     }
   };
 
@@ -56,7 +38,7 @@ const LoginForm = ({ onSwitch }) => {
         <form onSubmit={handleLogin}>
           <div className="login-input mb-6">
             <label htmlFor="email" className="block mb-2 text-sm font-medium text-gray-300">
-              email
+              Email
             </label>
             <div className="relative">
               <span className="absolute inset-y-0 left-0 flex items-center pl-3">
@@ -70,6 +52,7 @@ const LoginForm = ({ onSwitch }) => {
                 value={loginData.email}
                 onChange={(e) => setLoginData({ ...loginData, email: e.target.value })}
                 className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5"
+                autoComplete="username"
               />
             </div>
           </div>
@@ -90,11 +73,13 @@ const LoginForm = ({ onSwitch }) => {
                 value={loginData.password}
                 onChange={(e) => setLoginData({ ...loginData, password: e.target.value })}
                 className="bg-gray-700 border border-gray-600 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full pl-10 p-2.5"
+                autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 flex items-center pr-3"
+                tabIndex={-1}
               >
                 <i className="material-icons text-gray-400">
                   {showPassword ? "visibility_off" : "visibility"}
@@ -108,6 +93,8 @@ const LoginForm = ({ onSwitch }) => {
               <input
                 type="checkbox"
                 id="remember"
+                checked={loginData.rememberMe}
+                onChange={(e) => setLoginData({ ...loginData, rememberMe: e.target.checked })}
                 className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500"
               />
               <label htmlFor="remember" className="ml-2 text-sm font-medium text-gray-300">
@@ -126,8 +113,9 @@ const LoginForm = ({ onSwitch }) => {
           <button
             type="submit"
             className="w-full text-white bg-blue-600 hover:bg-blue-700 focus:ring-4 focus:outline-none focus:ring-blue-800 font-medium rounded-lg text-sm px-5 py-3 text-center"
+            disabled={loggingIn}
           >
-            LOGIN
+            {loggingIn ? "Logging In..." : "LOGIN"}
           </button>
         </form>
       </div>
