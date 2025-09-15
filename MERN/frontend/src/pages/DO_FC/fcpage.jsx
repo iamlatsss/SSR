@@ -26,7 +26,7 @@ const FCPage = () => {
         pol: "Shanghai",
         pod: "Mumbai",
         status: "pending",
-        fcUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        fcUrl: "http://localhost:5173/FCpage"
       }
     ];
 
