@@ -13,6 +13,7 @@ import Bookings from './pages/Booking/bookings.jsx';
 import Bookingstatus from './pages/Booking/bookingstatus.jsx';
 import DOPage from './pages/DO_FC/dopage.jsx';
 import FCPage from './pages/DO_FC/fcpage.jsx';
+import Test from './pages/test.jsx';
 
 
 function App() {
@@ -32,6 +33,8 @@ function App() {
       <Route path="/Bookingstatus" element={<ProtectedRoute><Bookingstatus /></ProtectedRoute>} />
       <Route path="/DOPage" element={<ProtectedRoute><DOPage /></ProtectedRoute>} />
       <Route path="/FCPage" element={<ProtectedRoute><FCPage /></ProtectedRoute>} />
+
+      <Route path="/test" element={<ProtectedRoute><Test /></ProtectedRoute>} />
 
     </Routes>
   );

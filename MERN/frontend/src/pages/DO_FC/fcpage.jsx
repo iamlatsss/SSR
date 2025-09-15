@@ -16,7 +16,7 @@ const FCPage = () => {
         pol: "Tianjin, China",
         pod: "Nhava Sheva, India",
         status: "pending",
-        fcUrl: "https://www.africau.edu/images/default/sample.pdf" // sample preview file
+        fcUrl: "/pdf-static/" // sample preview file
       },
       {
         id: 102,
