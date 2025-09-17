@@ -244,8 +244,16 @@ const Bookingdetails = () => {
               className="w-full border rounded p-2"
               required
             >
-              <option value="20ft">20 ft</option>
-              <option value="40ft">40 ft</option>
+              <option value="20ft">20'GP</option>
+              <option value="40ft">20'HQ</option>
+              <option value="40ft">40'DRY</option>
+              <option value="40ft">40'HQ</option>
+              <option value="40ft">20'Reefer</option>
+              <option value="40ft">40'Reefer</option>
+              <option value="40ft">20'Flat rack</option>
+              <option value="40ft">40'Flat rack</option>
+              <option value="40ft">20'Open top</option>
+              <option value="40ft">40'Open top</option>
             </select>
           </div>
 
