@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import Navbar from "../NavBar/navbar"; 
+import Navbar from "../NavBar/navbar";
 
 const Bookingdetails = () => {
   const [form, setForm] = useState({
@@ -11,7 +11,7 @@ const Bookingdetails = () => {
     mbl_no: "",
     pol: "",
     pod: "",
-    container_size: "20ft",
+    container_size: "",
     agent_details: "",
     shipping_line: "",
     buy_rate: "",
@@ -24,6 +24,22 @@ const Bookingdetails = () => {
     description_box: "",
   });
 
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const containerSize = [
+    "20'GP",
+    "20'HQ",
+    "40'DRY",
+    "40'HQ",
+    "20'Reefer",
+    "40'Reefer",
+    "20'Flat rack",
+    "40'Flat rack",
+    "20'Open top",
+    "40'Open top",
+  ];
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setForm((prev) => ({
@@ -31,17 +47,85 @@ const Bookingdetails = () => {
       [name]: value,
     }));
   };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted:", form);
+    setSubmitting(true);
+    setMessage("");
+
+    // Map your form keys to API keys expected (if different)
+    const apiPayload = {
+      NominationDate: form.nomination_date,
+      Consignee: form.consignee_details,
+      Shipper: form.shipper_details,
+      HBL: form.hbl_no,
+      MBL: form.mbl_no,
+      POL: form.pol,
+      POD: form.pod,
+      ContainerSize: form.container_size,
+      Agent: form.agent_details,
+      ShippingLine: form.shipping_line,
+      BuyRate: form.buy_rate ? Number(form.buy_rate) : null,
+      SellRate: form.sell_rate ? Number(form.sell_rate) : null,
+      ETD: form.etd,
+      ETA: form.eta,
+      SWB: form.swb,
+      IGMFiled: form.igm_filed === "yes" ? 1 : 0,
+      CHA: form.cha,
+      Description: form.description_box
+    };
+
+    try {
+      const response = await fetch("/api/booking/insert", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(apiPayload),
+      });
+
+      if (!response.ok) {
+        const errRes = await response.json();
+        throw new Error(errRes.error || "Failed to submit booking");
+      }
+      const data = await response.json();
+      setMessage(`Booking inserted successfully with JobNo: ${data.JobNo}`);
+      resetForm();
+    } catch (error) {
+      setMessage(error.message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const resetForm = (e) => {
+    setForm({
+        job_number: "101",
+        nomination_date: "",
+        consignee_details: "",
+        shipper_details: "",
+        hbl_no: "",
+        mbl_no: "",
+        pol: "",
+        pod: "",
+        container_size: "",
+        agent_details: "",
+        shipping_line: "",
+        buy_rate: "",
+        sell_rate: "",
+        etd: "",
+        eta: "",
+        swb: "yes",
+        igm_filed: "yes",
+        cha: "",
+        description_box: "",
+      });
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-20">
+    <div className="min-h-screen p-20">
       <Navbar />
 
-      <div className="max-w-5xl mx-auto mt-8 p-10 bg-white rounded-3xl shadow-2xl">
+      <div className="max-w-5xl mx-auto mt-8 p-10 bg-white rounded-3xl shadow-2xl text-black">
         <h3 className="text-3xl font-bold mb-8 text-center text-gray-800">
           📋 Booking Details
         </h3>
@@ -73,7 +157,9 @@ const Bookingdetails = () => {
             </div>
 
             <div>
-              <label className="block mb-1 font-medium">Consignee Details</label>
+              <label className="block mb-1 font-medium">
+                Consignee Details
+              </label>
               <input
                 type="text"
                 name="consignee_details"
@@ -120,7 +206,9 @@ const Bookingdetails = () => {
 
           {/* More fields */}
           <div>
-            <label className="block mb-1 font-medium">Port of Loading (POL)</label>
+            <label className="block mb-1 font-medium">
+              Port of Loading (POL)
+            </label>
             <input
               type="text"
               name="pol"
@@ -130,10 +218,12 @@ const Bookingdetails = () => {
               placeholder="Enter POL"
               required
             />
-          </div>
+          </div>  
 
           <div>
-            <label className="block mb-1 font-medium">Port of Discharge (POD)</label>
+            <label className="block mb-1 font-medium">
+              Port of Discharge (POD)
+            </label>
             <input
               type="text"
               name="pod"
@@ -154,8 +244,14 @@ const Bookingdetails = () => {
               className="w-full border rounded p-2"
               required
             >
-              <option value="20ft">20 ft</option>
-              <option value="40ft">40 ft</option>
+              <option value="" disabled>
+                Select a container size
+              </option>
+              {containerSize.map((size) => (
+                <option key={size} value={size}>
+                  {size}
+                </option>
+              ))}
             </select>
           </div>
 
