@@ -264,7 +264,6 @@ const Bookingdetails = () => {
               onChange={handleChange}
               className="w-full border rounded p-2"
               placeholder="Enter Agent Details"
-              required
             />
           </div>
 
@@ -277,7 +276,6 @@ const Bookingdetails = () => {
               onChange={handleChange}
               className="w-full border rounded p-2"
               placeholder="Enter Shipping Line"
-              required
             />
           </div>
 
@@ -290,7 +288,6 @@ const Bookingdetails = () => {
               onChange={handleChange}
               className="w-full border rounded p-2"
               placeholder="Enter Buy Rate"
-              required
             />
           </div>
 
@@ -303,7 +300,6 @@ const Bookingdetails = () => {
               onChange={handleChange}
               className="w-full border rounded p-2"
               placeholder="Enter Sell Rate"
-              required
             />
           </div>
 
@@ -315,7 +311,6 @@ const Bookingdetails = () => {
               value={form.etd}
               onChange={handleChange}
               className="w-full border rounded p-2"
-              required
             />
           </div>
 
@@ -327,7 +322,6 @@ const Bookingdetails = () => {
               value={form.eta}
               onChange={handleChange}
               className="w-full border rounded p-2"
-              required
             />
           </div>
 
@@ -338,7 +332,6 @@ const Bookingdetails = () => {
               value={form.swb}
               onChange={handleChange}
               className="w-full border rounded p-2"
-              required
             >
               <option value="yes">Yes</option>
               <option value="no">No</option>
@@ -352,7 +345,6 @@ const Bookingdetails = () => {
               value={form.igm_filed}
               onChange={handleChange}
               className="w-full border rounded p-2"
-              required
             >
               <option value="yes">Yes</option>
               <option value="no">No</option>
@@ -368,7 +360,6 @@ const Bookingdetails = () => {
               onChange={handleChange}
               className="w-full border rounded p-2"
               placeholder="Enter CHA Details"
-              required
             />
           </div>
 

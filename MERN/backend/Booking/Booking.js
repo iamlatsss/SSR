@@ -34,5 +34,18 @@ router.get("/get", authenticateJWT, async (req, res) => {
   }
 });
 
+// Update a booking by JobNo
+router.put("/update/:jobNo", async (req, res) => {
+  const jobNo = req.params.jobNo;
+  const updates = req.body;
+
+  const result = await DB.updateBookingById(jobNo, updates);
+
+  if (result.ok) {
+    res.json({ success: true, message: "Booking updated successfully" });
+  } else {
+    res.status(500).json({ success: false, message: "Internal server error" });
+  }
+});
 
 export default router;

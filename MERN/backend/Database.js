@@ -189,6 +189,36 @@ export async function getAllBookings() {
   }
 }
 
+// Update Booking by JobNo
+export async function updateBookingById(jobNo, updates) {
+  const fields = [];
+  const values = [];
+
+  for (const key in updates) {
+    if (ALLOWED_BOOKING_FIELDS.has(key)) {
+      fields.push(`${key} = ?`);
+      values.push(updates[key]);
+    }
+  }
+
+  if (fields.length === 0) {
+    return { ok: false, message: "No valid fields to update" };
+  }
+
+  values.push(jobNo);
+  const query = `UPDATE Booking SET ${fields.join(", ")} WHERE JobNo = ?`;
+
+  try {
+    const [result] = await pool.query(query, values);
+    if (result.affectedRows === 0) {
+      return { ok: false, message: "Booking not found" };
+    }
+    return { ok: true };
+  } catch (error) {
+    console.error("Error updating booking:", error);
+    return { ok: false, message: "Database error", error: error.message };
+  }
+}
 
 // #endregion
 
