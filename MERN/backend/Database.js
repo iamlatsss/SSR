@@ -122,7 +122,7 @@ export async function deleteUserById(user_id) {
 // #endregion
 
 
-// #region 📖 Booking ─────────────────────────────────────────────
+// #region 📖 BOOKING ─────────────────────────────────────────────
 
 const ALLOWED_BOOKING_FIELDS = new Set([
   "NominationDate", "Consignee", "Shipper", "HBL", "MBL", "POL", "POD",
@@ -130,7 +130,7 @@ const ALLOWED_BOOKING_FIELDS = new Set([
   "ETA", "SWB", "IGMFiled", "CHA", "Description", "Status"
 ]);
 
-// Dynamic Insert: insert only provided keys
+// Insert Booking
 export async function insertBooking(bookingData) {
   const fields = [];
   const values = [];
@@ -221,6 +221,80 @@ export async function updateBookingById(jobNo, updates) {
 }
 
 // #endregion
+
+
+// #region CUSTOMER ─────────────────────────────────────────────
+
+const ALLOWED_CUSTOMER_FIELDS = new Set([
+  "date", "branch", "name", "address", "customer_type", "status", "year_of_establishment", "pan",
+  "director", "aadhar", "branch_office", "office_address", "state", "gstin", "remarks", "created_at"
+]);
+
+// Function to insert Customer KYC
+export async function insertCustomer(pool, customerData) {
+  const fields = [];
+  const values = [];
+  const placeholders = [];
+
+  for (const key in customerData) {
+    if (ALLOWED_CUSTOMER_FIELDS.has(key)) {
+      fields.push(key);
+      values.push(customerData[key]);
+      placeholders.push("?");
+    }
+  }
+
+  if (fields.length === 0) {
+    return { ok: false, message: "No valid fields to insert" };
+  }
+
+  const query = `INSERT INTO customer (${fields.join(",")}) VALUES (${placeholders.join(",")})`;
+
+  try {
+    const [result] = await pool.query(query, values);
+    return { ok: true, customer_id: result.insertId };
+  } catch (error) {
+    console.error("Insert customer error:", error);
+    return { ok: false, message: "Database error", error: error.message };
+  }
+}
+
+// Update Customer KYC
+export async function updateCustomerById(pool, customer_id, updates) {
+  const fields = [];
+  const values = [];
+
+  for (const key in updates) {
+    if (ALLOWED_CUSTOMER_FIELDS.has(key)) {
+      fields.push(`${key} = ?`);
+      values.push(updates[key]);
+    }
+  }
+
+  if (fields.length === 0) {
+    return { ok: false, message: "No valid fields to update" };
+  }
+
+  values.push(customer_id);
+  const query = `UPDATE customer SET ${fields.join(", ")} WHERE customer_id = ?`;
+
+  try {
+    const [result] = await pool.query(query, values);
+    if (result.affectedRows === 0) {
+      return { ok: false, message: "Customer not found" };
+    }
+    return { ok: true };
+  } catch (error) {
+    console.error("Update customer error:", error);
+    return { ok: false, message: "Database error", error: error.message };
+  }
+}
+
+
+
+
+// #endregion
+
 
 
 // const t = await getAllUsers()
