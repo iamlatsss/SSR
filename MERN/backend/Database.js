@@ -290,13 +290,25 @@ export async function updateCustomerById(pool, customer_id, updates) {
   }
 }
 
+// Get all customer name
+export async function getAllCustomer() {
+  const Query = 'SELECT name FROM Customers';
 
+  try {
+    const [rows] = await pool.query(Query);
+
+    return { ok: true, consignee: rows };
+  } catch (error) {
+    console.error('Error fetching all customers:', error);
+    return { ok: false, message: 'Database error' };
+  }
+}
 
 
 // #endregion
 
 
 
-// const t = await getAllUsers()
-// console.log(t)
+const t = await getAllCustomer()
+console.log(t)
 
