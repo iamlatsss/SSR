@@ -6,6 +6,7 @@ import './config.js';
 import Auth from './AuthAPI/Auth.js';
 import Admin from './Admin/admin.js';
 import Booking from './Booking/Booking.js';
+import Mail from './Mail/Mail.js';
 
 const app = express();
 const PORT = 5001;
@@ -33,6 +34,7 @@ app.use(express.json());
 app.use('/api/auth', Auth);
 app.use('/api/admin', Admin);
 app.use('/api/booking', Booking);
+app.use('/api/mail', Mail);
 
 
 app.get('/', (req, res) => {
