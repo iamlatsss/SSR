@@ -309,6 +309,6 @@ export async function getAllCustomer() {
 
 
 
-const t = await getAllCustomer()
-console.log(t)
+// const t = await getAllCustomer()
+// console.log(t)
 

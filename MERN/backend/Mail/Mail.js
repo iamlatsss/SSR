@@ -17,6 +17,7 @@ const transporter = nodemailer.createTransport({
 });
 
 router.post("/send-quotation", async (req, res) => {
+
   try {
     // --- Read template file ---
     const templatePath = path.resolve("Mail", "quotation_email.html");
@@ -28,7 +29,7 @@ router.post("/send-quotation", async (req, res) => {
 
     const mailOptions = {
       from: `"SSR Logistics" <${process.env.EMAIL_USER}>`,
-      to: email,
+      to: req.body.email,
       subject: "Quotation Details",
       html: emailBody,
     };
@@ -37,7 +38,7 @@ router.post("/send-quotation", async (req, res) => {
     res.json({ success: true, message: "Email sent successfully!" });
   } catch (error) {
     console.error("Send quotation failed:", error);
-    res.status(500).json({ success: false, message: "Internal server error." });
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 
