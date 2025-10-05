@@ -65,7 +65,7 @@ const QuotationForm = () => {
   return (
     <div className="min-h-screen p-20">
       <Navbar />
-      <div className="max-w-5xl mx-auto mt-8 p-10 bg-white rounded-3xl shadow-2xl">
+      <div className="max-w-5xl mx-auto mt-8 p-10 bg-white rounded-3xl shadow-2xl text-black">
         <h3 className="text-3xl font-bold mb-8 text-center text-gray-800">
           📑 Quotation Details
         </h3>
