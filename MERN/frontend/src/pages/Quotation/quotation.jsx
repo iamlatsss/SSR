@@ -28,49 +28,15 @@ const QuotationForm = () => {
   const sendEmail = async (e) => {
     e.preventDefault();
 
-    const {
-      pol,
-      pod,
-      containerSize,
-      rate,
-      Ocean_freight,
-      Shipping_line_charges,
-      DO_charges,
-      shipperDetails,
-      consigneeDetails,
-      terms,
-      validity,
-    } = formData;
-
-    const emailBody = `
-Dear Sir,
-
-Thanking you, please find our best revised offer for your kind reference.
-
-Quotation Details
-POL: ${pol || ""}
-POD: ${pod || ""}
-Container Size: ${containerSize || ""}
-Rate: ${rate || ""}
-Ocean Freight: ${Ocean_freight || ""}
-Shipping Line Charges: ${Shipping_line_charges || ""}
-DO Charges: ${DO_charges || ""}
-Shipper Details: ${shipperDetails || ""}
-Consignee Details: ${consigneeDetails || ""}
-Terms: ${terms || ""}
-Validity: ${validity || ""}
-
-Hope the above is competitive and meets your requirements, awaiting your kind confirmation for further bookings,
-`;
-
     try {
-      const response = await fetch("/send-quotation", {
+      const response = await fetch("api/mail/send-quotation", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...formData, body: emailBody }),
+        body: JSON.stringify(formData), // send form data as is
       });
 
       const result = await response.json();
+
       if (result.success) {
         alert("Quotation has been emailed successfully!");
         setFormData({
@@ -98,8 +64,8 @@ Hope the above is competitive and meets your requirements, awaiting your kind co
 
   return (
     <div className="min-h-screen p-20">
-    <Navbar />
-      <div className="max-w-5xl mx-auto mt-8 p-10 bg-white rounded-3xl shadow-2xl">
+      <Navbar />
+      <div className="max-w-5xl mx-auto mt-8 p-10 bg-white rounded-3xl shadow-2xl text-black">
         <h3 className="text-3xl font-bold mb-8 text-center text-gray-800">
           📑 Quotation Details
         </h3>
