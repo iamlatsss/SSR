@@ -1,8 +1,10 @@
-import React from "react";
+import React, { useState } from "react";
+import Navbar from "../NavBar/navbar";
 
 const KYC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-r from-amber-200 via-white to-white flex items-center justify-center p-6">
+    <div className="min-h-screen bg-gradient-to-r from-amber-200 via-white to-white flex items-center justify-center p-25">
+      <Navbar />
       <form
         id="kycForm"
         method="POST"
@@ -192,6 +194,12 @@ const KYC = () => {
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
             Submit
+          </button>
+          <button
+            type="view"
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition pd-4 ml-4"
+          >
+            View All
           </button>
         </div>
       </form>

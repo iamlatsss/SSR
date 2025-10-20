@@ -1,5 +1,6 @@
 // src/pages/KYCList.js
 import React, { useEffect, useState } from "react";
+import Navbar from "../NavBar/navbar";
 
 const KYCList = () => {
   const [kycEntries, setKycEntries] = useState([]);
@@ -11,7 +12,8 @@ const KYCList = () => {
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-10">
+    <div className="min-h-screen flex flex-col items-center justify-center p-25">
+      <Navbar />
       <h2 className="text-2xl font-semibold mb-6">KYC Details List</h2>
       <table className="table-fixed w-full bg-gray-800 text-white">
         <thead>

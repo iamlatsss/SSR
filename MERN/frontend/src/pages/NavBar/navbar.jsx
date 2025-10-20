@@ -3,8 +3,9 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 const menuItems = [
-  // { text: "💁 KYC Details", route: "/kycwebpage" },
-  { text: "📇 Quotation Details", route: "/Quotation" },
+  { text: "🧾 KYC Details", route: "/KYC" },
+  { text: "🧾 KYC Details", route: "/kyclist" },
+  { text: "🧾 Quotation Details", route: "/Quotation" },
   { text: "🧾 Booking Details", route: "/Bookingdetails" },
   { text: "🧾 Booking", route: "/Bookings" },
   { text: "🧾 Booking Status", route: "/Bookingstatus" },
