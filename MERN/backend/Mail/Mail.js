@@ -17,7 +17,6 @@ const transporter = nodemailer.createTransport({
 });
 
 router.post("/send-quotation", async (req, res) => {
-
   try {
     // --- Read template file ---
     const templatePath = path.resolve("Mail", "quotation_email.html");

@@ -11,6 +11,7 @@ const menuItems = [
   { text: "🧾 Booking Status", route: "/Bookingstatus" },
   { text: "🧾 DO Page", route: "/DOpage" },
   { text: "🧾 FC Page", route: "/FCpage" },
+  { text: "💁 KYC", route: "/KYC" },
   // { text: "📄 Invoice Format", route: "#" },
   // { text: "⚠️ Pre-Alert", route: "#" },
   // { text: "📇 BL Details", route: "#" },

@@ -2,7 +2,7 @@ import mysql from 'mysql2';
 import './config.js';
 
 // Create a MySQL pool for connection reuse
-export const pool = mysql.createPool({
+const pool = mysql.createPool({
   host: process.env.MYSQL_HOST || 'localhost',
   port: process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT) : 3306,
   user: process.env.MYSQL_USER || 'root',
@@ -231,7 +231,7 @@ const ALLOWED_CUSTOMER_FIELDS = new Set([
 ]);
 
 // Function to insert Customer KYC
-export async function insertCustomer(pool, customerData) {
+export async function insertCustomer(customerData) {
   const fields = [];
   const values = [];
   const placeholders = [];
@@ -248,7 +248,7 @@ export async function insertCustomer(pool, customerData) {
     return { ok: false, message: "No valid fields to insert" };
   }
 
-  const query = `INSERT INTO customer (${fields.join(",")}) VALUES (${placeholders.join(",")})`;
+  const query = `INSERT INTO Customers (${fields.join(",")}) VALUES (${placeholders.join(",")})`;
 
   try {
     const [result] = await pool.query(query, values);
@@ -260,7 +260,7 @@ export async function insertCustomer(pool, customerData) {
 }
 
 // Update Customer KYC
-export async function updateCustomerById(pool, customer_id, updates) {
+export async function updateCustomerById(customer_id, updates) {  
   const fields = [];
   const values = [];
 
@@ -276,7 +276,7 @@ export async function updateCustomerById(pool, customer_id, updates) {
   }
 
   values.push(customer_id);
-  const query = `UPDATE customer SET ${fields.join(", ")} WHERE customer_id = ?`;
+  const query = `UPDATE Customers SET ${fields.join(", ")} WHERE customer_id = ?`;
 
   try {
     const [result] = await pool.query(query, values);
@@ -292,7 +292,7 @@ export async function updateCustomerById(pool, customer_id, updates) {
 
 // Get all customer name
 export async function getAllCustomer() {
-  const Query = 'SELECT name FROM Customers';
+  const Query = 'SELECT customer_id, name FROM Customers';
 
   try {
     const [rows] = await pool.query(Query);
