@@ -15,11 +15,7 @@ import DOPage from './pages/DO_FC/dopage.jsx';
 import FCPage from './pages/DO_FC/fcpage.jsx';
 import Test from './pages/test.jsx';
 import KYC from './pages/KYC/kyc.jsx';
-<<<<<<< HEAD
-import kyclist from './pages/KYC/kyclist.jsx';
-=======
 import KYc_List from './pages/KYC/kyclist.jsx';
->>>>>>> 11d4dc95171c0783d304de24542101e67510371c
 
 
 function App() {
@@ -40,11 +36,7 @@ function App() {
       <Route path="/DOPage" element={<ProtectedRoute><DOPage /></ProtectedRoute>} />
       <Route path="/FCPage" element={<ProtectedRoute><FCPage /></ProtectedRoute>} />
       <Route path="/KYC" element={<ProtectedRoute><KYC /></ProtectedRoute>} />
-<<<<<<< HEAD
-      <Route path="/kyclist" element={<ProtectedRoute><kyclist /></ProtectedRoute>} />
-=======
       <Route path="/KYC_list" element={<ProtectedRoute><KYc_List /></ProtectedRoute>} />
->>>>>>> 11d4dc95171c0783d304de24542101e67510371c
 
       <Route path="/test" element={<ProtectedRoute><Test /></ProtectedRoute>} />
 
