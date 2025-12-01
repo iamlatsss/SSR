@@ -4,7 +4,7 @@ import { useAuth } from "../../context/AuthContext";
 
 const menuItems = [
   { text: "🧾 KYC Details", route: "/KYC" },
-  { text: "🧾 KYC Details", route: "/kyclist" },
+  { text: "🧾 KYC Details", route: "/KYC_list" },
   { text: "🧾 Quotation Details", route: "/Quotation" },
   { text: "🧾 Booking Details", route: "/Bookingdetails" },
   { text: "🧾 Booking", route: "/Bookings" },
