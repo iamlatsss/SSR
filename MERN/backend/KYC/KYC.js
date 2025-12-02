@@ -26,7 +26,7 @@ router.put("/edit/:customer_id", async (req, res) => {
 });
 
 // GET all customers
-router.get("/", async (req, res) => {
+router.get("/customers", async (req, res) => {
   const result = await DB.getAllCustomer();
   if (result.ok) {
     res.json({ success: true, data: result.consignee });
