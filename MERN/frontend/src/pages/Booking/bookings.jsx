@@ -4,88 +4,60 @@ import Navbar from "../NavBar/navbar";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+const containerSizeOptions = ["20", "40", "20'HQ", "40'HQ", "20'Reefer", "40'Reefer"];
 
-const containerSizeOptions = [
-  "20",
-  "40",
-  "20'HQ",
-  "40'HQ",
-  "20'Reefer",
-  "40'Reefer",
-];
+const servicesOptions = ["FF - Freight Forwarding", "Air Freight", "Sea Import", "Sea Export"];
+const shipmentTypeOptions = ["LCL", "FCL", "Bulk"];
+const incotermsOptions = ["CIF", "FOB", "EXW", "DAP"];
+const blTypeOptions = ["Original", "Copy", "Surrendered"];
+const freightStatusOptions = ["Select HBL Status", "Pending", "Cleared"];
+const manifestFillingOptions = ["Select Manifest Filling", "Manifest A", "Manifest B"];
+const cfsFillingOptions = ["Select CFS Filling", "CFS A", "CFS B"];
+const branchOptions = ["Mumbai", "Delhi", "Kolkata"];
+const gstStateOptions = ["Maharashtra", "Karnataka", "Tamil Nadu"];
 
 const defaultMain = {
   job_no: "",
   job_date: "",
+  services: "FF - Freight Forwarding",
+  shipment_type: "LCL",
   mbl_no: "",
   mbl_date: "",
+  incoterms: "CIF",
+  client: "",
   sales: "",
   cs: "",
-  client: "",
-  pol: "",
-  pod: "",
+  freight_status: "",
+  bl_type: "Original",
   vessel: "",
   voyage: "",
-  etd: "",
+  por: "",
+  pol: "",
+  pod: "",
+  fpd: "",
+  boe_no: "",
+  cfs: "",
+  item_no: "",
+  sub_no: "",
+  igm_no: "",
+  igm_date: "",
   eta: "",
-  service: "",
-  shipment_type: "",
-  incoterms: "",
-  bl_type: "",
-  branch_code: "",
-  execution_branch: "",
-  gst_state_from: "",
+  etd: "",
+  reference_no: "",
+  manifest_filling: "",
+  cfs_filling: "",
+  branch_code: "Mumbai",
+  execution_branch: "Mumbai",
+  gst_state_from: "Maharashtra",
 };
 
-const defaultParty = {
-  consignee: "",
-  carrier: "",
-  line: "",
-  shipper: "",
-  notify: "",
-  agent: "",
-  transporter: "",
-  cha_name: "",
-};
-
-const defaultPackages = {
-  no_of_packages: "",
-  package_type: "",
-  no_of_pallets: "",
-  gross_weight: "",
-  net_weight: "",
-  volume: "",
-};
-
-const defaultInventory = {
-  items: [
-    // each item: { container_type, units, csize }
-  ],
-};
-
-const defaultContainers = {
-  containers: [
-    // each container: { container_no, container_type, seal_no, no_of_packages, package_type, gross_weight }
-  ],
-};
-
-const defaultDescription = {
-  marks_nos: "",
-  description: "",
-  remarks: "",
-};
-
-const defaultRates = {
-  rows: [
-    /* { drcr, client, address, charge, gst, unit, quantity, rate, currency, ex_rate, amount, amt_fc, narration, group } */
-  ],
-};
-
-const defaultVehicle = {
-  vehicle_no: "",
-  driver_name: "",
-  transport_company: "",
-};
+const defaultParty = { consignee: "", carrier: "", line: "", shipper: "", notify: "", agent: "", transporter: "", cha_name: "" };
+const defaultPackages = { no_of_packages: "", package_type: "", no_of_pallets: "", gross_weight: "", net_weight: "", volume: "" };
+const defaultInventory = { items: [] };
+const defaultContainers = { containers: [] };
+const defaultDescription = { marks_nos: "", description: "", remarks: "" };
+const defaultRates = { rows: [] };
+const defaultVehicle = { vehicle_no: "", driver_name: "", transport_company: "" };
 
 export default function BookingEditorWithTabsFinal() {
   const { jobId } = useParams();
@@ -108,15 +80,12 @@ export default function BookingEditorWithTabsFinal() {
   const [consignees, setConsignees] = useState([]);
 
   useEffect(() => {
-    // load consignees
     (async () => {
       try {
         const r = await fetch("/api/kyc/");
         const j = await r.json();
         if (j.success) setConsignees(j.data || []);
-      } catch (e) {
-        // ignore
-      }
+      } catch (e) {}
     })();
   }, []);
 
@@ -130,28 +99,51 @@ export default function BookingEditorWithTabsFinal() {
         const b = j.success ? j.data : j;
         if (!b) throw new Error("No booking returned");
 
-        // map main
-        setMain((m) => ({ ...m, job_no: b.job_no || b.JobNo || m.job_no, job_date: b.job_date || b.JobDate || m.job_date, mbl_no: b.mbl_no || b.MBL_No || m.mbl_no, mbl_date: b.mbl_date || m.mbl_date, sales: b.sales || m.sales, cs: b.cs || m.cs, client: b.client || b.client_name || m.client, pol: b.pol || m.pol, pod: b.pod || m.pod, vessel: b.vessel || m.vessel, voyage: b.voyage || m.voyage, etd: b.etd || m.etd, eta: b.eta || m.eta }));
+        // Map backend fields to main
+        setMain((m) => ({
+          ...m,
+          job_no: b.job_no ?? b.JobNo ?? m.job_no,
+          job_date: b.job_date ?? b.JobDate ?? m.job_date,
+          services: b.services ?? m.services,
+          shipment_type: b.shipment_type ?? m.shipment_type,
+          mbl_no: b.mbl_no ?? b.MBL_No ?? m.mbl_no,
+          mbl_date: b.mbl_date ?? m.mbl_date,
+          incoterms: b.incoterms ?? m.incoterms,
+          client: b.client ?? b.client_name ?? m.client,
+          sales: b.sales ?? m.sales,
+          cs: b.cs ?? m.cs,
+          freight_status: b.freight_status ?? m.freight_status,
+          bl_type: b.bl_type ?? m.bl_type,
+          vessel: b.vessel ?? m.vessel,
+          voyage: b.voyage ?? m.voyage,
+          por: b.por ?? b.POR ?? m.por,
+          pol: b.pol ?? b.POL ?? m.pol,
+          pod: b.pod ?? b.POD ?? m.pod,
+          fpd: b.fpd ?? m.fpd,
+          boe_no: b.boe_no ?? b.BOE_No ?? m.boe_no,
+          cfs: b.cfs ?? m.cfs,
+          item_no: b.item_no ?? m.item_no,
+          sub_no: b.sub_no ?? m.sub_no,
+          igm_no: b.igm_no ?? m.igm_no,
+          igm_date: b.igm_date ?? m.igm_date,
+          eta: b.eta ?? m.eta,
+          etd: b.etd ?? m.etd,
+          reference_no: b.reference_no ?? b.ReferenceNo ?? m.reference_no,
+          manifest_filling: b.manifest_filling ?? m.manifest_filling,
+          cfs_filling: b.cfs_filling ?? m.cfs_filling,
+          branch_code: b.branch_code ?? m.branch_code,
+          execution_branch: b.execution_branch ?? m.execution_branch,
+          gst_state_from: b.gst_state_from ?? m.gst_state_from,
+        }));
 
-        // party
-        setParty((p) => ({ ...p, consignee: b.consignee || p.consignee, shipper: b.shipper || p.shipper, carrier: b.carrier || p.carrier, notify: b.notify || p.notify, agent: b.agent || p.agent, transporter: b.transporter || p.transporter, cha_name: b.cha_name || p.cha_name }));
-
-        // packages
-        setPackages((pk) => ({ ...pk, no_of_packages: b.no_of_packages || b.packages || pk.no_of_packages, package_type: b.package_type || pk.package_type, no_of_pallets: b.no_of_pallets || pk.no_of_pallets, gross_weight: b.gross_weight || pk.gross_weight, net_weight: b.net_weight || pk.net_weight, volume: b.volume || pk.volume }));
-
-        // inventory
+        // map other tabs (unchanged)
+        setParty((p) => ({ ...p, consignee: b.consignee ?? p.consignee, shipper: b.shipper ?? p.shipper, carrier: b.carrier ?? p.carrier, notify: b.notify ?? p.notify, agent: b.agent ?? p.agent, transporter: b.transporter ?? p.transporter, cha_name: b.cha_name ?? p.cha_name }));
+        setPackages((pk) => ({ ...pk, no_of_packages: b.no_of_packages ?? pk.no_of_packages, package_type: b.package_type ?? pk.package_type, no_of_pallets: b.no_of_pallets ?? pk.no_of_pallets, gross_weight: b.gross_weight ?? pk.gross_weight, net_weight: b.net_weight ?? pk.net_weight, volume: b.volume ?? pk.volume }));
         setInventory({ items: b.inventory_items || b.inventory || [] });
-
-        // containers
         setContainers({ containers: b.containers || b.container_list || [] });
-
-        // description
         setDescription({ marks_nos: b.marks_nos || "", description: b.description || "", remarks: b.remarks || "" });
-
-        // rates
         setBuyRates({ rows: b.buy_rates || [] });
         setSellRates({ rows: b.sell_rates || [] });
-
         setVehicle({ vehicle_no: b.vehicle_no || "", driver_name: b.driver_name || "", transport_company: b.transport_company || "" });
       } catch (err) {
         toast.error("Failed to load booking: " + err.message);
@@ -168,17 +160,15 @@ export default function BookingEditorWithTabsFinal() {
   const updateDescription = (key, val) => setDescription((d) => ({ ...d, [key]: val }));
   const updateVehicle = (key, val) => setVehicle((v) => ({ ...v, [key]: val }));
 
-  // Inventory helpers
+  // inventory, containers, rates helpers (same as before)
   const addInventoryRow = () => setInventory((inv) => ({ items: [...(inv.items || []), { container_type: "20", units: 1, csize: "20" }] }));
   const removeInventoryRow = (idx) => setInventory((inv) => ({ items: (inv.items || []).filter((_, i) => i !== idx) }));
   const updateInventoryAt = (idx, field, value) => setInventory((inv) => { const c = [...(inv.items||[])]; c[idx] = { ...c[idx], [field]: value }; return { items: c }; });
 
-  // Container helpers
   const addContainer = () => setContainers((c) => ({ containers: [...(c.containers || []), { container_no: "", container_type: "20", seal_no: "", no_of_packages: 1, package_type: "PALLETS", gross_weight: "" }] }));
   const removeContainerAt = (idx) => setContainers((c) => ({ containers: (c.containers || []).filter((_, i) => i !== idx) }));
   const updateContainerAt = (idx, field, value) => setContainers((c) => { const cp = [...(c.containers || [])]; cp[idx] = { ...cp[idx], [field]: value }; return { containers: cp }; });
 
-  // Rates helpers (buy/sell similar)
   const addRateRow = (which) => {
     const newRow = { drcr: "Inv", client: "", address: "", charge: "", gst: "", unit: "", quantity: 1, rate: 0, currency: "INR", ex_rate: 1, amount: 0, amt_fc: 0, narration: "", group: "" };
     if (which === "buy") setBuyRates((r) => ({ rows: [...(r.rows || []), newRow] }));
@@ -189,20 +179,12 @@ export default function BookingEditorWithTabsFinal() {
     else setSellRates((r) => ({ rows: (r.rows || []).filter((_, i) => i !== idx) }));
   };
   const updateRateAt = (which, idx, field, value) => {
-    const updater = (r) => { const cp = [...(r.rows || [])]; cp[idx] = { ...cp[idx], [field]: value }; // recalc
-      const q = Number(cp[idx].quantity) || 0; const rate = Number(cp[idx].rate) || 0; const ex = Number(cp[idx].ex_rate) || 1; cp[idx].amount = +(q * rate * ex).toFixed(2); cp[idx].amt_fc = +(q * rate).toFixed(2);
-      return { rows: cp };
-    };
-    if (which === "buy") setBuyRates((r) => updater(r));
-    else setSellRates((r) => updater(r));
+    const updater = (r) => { const cp = [...(r.rows || [])]; cp[idx] = { ...(cp[idx] || {}), [field]: value }; const q = Number(cp[idx].quantity) || 0; const rate = Number(cp[idx].rate) || 0; const ex = Number(cp[idx].ex_rate) || 1; cp[idx].amount = +(q * rate * ex).toFixed(2); cp[idx].amt_fc = +(q * rate).toFixed(2); return { rows: cp } };
+    if (which === "buy") setBuyRates((r) => updater(r)); else setSellRates((r) => updater(r));
   };
+  const totalAmount = (which) => { const rows = which === "buy" ? (buyRates.rows || []) : (sellRates.rows || []); return rows.reduce((s, r) => s + (Number(r.amount) || 0), 0).toFixed(2); };
 
-  const totalAmount = (which) => {
-    const rows = which === "buy" ? (buyRates.rows || []) : (sellRates.rows || []);
-    return rows.reduce((s, r) => s + (Number(r.amount) || 0), 0).toFixed(2);
-  };
-
-  // Save helpers - save per tab or all
+  // Save helpers
   const saveTab = async (tab) => {
     setSaving(true);
     try {
@@ -224,10 +206,7 @@ export default function BookingEditorWithTabsFinal() {
       const url = jobId ? `/api/booking/update/${jobId}` : `/api/booking/create`;
       const method = jobId ? "PATCH" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.error || "Save failed");
-      }
+      if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.error||"Save failed"); }
       const js = await res.json();
       toast.success(`${tab} saved`);
       if (!jobId && js.job_no) navigate(`/bookings/edit/${js.job_no}`);
@@ -243,7 +222,7 @@ export default function BookingEditorWithTabsFinal() {
       const url = jobId ? `/api/booking/update/${jobId}` : `/api/booking/create`;
       const method = jobId ? "PATCH" : "POST";
       const res = await fetch(url, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || "Save failed"); }
+      if (!res.ok) { const err = await res.json().catch(()=>({})); throw new Error(err.error||"Save failed"); }
       const js = await res.json();
       toast.success("Saved all tabs");
       if (!jobId && js.job_no) navigate(`/bookings/edit/${js.job_no}`);
@@ -254,12 +233,12 @@ export default function BookingEditorWithTabsFinal() {
 
   return (
     <div className="min-h-screen p-20">
-      <Navbar />
-      <div className="max-w-5xl mx-auto mt-8 p-10 bg-white rounded-3xl shadow-2xl text-black">
-        <h3 className="text-3xl font-bold mb-8 text-center text-gray-800">
-          Job Bookings
-        </h3>
-
+        <Navbar />
+        <div className="max-w-5xl mx-auto mt-8 p-10 bg-white rounded-3xl shadow-2xl text-black">
+          <h3 className="text-3xl font-bold mb-8 text-center text-gray-800">
+            Job Bookings
+          </h3>
+      
       <div className="container mx-auto px-4 py-8">
         <div className="bg-white p-4 rounded shadow mb-6 flex items-center justify-between">
           <div>
@@ -286,48 +265,193 @@ export default function BookingEditorWithTabsFinal() {
           <div className="p-6">
             {activeTab === 'Main' && (
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Row 1: Job No, Job Date, Services, Shipment Type */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium">Job No</label>
                     <input value={main.job_no} onChange={(e)=>updateMain('job_no', e.target.value)} className="w-full border rounded p-2" />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium">Job Date</label>
                     <input type="date" value={main.job_date} onChange={(e)=>updateMain('job_date', e.target.value)} className="w-full border rounded p-2" />
                   </div>
+
                   <div>
-                    <label className="block text-sm font-medium">MBL No</label>
-                    <input value={main.mbl_no} onChange={(e)=>updateMain('mbl_no', e.target.value)} className="w-full border rounded p-2" />
+                    <label className="block text-sm font-medium">Services</label>
+                    <select value={main.services} onChange={(e)=>updateMain('services', e.target.value)} className="w-full border rounded p-2">
+                      {servicesOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium">Shipment Type</label>
+                    <select value={main.shipment_type} onChange={(e)=>updateMain('shipment_type', e.target.value)} className="w-full border rounded p-2">
+                      {shipmentTypeOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Row 2: MBL_No, MBL Date, INCO Terms, Client */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium">MBL_No</label>
+                    <input value={main.mbl_no} onChange={(e)=>updateMain('mbl_no', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
                   <div>
                     <label className="block text-sm font-medium">MBL Date</label>
                     <input type="date" value={main.mbl_date} onChange={(e)=>updateMain('mbl_date', e.target.value)} className="w-full border rounded p-2" />
                   </div>
                   <div>
+                    <label className="block text-sm font-medium">INCO Terms</label>
+                    <select value={main.incoterms} onChange={(e)=>updateMain('incoterms', e.target.value)} className="w-full border rounded p-2">
+                      {incotermsOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Client</label>
+                    <input value={main.client} onChange={(e)=>updateMain('client', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                </div>
+
+                {/* Row 3: Sales, CS, Freight Status, BL Type */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
                     <label className="block text-sm font-medium">Sales</label>
                     <input value={main.sales} onChange={(e)=>updateMain('sales', e.target.value)} className="w-full border rounded p-2" />
                   </div>
+
                   <div>
                     <label className="block text-sm font-medium">CS</label>
                     <input value={main.cs} onChange={(e)=>updateMain('cs', e.target.value)} className="w-full border rounded p-2" />
                   </div>
+
+                  <div>
+                    <label className="block text-sm font-medium">Freight Status</label>
+                    <select value={main.freight_status} onChange={(e)=>updateMain('freight_status', e.target.value)} className="w-full border rounded p-2">
+                      {freightStatusOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium">BL Type</label>
+                    <select value={main.bl_type} onChange={(e)=>updateMain('bl_type', e.target.value)} className="w-full border rounded p-2">
+                      {blTypeOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium">POL</label>
-                    <input value={main.pol} onChange={(e)=>updateMain('pol', e.target.value)} className="w-full border rounded p-2" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium">POD</label>
-                    <input value={main.pod} onChange={(e)=>updateMain('pod', e.target.value)} className="w-full border rounded p-2" />
-                  </div>
+                {/* Row 4: Vessel, Voyage, POR, POL */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium">Vessel</label>
                     <input value={main.vessel} onChange={(e)=>updateMain('vessel', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Voyage</label>
+                    <input value={main.voyage} onChange={(e)=>updateMain('voyage', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">P.O.R</label>
+                    <input value={main.por} onChange={(e)=>updateMain('por', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">P.O.L</label>
+                    <input value={main.pol} onChange={(e)=>updateMain('pol', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                </div>
+
+                {/* Row 5: P.O.D, F.P.D, BOE No, C.F.S */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium">P.O.D</label>
+                    <input value={main.pod} onChange={(e)=>updateMain('pod', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">F.P.D</label>
+                    <input value={main.fpd} onChange={(e)=>updateMain('fpd', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">BOE No</label>
+                    <input value={main.boe_no} onChange={(e)=>updateMain('boe_no', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">C.F.S</label>
+                    <select value={main.cfs} onChange={(e)=>updateMain('cfs', e.target.value)} className="w-full border rounded p-2">
+                      <option value="">Select C.F.S.</option>
+                      <option value="CFS A">CFS A</option>
+                      <option value="CFS B">CFS B</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Row 6: Item No, SUB No, IGM No, IGM Date */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium">Item No</label>
+                    <input value={main.item_no} onChange={(e)=>updateMain('item_no', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">SUB No</label>
+                    <input value={main.sub_no} onChange={(e)=>updateMain('sub_no', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">IGM No</label>
+                    <input value={main.igm_no} onChange={(e)=>updateMain('igm_no', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">IGM Date</label>
+                    <input type="date" value={main.igm_date} onChange={(e)=>updateMain('igm_date', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                </div>
+
+                {/* Row 7: ETD Date, Reference No, Manifest Filling, CFS Filling */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium">ETD Date</label>
+                    <input type="date" value={main.etd} onChange={(e)=>updateMain('etd', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Reference No</label>
+                    <input value={main.reference_no} onChange={(e)=>updateMain('reference_no', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Manifest Filling</label>
+                    <select value={main.manifest_filling} onChange={(e)=>updateMain('manifest_filling', e.target.value)} className="w-full border rounded p-2">
+                      {manifestFillingOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">CFS Filling</label>
+                    <select value={main.cfs_filling} onChange={(e)=>updateMain('cfs_filling', e.target.value)} className="w-full border rounded p-2">
+                      {cfsFillingOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Row 8: ETA Date, Branch Code, Execution Branch, GST State From */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium">ETA Date</label>
+                    <input type="date" value={main.eta} onChange={(e)=>updateMain('eta', e.target.value)} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Branch Code</label>
+                    <select value={main.branch_code} onChange={(e)=>updateMain('branch_code', e.target.value)} className="w-full border rounded p-2">
+                      {branchOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">Execution Branch</label>
+                    <select value={main.execution_branch} onChange={(e)=>updateMain('execution_branch', e.target.value)} className="w-full border rounded p-2">
+                      {branchOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">GST State From</label>
+                    <select value={main.gst_state_from} onChange={(e)=>updateMain('gst_state_from', e.target.value)} className="w-full border rounded p-2">
+                      {gstStateOptions.map(s=> <option key={s} value={s}>{s}</option>)}
+                    </select>
                   </div>
                 </div>
 
@@ -336,6 +460,8 @@ export default function BookingEditorWithTabsFinal() {
                 </div>
               </div>
             )}
+
+            {/* other tabs (Party/Packages/Inventory/Container/Description/BuyRates/SellRates/Vehicle) unchanged from previous version */}
 
             {activeTab === 'Party' && (
               <div className="space-y-4">
@@ -415,9 +541,7 @@ export default function BookingEditorWithTabsFinal() {
 
             {activeTab === 'Inventory' && (
               <div>
-                <div className="mb-3">
-                  <button className="px-3 py-1 border rounded" onClick={addInventoryRow}>+ Add Row</button>
-                </div>
+                <div className="mb-3"><button className="px-3 py-1 border rounded" onClick={addInventoryRow}>+ Add Row</button></div>
                 <div className="space-y-3">
                   {inventory.items && inventory.items.length === 0 && <div className="text-sm text-slate-500">No inventory rows</div>}
                   {inventory.items && inventory.items.map((it, idx)=> (
