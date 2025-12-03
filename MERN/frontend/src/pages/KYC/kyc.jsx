@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Navbar from "../NavBar/navbar";
 
 const initialFormState = {
+  date: "",
   branch: "",
   name: "",
+  address: "",
+  customer_type: "",
+  status: "",
   year_of_establishment: "",
   pan: "",
-  customer_type: "",
   director: "",
   aadhar: "",
   branch_office: "",
@@ -19,34 +22,39 @@ const initialFormState = {
 export default function KycForm() {
   const [formData, setFormData] = useState(initialFormState);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [message, setMessage] = useState("");
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((p) => ({ ...p, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setMessage("");
+
     try {
-      const response = await fetch('/api/kyc/add', {
-        method: 'POST',
+      const response = await fetch("/api/kyc/add", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
-      console.log(response)
+
+      const res_data = await response.json();
+      console.log(res_data);
+
       if (response.ok) {
-        setMessage('Form submitted successfully!');
-        setFormData(initialFormState); // Reset form after success
+        setMessage("Form submitted successfully!");
+        setFormData(initialFormState);
       } else {
-        setMessage('Failed to submit the form.');
+        setMessage(res_data?.message || "Failed to submit the form.");
       }
     } catch (error) {
-      setMessage('Error submitting the form.');
+      console.error(error);
+      setMessage("Error submitting the form.");
     } finally {
       setLoading(false);
     }
@@ -62,8 +70,6 @@ export default function KycForm() {
 
         <form
           id="kycForm"
-          method="POST"
-          action="/submit_kyc"
           onSubmit={handleSubmit}
           className="space-y-8"
         >
@@ -74,19 +80,27 @@ export default function KycForm() {
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Date</label>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Date
+                </label>
                 <input
                   type="date"
                   name="date"
+                  value={formData.date}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Branch</label>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Branch
+                </label>
                 <input
                   type="text"
                   name="branch"
+                  value={formData.branch}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
@@ -101,10 +115,14 @@ export default function KycForm() {
             </h2>
 
             <div className="mb-4">
-              <label className="block text-gray-700 font-medium mb-2">Name of the Customer</label>
+              <label className="block text-gray-700 font-medium mb-2">
+                Name of the Customer
+              </label>
               <input
                 type="text"
                 name="name"
+                value={formData.name}
+                onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               />
@@ -116,26 +134,36 @@ export default function KycForm() {
               </label>
               <textarea
                 name="address"
+                value={formData.address}
+                onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
-              ></textarea>
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Type of Customer</label>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Type of Customer
+                </label>
                 <input
                   type="text"
                   name="customer_type"
+                  value={formData.customer_type}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Status of Customer</label>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Status of Customer
+                </label>
                 <input
                   type="text"
                   name="status"
+                  value={formData.status}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
@@ -144,19 +172,27 @@ export default function KycForm() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-4">
               <div>
-                <label className="block text-gray-700 font-medium mb-2">Year of Establishment</label>
+                <label className="block text-gray-700 font-medium mb-2">
+                  Year of Establishment
+                </label>
                 <input
                   type="text"
-                  name="year"
+                  name="year_of_establishment"
+                  value={formData.year_of_establishment}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">PAN Number</label>
+                <label className="block text-gray-700 font-medium mb-2">
+                  PAN Number
+                </label>
                 <input
                   type="text"
                   name="pan"
+                  value={formData.pan}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
@@ -169,67 +205,95 @@ export default function KycForm() {
               </label>
               <textarea
                 name="director"
+                value={formData.director}
+                onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
-              ></textarea>
+              />
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 font-medium mb-2">Aadhar Card No. (For Sole Proprietor)</label>
+              <label className="block text-gray-700 font-medium mb-2">
+                Aadhar Card No. (For Sole Proprietor)
+              </label>
               <input
                 type="text"
                 name="aadhar"
+                value={formData.aadhar}
+                onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
               />
             </div>
 
             <div className="mb-4">
-              <label className="block text-gray-700 font-medium mb-2">Branch Offices & Address</label>
+              <label className="block text-gray-700 font-medium mb-2">
+                Branch Offices & Address
+              </label>
               <textarea
                 name="branch_office"
+                value={formData.branch_office}
+                onChange={handleChange}
                 required
                 className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
-              ></textarea>
+              />
             </div>
           </div>
 
           {/* GST Details */}
           <div>
-            <h2 className="text-xl font-semibold mb-4 text-gray-800">GST Details</h2>
+            <h2 className="text-xl font-semibold mb-4 text-gray-800">
+              GST Details
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Office/Billing Address</label>
+              <div className="md:col-span-2">
+                <label className="block text-gray-700 font-medium mb-2">
+                  Office/Billing Address
+                </label>
                 <textarea
                   name="office_address"
+                  value={formData.office_address}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
-                ></textarea>
+                />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">State</label>
+                <label className="block text-gray-700 font-medium mb-2">
+                  State
+                </label>
                 <input
                   type="text"
                   name="state"
+                  value={formData.state}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
               <div>
-                <label className="block text-gray-700 font-medium mb-2">GSTIN</label>
+                <label className="block text-gray-700 font-medium mb-2">
+                  GSTIN
+                </label>
                 <input
                   type="text"
                   name="gstin"
+                  value={formData.gstin}
+                  onChange={handleChange}
                   required
                   className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
                 />
               </div>
-              <div>
-                <label className="block text-gray-700 font-medium mb-2">Remarks</label>
+              <div className="md:col-span-4">
+                <label className="block text-gray-700 font-medium mb-2">
+                  Remarks
+                </label>
                 <textarea
                   name="remarks"
+                  value={formData.remarks}
+                  onChange={handleChange}
                   className="w-full border border-gray-300 rounded-xl px-4 py-3 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition resize-none"
-                ></textarea>
+                />
               </div>
             </div>
           </div>
