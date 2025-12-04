@@ -1,37 +1,99 @@
 import express from 'express';
 import { authenticateJWT } from "../AuthAPI/Auth.js"
-import * as DB from "../Database.js";
+import { knexDB } from "../Database.js"
 
 const router = express.Router();
 
-// POST Insert Customer
-router.post("/add", async (req, res) => {
-  const result = await DB.insertCustomer(req.body);
-  if (result.ok) {
-    res.status(201).json({ message: "Customer inserted", customer_id: result.customer_id });
-  } else {
-    res.status(400).json({ error: result.message, details: result.error });
+
+/* ============== HELPER FUNCTION ============== */
+
+const ALLOWED_FIELDS = [
+  'branch',
+  'name',
+  'year_of_establishment',
+  'pan',
+  'customer_type',
+  'director',
+  'aadhar',
+  'branch_office',
+  'office_address',
+  'state',
+  'gstin',
+  'remarks',
+];
+
+function pickAllowed(body) {
+  const out = {};
+  for (const key of ALLOWED_FIELDS) {
+    if (body[key] !== undefined) out[key] = body[key];
+  }
+  return out;
+}
+
+/* ============== API CALL ============== */
+
+// INSERT
+router.post('/add', async (req, res) => {
+  try {
+    const data = pickAllowed(req.body);
+
+    const [id] = await knexDB("Customers").insert(data);
+    const customer = await knexDB("Customers").where({ customer_id: id }).first();
+    res.status(201).json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to create customer' });
   }
 });
 
-// PUT Update Customer
-router.put("/edit/:customer_id", async (req, res) => {
-  const customer_id = req.params.customer_id;
-  const result = await DB.updateCustomerById(customer_id, req.body);
-  if (result.ok) {
-    res.json({ message: "Customer updated" });
-  } else {
-    res.status(400).json({ error: result.message, details: result.error });
+// UPDATE by ID
+router.put('/update/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const data = pickAllowed(req.body);
+
+    const affected = await knexDB("Customers")
+      .where({ customer_id: id })
+      .update(data);
+
+    if (!affected) return res.status(404).json({ message: 'Customer not found' });
+
+    const customer = await knexDB("Customers").where({ customer_id: id }).first();
+    res.json(customer);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to update customer' });
+  }
+});
+
+// DELETE by ID
+router.delete('/delete/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const affected = await knexDB("Customers")
+      .where({ customer_id: id })
+      .del();
+
+    if (!affected) return res.status(404).json({ message: 'Customer not found' });
+
+    res.json({ message: 'Customer deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to delete customer' });
   }
 });
 
 // GET all customers
-router.get("/customers", async (req, res) => {
-  const result = await DB.getAllCustomer();
-  if (result.ok) {
-    res.json({ success: true, data: result.consignee });
-  } else {
-    res.status(400).json({ error: result.message, details: result.error });
+router.get('/', async (req, res) => {
+  try {
+    const customers = await knexDB("Customers")
+      .orderBy('customer_id', 'desc');
+
+    res.json(customers);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Failed to fetch customers' });
   }
 });
 

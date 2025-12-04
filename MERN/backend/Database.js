@@ -1,4 +1,5 @@
 import mysql from 'mysql2';
+import knex from 'knex';
 import './config.js';
 
 // Create a MySQL pool for connection reuse
@@ -9,6 +10,17 @@ const pool = mysql.createPool({
   password: process.env.MYSQL_PASSWORD || '',
   database: process.env.MYSQL_DATABASE || 'ssr'
 }).promise();
+
+export const knexDB = knex({
+  client: 'mysql2',
+  connection: {
+    host: process.env.MYSQL_HOST,
+    user: process.env.MYSQL_USER,
+    password: process.env.MYSQL_PASSWORD,
+    database: process.env.MYSQL_DATABASE,
+  },
+  pool: { min: 2, max: 10 },
+});
 
 
 // #region 🧑‍💼 USERS ─────────────────────────────────────────────

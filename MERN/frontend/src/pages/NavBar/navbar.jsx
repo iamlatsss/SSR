@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 const menuItems = [
-  { text: "🧾 KYC Details", route: "/KYC" },
+  { text: "💁 KYC", route: "/KYC" },
   { text: "🧾 KYC Details", route: "/KYC_list" },
   { text: "🧾 Quotation Details", route: "/Quotation" },
   { text: "🧾 Booking Details", route: "/Bookingdetails" },
@@ -11,10 +11,6 @@ const menuItems = [
   { text: "🧾 Booking Status", route: "/Bookingstatus" },
   { text: "🧾 DO Page", route: "/DOpage" },
   { text: "🧾 FC Page", route: "/FCpage" },
-  { text: "💁 KYC", route: "/KYC" },
-  // { text: "📄 Invoice Format", route: "#" },
-  // { text: "⚠️ Pre-Alert", route: "#" },
-  // { text: "📇 BL Details", route: "#" },
 ];
 
 function Navbar() {
