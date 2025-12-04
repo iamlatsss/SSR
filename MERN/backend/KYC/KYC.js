@@ -1,25 +1,34 @@
 import express from 'express';
-import { authenticateJWT } from "../AuthAPI/Auth.js"
-import { knexDB } from "../Database.js"
+import { authenticateJWT } from "../AuthAPI/Auth.js";
+import { knexDB } from "../Database.js";
 
 const router = express.Router();
-
 
 /* ============== HELPER FUNCTION ============== */
 
 const ALLOWED_FIELDS = [
-  'branch',
   'name',
-  'year_of_establishment',
+  'contactPerson',
+  'email',
+  'phone',
+  'address',
+  'city',
+  'state',
+  'pincode',
+  'gstin',
   'pan',
-  'customer_type',
+  'bankName',
+  'accountNo',
+  'ifsc',
+  'remarks',
+  'status',
+  'date',
+  'branch',
+  'year_of_establishment',
   'director',
   'aadhar',
   'branch_office',
   'office_address',
-  'state',
-  'gstin',
-  'remarks',
 ];
 
 function pickAllowed(body) {
@@ -30,10 +39,10 @@ function pickAllowed(body) {
   return out;
 }
 
-/* ============== API CALL ============== */
+/* ============== API CALLS ============== */
 
 // INSERT
-router.post('/add', async (req, res) => {
+router.post('/add', authenticateJWT, async (req, res) => {
   try {
     const data = pickAllowed(req.body);
 
@@ -47,7 +56,7 @@ router.post('/add', async (req, res) => {
 });
 
 // UPDATE by ID
-router.put('/update/:id', async (req, res) => {
+router.put('/update/:id', authenticateJWT, async (req, res) => {
   try {
     const id = req.params.id;
     const data = pickAllowed(req.body);
@@ -56,7 +65,9 @@ router.put('/update/:id', async (req, res) => {
       .where({ customer_id: id })
       .update(data);
 
-    if (!affected) return res.status(404).json({ message: 'Customer not found' });
+    if (!affected) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
 
     const customer = await knexDB("Customers").where({ customer_id: id }).first();
     res.json(customer);
@@ -67,7 +78,7 @@ router.put('/update/:id', async (req, res) => {
 });
 
 // DELETE by ID
-router.delete('/delete/:id', async (req, res) => {
+router.delete('/delete/:id', authenticateJWT, async (req, res) => {
   try {
     const id = req.params.id;
 
@@ -75,7 +86,9 @@ router.delete('/delete/:id', async (req, res) => {
       .where({ customer_id: id })
       .del();
 
-    if (!affected) return res.status(404).json({ message: 'Customer not found' });
+    if (!affected) {
+      return res.status(404).json({ message: 'Customer not found' });
+    }
 
     res.json({ message: 'Customer deleted' });
   } catch (err) {
@@ -85,7 +98,7 @@ router.delete('/delete/:id', async (req, res) => {
 });
 
 // GET all customers
-router.get('/', async (req, res) => {
+router.get('/', authenticateJWT, async (req, res) => {
   try {
     const customers = await knexDB("Customers")
       .orderBy('customer_id', 'desc');
@@ -97,6 +110,4 @@ router.get('/', async (req, res) => {
   }
 });
 
-
 export default router;
-
