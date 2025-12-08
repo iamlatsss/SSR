@@ -8,7 +8,7 @@ const router = express.Router();
 
 const ALLOWED_FIELDS = [
   'name',
-  'contactPerson',
+  'contact_person',
   'email',
   'phone',
   'address',
@@ -17,8 +17,8 @@ const ALLOWED_FIELDS = [
   'pincode',
   'gstin',
   'pan',
-  'bankName',
-  'accountNo',
+  'bank_name',
+  'account_no',
   'ifsc',
   'remarks',
   'status',
