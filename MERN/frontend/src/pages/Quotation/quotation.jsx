@@ -243,14 +243,13 @@ body {
   };
 
   return (
-    <div className="min-h-screen p-4 md:p-10 bg-gray-100">
+    <div className="min-h-screen p-15">
       <Navbar />
 
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* LEFT: form + buttons */}
-        <div className="bg-white rounded-3xl shadow-2xl p-6 md:p-8 text-black">
-          <h3 className="text-2xl md:text-3xl font-bold mb-6 text-center text-gray-800">
-            Quotation Details
+      <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-2">
+        <div className="bg-white rounded-3xl shadow-2xl p-4 overflow-hidden">
+          <h3 className="text-3xl font-semibold mb-2 text-center text-gray-800">
+            Quotation Form
           </h3>
 
           <form
@@ -260,7 +259,7 @@ body {
               openMailClient();
             }}
           >
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4">
               {[
                 { label: "Email", name: "email", type: "email" },
                 { label: "Port of Loading (POL)", name: "pol", type: "text" },
@@ -288,7 +287,7 @@ body {
                   name="containerSize"
                   value={formData.containerSize}
                   onChange={handleChange}
-                  className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                  className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-700"
                 >
                   <option value="">Select size</option>
                   <option value="20'GP">20'GP</option>
@@ -352,7 +351,7 @@ body {
                 name="validity"
                 value={formData.validity}
                 onChange={handleChange}
-                className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
+                className="w-full border border-gray-300 rounded-xl px-4 py-2 shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition text-gray-700"
               />
             </div>
 
@@ -361,7 +360,7 @@ body {
                 type="submit"
                 className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition transform hover:scale-105"
               >
-                Open Mail Client &amp; Send
+                Open Mail
               </button>
 
               <button
@@ -376,11 +375,11 @@ body {
         </div>
 
         {/* RIGHT: live HTML email preview in iframe */}
-        <div className="bg-white rounded-3xl shadow-2xl p-4 overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-2xl p-2 overflow-hidden">
           <h3 className="text-xl font-semibold mb-3 text-gray-800 text-center">
             Live Email Preview
           </h3>
-          <div className="border rounded-xl overflow-hidden h-[600px]">
+          <div className="border rounded-xl h-[1050px]">
             <iframe
               title="Email Preview"
               style={{ width: "100%", height: "100%", border: "0" }}
