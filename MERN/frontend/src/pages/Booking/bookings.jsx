@@ -27,7 +27,7 @@ const INITIAL_KYC = {
   agents: ["SeaLink Logistics", "PortSide Agencies"],
 };
 
-const BookingWorkspace = () => {
+const Bookings = () => {
   const [kycData, setKycData] = useState(INITIAL_KYC);
   const [jobNo, setJobNo] = useState(6000);
   const [activeTab, setActiveTab] = useState("booking");
@@ -38,6 +38,7 @@ const BookingWorkspace = () => {
     consignee: "",
     pol: "",
     pod: "",
+    finalPod: "",           // ✅ NEW FIELD
     containerSize: "",
     containerCount: 1,
     agent: "",
@@ -55,6 +56,8 @@ const BookingWorkspace = () => {
     shippingLineName: "",
     hblTelexReceived: "No",
     mblTelexReceived: "No",
+    noOfPalette: "",        // ✅ NEW FIELD
+    marksAndNumbers: "",    // ✅ NEW FIELD
   });
 
   const [showAddNew, setShowAddNew] = useState({ type: null, value: "" });
@@ -111,15 +114,10 @@ const BookingWorkspace = () => {
     setShowAddNew({ type: null, value: "" });
   };
 
-  // FIXED: Single correct handleSaveBooking function
   const handleSaveBooking = () => {
     const jobData = { jobNo, ...bookingForm, status: "draft", updates: [] };
-
-    // Load existing jobs
     const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
-    const updatedJobs = existingJobs
-      .filter((j) => j.jobNo !== jobNo)
-      .concat(jobData);
+    const updatedJobs = existingJobs.filter((j) => j.jobNo !== jobNo).concat(jobData);
 
     localStorage.setItem("savedJobs", JSON.stringify(updatedJobs));
     localStorage.setItem("lastJobNo", jobNo.toString());
@@ -128,7 +126,6 @@ const BookingWorkspace = () => {
     alert("Booking saved successfully!");
   };
 
-  // FIXED: Single correct handleSaveBookingUpdate function
   const handleSaveBookingUpdate = () => {
     const updateData = updateForm;
     const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
@@ -162,6 +159,7 @@ const BookingWorkspace = () => {
       consignee: "",
       pol: "",
       pod: "",
+      finalPod: "",
       containerSize: "",
       containerCount: 1,
       agent: "",
@@ -179,6 +177,8 @@ const BookingWorkspace = () => {
       shippingLineName: "",
       hblTelexReceived: "No",
       mblTelexReceived: "No",
+      noOfPalette: "",
+      marksAndNumbers: "",
     });
   };
 
@@ -345,6 +345,28 @@ const BookingWorkspace = () => {
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select POD</option>
+                          {PORTS.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                    </tr>
+
+                    {/* Final POD */}
+                    <tr className="border-b border-gray-300">
+                      <td className="border-r border-gray-300 px-4 py-4 font-medium bg-gray-50">
+                        Final POD
+                      </td>
+                      <td colSpan={3} className="px-4 py-4">
+                        <select
+                          name="finalPod"
+                          value={bookingForm.finalPod}
+                          onChange={handleBookingChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        >
+                          <option value="">Select Final POD</option>
                           {PORTS.map((p) => (
                             <option key={p} value={p}>
                               {p}
@@ -574,6 +596,40 @@ const BookingWorkspace = () => {
                       </td>
                     </tr>
 
+                    {/* No. of Palette */}
+                    <tr className="border-b border-gray-300">
+                      <td className="w-1/4 border-r border-gray-300 px-4 py-4 font-medium bg-gray-50">
+                        No. of Palette
+                      </td>
+                      <td colSpan={3} className="px-4 py-4">
+                        <input
+                          type="number"
+                          name="noOfPalette"
+                          value={updateForm.noOfPalette}
+                          onChange={handleUpdateChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="Enter number of palettes"
+                        />
+                      </td>
+                    </tr>
+
+                    {/* Marks and Numbers */}
+                    <tr className="border-b border-gray-300">
+                      <td className="w-1/4 border-r border-gray-300 px-4 py-4 font-medium bg-gray-50">
+                        Marks and Numbers
+                      </td>
+                      <td colSpan={3} className="px-4 py-4">
+                        <textarea
+                          name="marksAndNumbers"
+                          value={updateForm.marksAndNumbers}
+                          onChange={handleUpdateChange}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+                          rows={2}
+                          placeholder="Enter marks and numbers"
+                        />
+                      </td>
+                    </tr>
+
                     {/* Telex Received */}
                     <tr className="border-b border-gray-300">
                       <td className="w-1/4 border-r border-gray-300 px-4 py-4 font-medium bg-gray-50">
@@ -629,29 +685,36 @@ const BookingWorkspace = () => {
               </h4>
               <div className="space-y-3 text-sm">
                 <div>
-                  <span className="font-medium">Job No:</span> <strong>{jobNo}</strong>
+                  <span className="font-medium">Job No:</span>{" "}
+                  <strong>{jobNo}</strong>
                 </div>
                 <div>
-                  <span className="font-medium">Date:</span> {bookingForm.dateOfNomination}
+                  <span className="font-medium">Date:</span>{" "}
+                  {bookingForm.dateOfNomination}
                 </div>
                 <div>
-                  <span className="font-medium">Shipper:</span> {bookingForm.shipper || "—"}
+                  <span className="font-medium">Shipper:</span>{" "}
+                  {bookingForm.shipper || "—"}
                 </div>
                 <div>
-                  <span className="font-medium">Consignee:</span> {bookingForm.consignee || "—"}
+                  <span className="font-medium">Consignee:</span>{" "}
+                  {bookingForm.consignee || "—"}
                 </div>
                 <div className="font-medium">
-                  Route: {bookingForm.pol && bookingForm.pod
+                  Route:{" "}
+                  {bookingForm.pol && bookingForm.pod
                     ? `${bookingForm.pol} → ${bookingForm.pod}`
                     : "—"}
                 </div>
                 <div className="font-medium">
-                  Containers: {bookingForm.containerSize
+                  Containers:{" "}
+                  {bookingForm.containerSize
                     ? `${bookingForm.containerCount} × ${bookingForm.containerSize}`
                     : "—"}
                 </div>
                 <div>
-                  <span className="font-medium">Agent:</span> {bookingForm.agent || "—"}
+                  <span className="font-medium">Agent:</span>{" "}
+                  {bookingForm.agent || "—"}
                 </div>
               </div>
             </div>
@@ -705,4 +768,4 @@ const BookingWorkspace = () => {
   );
 };
 
-export default BookingWorkspace;
+export default Bookings;

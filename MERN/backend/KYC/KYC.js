@@ -24,6 +24,7 @@ const ALLOWED_FIELDS = [
 
 function pickAllowed(body) {
   const out = {};
+  if (!body) return out;
   for (const key of ALLOWED_FIELDS) {
     if (body[key] !== undefined) out[key] = body[key];
   }
@@ -81,10 +82,16 @@ router.post('/add', authenticateJWT, uploadFields, async (req, res) => {
 });
 
 // UPDATE by ID
-router.put('/update/:id', authenticateJWT, async (req, res) => {
+router.put('/update/:id', authenticateJWT, uploadFields, async (req, res) => {
   try {
     const id = req.params.id;
+
     const data = pickAllowed(req.body);
+
+    // if date is not sent, keep or set today's date as required
+    if (!data.date) {
+      data.date = new Date().toISOString().slice(0, 10);
+    }
 
     const affected = await knexDB("Customers")
       .where({ customer_id: id })
@@ -94,7 +101,10 @@ router.put('/update/:id', authenticateJWT, async (req, res) => {
       return res.status(404).json({ message: 'Customer not found' });
     }
 
-    const customer = await knexDB("Customers").where({ customer_id: id }).first();
+    const customer = await knexDB("Customers")
+      .where({ customer_id: id })
+      .first();
+
     res.json(customer);
   } catch (err) {
     console.error(err);
