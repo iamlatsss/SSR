@@ -6,11 +6,11 @@ const menuItems = [
   { text: "💁 KYC", route: "/KYC" },
   { text: "🧾 KYC Details", route: "/KYC_list" },
   { text: "🧾 Quotation Details", route: "/Quotation" },
-  { text: "🧾 Booking Details", route: "/Bookingdetails" },
   { text: "🧾 Booking", route: "/Bookings" },
-  { text: "🧾 Booking Status", route: "/Bookingstatus" },
+  { text: "🧾 Booking List", route: "/Bookinglist" },
   { text: "🧾 DO Page", route: "/DOpage" },
   { text: "🧾 FC Page", route: "/FCpage" },
+  { text: "🧾 IGM Page", route: "/IGM" },
 ];
 
 function Navbar() {

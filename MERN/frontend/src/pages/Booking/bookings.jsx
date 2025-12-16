@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useLocation } from "react-router-dom";
 import Navbar from "../NavBar/navbar";
 
 const PORTS = [
@@ -27,9 +28,26 @@ const INITIAL_KYC = {
   agents: ["SeaLink Logistics", "PortSide Agencies"],
 };
 
+const BASE_JOB_NO = 6000;
+
+// Helper: find next available job number starting from BASE_JOB_NO
+const getNextJobNo = () => {
+  const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+  if (!existingJobs.length) return BASE_JOB_NO;
+
+  const used = new Set(existingJobs.map((j) => j.jobNo));
+  let candidate = BASE_JOB_NO;
+  while (used.has(candidate)) {
+    candidate += 1;
+  }
+  return candidate;
+};
+
 const Bookings = () => {
+  const location = useLocation();
+
   const [kycData, setKycData] = useState(INITIAL_KYC);
-  const [jobNo, setJobNo] = useState(6000);
+  const [jobNo, setJobNo] = useState(BASE_JOB_NO);
   const [activeTab, setActiveTab] = useState("booking");
 
   const [bookingForm, setBookingForm] = useState({
@@ -38,7 +56,7 @@ const Bookings = () => {
     consignee: "",
     pol: "",
     pod: "",
-    finalPod: "",           // ✅ NEW FIELD
+    finalPod: "",
     containerSize: "",
     containerCount: 1,
     agent: "",
@@ -56,21 +74,73 @@ const Bookings = () => {
     shippingLineName: "",
     hblTelexReceived: "No",
     mblTelexReceived: "No",
-    noOfPalette: "",        // ✅ NEW FIELD
-    marksAndNumbers: "",    // ✅ NEW FIELD
+    noOfPalette: "",
+    marksAndNumbers: "",
   });
 
   const [showAddNew, setShowAddNew] = useState({ type: null, value: "" });
 
+  // On mount or when query param changes: either edit existing job or create new
   useEffect(() => {
     const today = new Date().toISOString().slice(0, 10);
-    setBookingForm((prev) => ({ ...prev, dateOfNomination: today }));
 
-    const lastJobNo = localStorage.getItem("lastJobNo");
-    if (lastJobNo) {
-      setJobNo(parseInt(lastJobNo, 10) + 1);
+    const searchParams = new URLSearchParams(location.search);
+    const jobNoParam = searchParams.get("jobNo");
+
+    const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+
+    if (jobNoParam) {
+      const jobNoInt = parseInt(jobNoParam, 10);
+      const existingJob = savedJobs.find((j) => j.jobNo === jobNoInt);
+
+      if (existingJob) {
+        // Editing existing job – prefill booking and last update
+        setJobNo(existingJob.jobNo);
+        setBookingForm({
+          dateOfNomination: existingJob.dateOfNomination || today,
+          shipper: existingJob.shipper || "",
+          consignee: existingJob.consignee || "",
+          pol: existingJob.pol || "",
+          pod: existingJob.pod || "",
+          finalPod: existingJob.finalPod || "",
+          containerSize: existingJob.containerSize || "",
+          containerCount: existingJob.containerCount || 1,
+          agent: existingJob.agent || "",
+        });
+
+        const lastUpdate =
+          existingJob.updates && existingJob.updates.length
+            ? existingJob.updates[existingJob.updates.length - 1]
+            : {};
+
+        setUpdateForm({
+          hblNo: lastUpdate.hblNo || "",
+          mblNo: lastUpdate.mblNo || "",
+          eta: lastUpdate.eta || "",
+          etd: lastUpdate.etd || "",
+          shipperInvoiceNo: lastUpdate.shipperInvoiceNo || "",
+          netWeight: lastUpdate.netWeight || "",
+          grossWeight: lastUpdate.grossWeight || "",
+          cargoType: lastUpdate.cargoType || "",
+          shippingLineName: lastUpdate.shippingLineName || "",
+          hblTelexReceived: lastUpdate.hblTelexReceived || "No",
+          mblTelexReceived: lastUpdate.mblTelexReceived || "No",
+          noOfPalette: lastUpdate.noOfPalette || "",
+          marksAndNumbers: lastUpdate.marksAndNumbers || "",
+        });
+
+        return; // stop here, edit mode
+      }
     }
-  }, []);
+
+    // No valid job in URL → create new with next free job number
+    const nextJob = getNextJobNo();
+    setJobNo(nextJob);
+    setBookingForm((prev) => ({
+      ...prev,
+      dateOfNomination: today,
+    }));
+  }, [location.search]);
 
   const handleBookingChange = (e) => {
     const { name, value } = e.target;
@@ -117,6 +187,8 @@ const Bookings = () => {
   const handleSaveBooking = () => {
     const jobData = { jobNo, ...bookingForm, status: "draft", updates: [] };
     const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+
+    // Replace existing job with same jobNo or append new
     const updatedJobs = existingJobs.filter((j) => j.jobNo !== jobNo).concat(jobData);
 
     localStorage.setItem("savedJobs", JSON.stringify(updatedJobs));
@@ -146,13 +218,12 @@ const Bookings = () => {
   };
 
   const handleNewBooking = () => {
-    setJobNo((prev) => {
-      const next = prev + 1;
-      localStorage.setItem("lastJobNo", next.toString());
-      return next;
-    });
-
     const today = new Date().toISOString().slice(0, 10);
+    const nextJob = getNextJobNo();
+
+    setJobNo(nextJob);
+    localStorage.setItem("lastJobNo", nextJob.toString());
+
     setBookingForm({
       dateOfNomination: today,
       shipper: "",
@@ -300,7 +371,9 @@ const Bookings = () => {
                         <select
                           name="consignee"
                           value={bookingForm.consignee}
-                          onChange={(e) => handleSelectKyc("consignee", e.target.value)}
+                          onChange={(e) =>
+                            handleSelectKyc("consignee", e.target.value)
+                          }
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         >
                           <option value="">Select consignee</option>

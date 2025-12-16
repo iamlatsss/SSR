@@ -8,11 +8,11 @@ import Home from './pages/Home/home.jsx';
 import Login from './pages/UserAuth/Login.jsx';
 import Admin from './pages/Admin/admin.jsx';
 import Quotation from './pages/Quotation/quotation.jsx';
-import Bookingdetails from './pages/Booking/bookingdetails.jsx';
 import Bookings from './pages/Booking/bookings.jsx';
-import Bookingstatus from './pages/Booking/bookingstatus.jsx';
+import Bookinglist from './pages/Booking/bookinglist.jsx';
 import DOPage from './pages/DO_FC/dopage.jsx';
 import FCPage from './pages/DO_FC/fcpage.jsx';
+import IGM from './pages/IGM/igm.jsx';
 import Test from './pages/test.jsx';
 import KYC from './pages/KYC/kyc.jsx';
 import KYc_List from './pages/KYC/kyclist.jsx';
@@ -30,11 +30,11 @@ function App() {
       <Route path="/Admin" element={<ProtectedRoute  allowedRoles={['Admin']}><Admin /></ProtectedRoute>} />
 
       <Route path="/Quotation" element={<ProtectedRoute><Quotation /></ProtectedRoute>} />
-      <Route path="/Bookingdetails" element={<ProtectedRoute><Bookingdetails /></ProtectedRoute>} />
       <Route path="/Bookings" element={<ProtectedRoute><Bookings /></ProtectedRoute>} />
-      <Route path="/Bookingstatus" element={<ProtectedRoute><Bookingstatus /></ProtectedRoute>} />
+      <Route path="/Bookinglist" element={<ProtectedRoute><Bookinglist /></ProtectedRoute>} />
       <Route path="/DOPage" element={<ProtectedRoute><DOPage /></ProtectedRoute>} />
       <Route path="/FCPage" element={<ProtectedRoute><FCPage /></ProtectedRoute>} />
+      <Route path="/IGM" element={<ProtectedRoute><IGM /></ProtectedRoute>} />
       <Route path="/KYC" element={<ProtectedRoute><KYC /></ProtectedRoute>} />
       <Route path="/KYC_list" element={<ProtectedRoute><KYc_List /></ProtectedRoute>} />
 
