@@ -1,12 +1,12 @@
 import express from 'express';
+import multer from 'multer';
+import path from 'path';
+import { uploadFile, getFileUrl } from '../S3/S3Service.js';
 import { authenticateJWT } from "../AuthAPI/Auth.js";
 import { knexDB } from "../Database.js";
 
 const router = express.Router();
 
-import multer from 'multer';
-import path from 'path';
-import { uploadFile } from '../S3/S3Service.js';
 
 // Configure Multer for memory storage (S3 upload needs buffer)
 const storage = multer.memoryStorage();
@@ -41,6 +41,7 @@ const uploadFields = upload.fields([
   { name: 'kyc_letterhead_doc', maxCount: 1 }
 ]);
 
+
 router.post('/add', authenticateJWT, uploadFields, async (req, res) => {
   try {
     const data = pickAllowed(req.body);
@@ -49,6 +50,8 @@ router.post('/add', authenticateJWT, uploadFields, async (req, res) => {
     const [id] = await knexDB("Customers").insert(data);
 
     // 2. Upload files to S3 if present
+    const fileUpdates = {};
+
     if (req.files) {
       const uploadPromises = [];
       const keys = Object.keys(req.files);
@@ -58,6 +61,9 @@ router.post('/add', authenticateJWT, uploadFields, async (req, res) => {
           const file = req.files[key][0];
           const extension = path.extname(file.originalname);
           const s3Key = `${file.fieldname}${extension}`; // e.g. gstin_doc.pdf
+
+          // Track filename for DB update
+          fileUpdates[file.fieldname] = s3Key;
 
           uploadPromises.push(
             uploadFile({
@@ -71,6 +77,12 @@ router.post('/add', authenticateJWT, uploadFields, async (req, res) => {
       }
 
       await Promise.all(uploadPromises);
+    }
+
+    // 3. Update customer with filenames if any files were uploaded
+    console.log(fileUpdates);
+    if (Object.keys(fileUpdates).length > 0) {
+      await knexDB("Customers").where({ customer_id: id }).update(fileUpdates);
     }
 
     const customer = await knexDB("Customers").where({ customer_id: id }).first();
@@ -91,6 +103,34 @@ router.put('/update/:id', authenticateJWT, uploadFields, async (req, res) => {
     // if date is not sent, keep or set today's date as required
     if (!data.date) {
       data.date = new Date().toISOString().slice(0, 10);
+    }
+
+    // 2. Upload files to S3 if present (UPDATE)
+    if (req.files) {
+      const uploadPromises = [];
+      const keys = Object.keys(req.files);
+
+      for (const key of keys) {
+        if (req.files[key].length > 0) {
+          const file = req.files[key][0];
+          const extension = path.extname(file.originalname);
+          const s3Key = `${file.fieldname}${extension}`; // e.g. gstin_doc.pdf
+
+          // Update data object with new filename
+          data[file.fieldname] = s3Key;
+
+          uploadPromises.push(
+            uploadFile({
+              fileBuffer: file.buffer,
+              key: s3Key,
+              directory: `customers/${id}`,
+              contentType: file.mimetype
+            })
+          );
+        }
+      }
+
+      await Promise.all(uploadPromises);
     }
 
     const affected = await knexDB("Customers")
@@ -138,7 +178,31 @@ router.get('/', authenticateJWT, async (req, res) => {
     const customers = await knexDB("Customers")
       .orderBy('customer_id', 'desc');
 
-    res.json(customers);
+    // Generate signed URLs for each customer's files
+    const customersWithUrls = await Promise.all(customers.map(async (customer) => {
+      const docFields = ['gstin_doc', 'pan_doc', 'iec_doc', 'kyc_letterhead_doc'];
+      const updatedCustomer = { ...customer };
+
+      for (const field of docFields) {
+        // Use the filename stored in the database
+        const filename = customer[field];
+        if (filename) {
+          try {
+            const { url } = await getFileUrl({
+              key: filename,
+              directory: `customers/${customer.customer_id}`
+            });
+            updatedCustomer[`${field}_url`] = url;
+          } catch (e) {
+            console.error(`Failed to sign url for ${field} customer ${customer.customer_id}`, e);
+            updatedCustomer[`${field}_url`] = null;
+          }
+        }
+      }
+      return updatedCustomer;
+    }));
+
+    res.json(customersWithUrls);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Failed to fetch customers' });
@@ -146,3 +210,4 @@ router.get('/', authenticateJWT, async (req, res) => {
 });
 
 export default router;
+
