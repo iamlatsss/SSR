@@ -1,6 +1,5 @@
 import express from 'express';
 import { authenticateJWT } from "../AuthAPI/Auth.js"
-import * as DB from "../Database.js";
 import { knexDB } from "../Database.js";
 
 const router = express.Router();
@@ -79,7 +78,19 @@ router.post("/insert", authenticateJWT, async (req, res) => {
 // View Booking by JobNo
 router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
   try {
-    const booking = await knexDB('Booking').where({ job_no: req.params.JobNo }).first();
+    const booking = await knexDB('Booking')
+      .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
+      .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
+      .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
+      .select(
+        'Booking.*',
+        'S.name as shipper_name',
+        'C.name as consignee_name',
+        'A.name as agent_name'
+      )
+      .where({ 'Booking.job_no': req.params.JobNo })
+      .first();
+
     if (!booking) {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
@@ -95,7 +106,17 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
 // View All Booking 
 router.get("/get", authenticateJWT, async (req, res) => {
   try {
-    const bookings = await knexDB('Booking').select();
+    const bookings = await knexDB('Booking')
+      .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
+      .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
+      .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
+      .select(
+        'Booking.*',
+        'S.name as shipper_name',
+        'C.name as consignee_name',
+        'A.name as agent_name'
+      );
+
     res.json({ success: true, bookings });
   } catch (error) {
     console.error("Error fetching booking:", error);
