@@ -27,17 +27,35 @@ const ALLOWED_FIELDS = [
   "hbl_telex_received",
   "mbl_telex_received",
   "no_of_palette",
-  "marks_and_numbers"
+  "marks_and_numbers",
+  "manual_party_details"
 ];
 
 // Booking Init
 router.get("/init", authenticateJWT, async (req, res) => {
   try {
-    // 1. Get Next JobNo
-    const [result] = await knexDB("Booking").max("job_no as maxJobNo");
-    const nextJobNo = (result.maxJobNo || 6000) + 1;
+    const dbName = process.env.MYSQL_DATABASE || 'ssr';
 
-    // 2. Get Customers (id, name only)
+    // 1. Get AUTO_INCREMENT from schema
+    const [status] = await knexDB.raw(
+      `SELECT AUTO_INCREMENT 
+       FROM information_schema.TABLES 
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'Booking'`,
+      [dbName]
+    );
+
+    // 2. Get MAX(job_no) from table (Double check to ensure no collision)
+    const [maxResult] = await knexDB("Booking").max("job_no as maxJobNo");
+
+    const autoIncrementVal = status[0]?.AUTO_INCREMENT || 6000;
+    const maxJobNo = maxResult.maxJobNo || 5999;
+
+    // Use the greater of the two to be safe
+    const nextJobNo = Math.max(autoIncrementVal, maxJobNo + 1);
+
+    console.log(`[Init] DB: ${dbName}, Schema AI: ${autoIncrementVal}, MaxJob: ${maxResult.maxJobNo} -> Next: ${nextJobNo}`);
+
+    // 3. Get Customers (id, name only)
     const customers = await knexDB("Customers").select("customer_id", "name");
 
     res.json({ success: true, nextJobNo, customers });
@@ -49,6 +67,10 @@ router.get("/init", authenticateJWT, async (req, res) => {
 
 // Insert Booking
 router.post("/insert", authenticateJWT, async (req, res) => {
+  if (!req.body) {
+    return res.status(400).json({ success: false, message: "Missing request body. Ensure Content-Type is application/json" });
+  }
+
   const insertData = {};
 
   // Filter request body for allowed fields
@@ -84,9 +106,9 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
       .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
       .select(
         'Booking.*',
-        'S.name as shipper_name',
-        'C.name as consignee_name',
-        'A.name as agent_name'
+        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.shipper'))) as shipper_name"),
+        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.consignee'))) as consignee_name"),
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name")
       )
       .where({ 'Booking.job_no': req.params.JobNo })
       .first();
@@ -112,9 +134,9 @@ router.get("/get", authenticateJWT, async (req, res) => {
       .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
       .select(
         'Booking.*',
-        'S.name as shipper_name',
-        'C.name as consignee_name',
-        'A.name as agent_name'
+        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.shipper'))) as shipper_name"),
+        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.consignee'))) as consignee_name"),
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name")
       );
 
     res.json({ success: true, bookings });
