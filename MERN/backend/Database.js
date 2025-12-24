@@ -137,9 +137,30 @@ export async function deleteUserById(user_id) {
 // #region 📖 BOOKING ─────────────────────────────────────────────
 
 const ALLOWED_BOOKING_FIELDS = new Set([
-  "NominationDate", "Consignee", "Shipper", "HBL", "MBL", "POL", "POD",
-  "ContainerSize", "Agent", "ShippingLine", "BuyRate", "SellRate", "ETD",
-  "ETA", "SWB", "IGMFiled", "CHA", "Description", "Status"
+  "job_no",
+  "date_of_nomination",
+  "shipper",
+  "consignee",
+  "pol",
+  "pod",
+  "final_pod",
+  "container_size",
+  "container_count",
+  "agent",
+  "status",
+  "hbl_no",
+  "mbl_no",
+  "eta",
+  "etd",
+  "shipper_invoice_no",
+  "net_weight",
+  "gross_weight",
+  "cargo_type",
+  "shipping_line_name",
+  "hbl_telex_received",
+  "mbl_telex_received",
+  "no_of_palette",
+  "marks_and_numbers"
 ]);
 
 // Insert Booking
@@ -173,7 +194,7 @@ export async function insertBooking(bookingData) {
 
 // Get booking by JobNo
 export async function getBookingById(jobNo) {
-  const query = "SELECT * FROM Booking WHERE JobNo = ?";
+  const query = "SELECT * FROM Booking WHERE job_no = ?";
   try {
     const [rows] = await pool.query(query, [jobNo]);
     if (rows.length === 0) {
@@ -191,10 +212,7 @@ export async function getAllBookings() {
   const query = "SELECT * FROM Booking";
   try {
     const [rows] = await pool.query(query, []);
-    if (rows.length === 0) {
-      return { ok: false, message: "Bookings not found" };
-    }
-    return { ok: true, bookings: rows[0] };
+    return { ok: true, bookings: rows };
   } catch (error) {
     console.error("Error fetching booking:", error);
     return { ok: false, message: "Database error", error: error.message };
@@ -218,7 +236,7 @@ export async function updateBookingById(jobNo, updates) {
   }
 
   values.push(jobNo);
-  const query = `UPDATE Booking SET ${fields.join(", ")} WHERE JobNo = ?`;
+  const query = `UPDATE Booking SET ${fields.join(", ")} WHERE job_no = ?`;
 
   try {
     const [result] = await pool.query(query, values);
