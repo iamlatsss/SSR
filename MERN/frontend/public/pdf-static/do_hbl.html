@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Delivery Order</title>
+  <meta charset="UTF-8" />
+  <title>Delivery Order - HBL</title>
   <style>
     body {
       font-family: Calibri, Arial, sans-serif;
@@ -33,19 +33,23 @@
       border-bottom: 1px solid #000;
       padding-bottom: 8px;
     }
+
     .do-logo img {
       height: 60px;
       width: auto;
     }
+
     .do-org-details {
       flex: 1;
       text-align: right;
     }
+
     .org-name {
       font-size: 18px;
       font-weight: bold;
       margin-bottom: 2px;
     }
+
     .org-other {
       font-size: 14px;
       line-height: 1.2;
@@ -60,8 +64,10 @@
       text-decoration: underline;
     }
 
-    .do-block { font-size: 14.5px; margin-bottom: 6px; }
-    .do-bold { font-weight: bold; }
+    .do-block {
+      font-size: 14.5px;
+      margin-bottom: 6px;
+    }
 
     .do-table {
       width: 100%;
@@ -70,11 +76,14 @@
       margin-bottom: 12px;
       font-size: 14px;
     }
-    .do-table th, .do-table td {
+
+    .do-table th,
+    .do-table td {
       border: 1px solid #000;
       padding: 5px 8px 5px 10px;
       vertical-align: top;
     }
+
     .do-table th {
       background: #f2f2f2;
       width: 140px;
@@ -101,49 +110,55 @@
 <body>
 <div class="do-container">
 
+  <!-- HEADER -->
   <div class="do-header">
-    <img class="logo" src="../images/SSR_nobg.webp" alt="Logo">
+    <div class="do-logo">
+      <img class="logo" src="../images/SSR_nobg.webp" alt="Logo" />
+    </div>
 
     <div class="do-org-details">
       <div class="org-name">SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
       <div class="org-other">
-        CIN NO: U52220MH2023PTC414525<br>
-        Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A,<br>
-        Near Raghuleela Mall, Vashi, Navi Mumbai - 400703, Maharashtra, India<br>
-        E-mail ID: customerservice@ssrlogistic.net<br>
-        Tel.No: 7700990630, 7700990630
+        CIN NO: U52220MH2023PTC414525<br />
+        Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A,<br />
+        Near Raghuleela Mall, Vashi, Navi Mumbai-400703, Maharashtra, India<br />
+        E-mail ID: customerservice@ssrlogistic.net<br />
+        Tel.No : 7700990630, 7700990630
       </div>
     </div>
   </div>
 
+  <!-- TITLE -->
   <div class="do-title">DELIVERY ORDER</div>
 
-  <div class="do-block"><b>To,</b></div>
+  <!-- TO / DO NO / DATE -->
+  <div class="do-block"><b>To,</b> {{ igm.cfsname }}</div>
 
-  <div class="do-block"><b>DO NO.:</b> MEDUGJ817675</div>
-  <div class="do-block"><b>DO Date:</b> 19-05-2025</div>
+  <div class="do-block"><b>DO NO.</b> {{ bookings.mbl_no }}</div>
+  <div class="do-block"><b>DO Date:</b> {{ do.do_date }}</div>
 
   <div class="do-block"><b>Dear Sir,</b></div>
   <div class="do-block">
     You are requested to kindly make delivery of the below mentioned container(s), whose details are as follows:
   </div>
 
+  <!-- DETAILS TABLE -->
   <table class="do-table">
     <tr>
       <th>HBL No:</th>
-      <td>{{ booking.hbl_no }}</td>
+      <td>{{ bookings.hbl_no }}</td>
       <th>Date:</th>
-      <td>{{ booking.nomination_date }}</td>
+      <td>{{ bookings.nomination_date }}</td>
     </tr>
     <tr>
       <th>MBL No:</th>
-      <td>{{ booking.mbl_no }}</td>
+      <td>{{ bookings.mbl_no }}</td>
       <th>Date:</th>
-      <td>{{ booking.nomination_date }}</td>
+      <td>{{ bookings.nomination_date }}</td>
     </tr>
     <tr>
       <th>Container No.:</th>
-      <td colspan="3">{{ booking.container_no }}</td>
+      <td colspan="3">{{ bookings.container_number }}</td>
     </tr>
     <tr>
       <th>MBL Consignee:</th>
@@ -151,55 +166,55 @@
     </tr>
     <tr>
       <th>HBL Consignee:</th>
-      <td colspan="3">{{ booking.consignee_details }}</td>
+      <td colspan="3">{{ bookings.consignee }}</td>
     </tr>
     <tr>
       <th>Notify Party:</th>
-      <td colspan="3">SSR LOGISTIC SOLUTIONS PVT LTD</td>
+      <td colspan="3">{{ bookings.consignee }}</td>
     </tr>
     <tr>
       <th>CHA:</th>
-      <td colspan="3">{{ booking.cha }}</td>
+      <td colspan="3">{{ igm.cha_name }}</td>
     </tr>
     <tr>
       <th>Cargo Description:</th>
-      <td colspan="3">{{ booking.description_box }}</td>
+      <td colspan="3">{{ bookings.description }}</td>
     </tr>
     <tr>
       <th>Delivery:</th>
-      <td colspan="3">Full</td>
+      <td colspan="3">{{ bookings.delivery_type }}</td>
     </tr>
     <tr>
       <th>No of Packages:</th>
-      <td colspan="3">{{ booking.no_of_packages }}</td>
+      <td colspan="3">{{ bookings.no_of_packages }}</td>
     </tr>
     <tr>
       <th>Measurement:</th>
-      <td colspan="3">{{ booking.measurement }}</td>
+      <td colspan="3">{{ bookings.measurement }}</td>
     </tr>
     <tr>
       <th>Gross Weight:</th>
-      <td colspan="3">{{ booking.gross_weight }}</td>
+      <td colspan="3">{{ bookings.gross_weight }}</td>
     </tr>
     <tr>
       <th>Vessel Voyage:</th>
-      <td colspan="3">{{ booking.vessel_voyage }}</td>
+      <td colspan="3">{{ bookings.vessel_voyage }}</td>
     </tr>
     <tr>
-      <th>IGM No.:</th>
-      <td>{{ booking.igm_no }}</td>
-      <th>Line No.:</th>
-      <td>{{ booking.line_no }}</td>
+      <th>IGM No. :</th>
+      <td>{{ igm.igm_no }}</td>
+      <th>Line N0.:</th>
+      <td>{{ igm.line_no }}</td>
     </tr>
     <tr>
       <th>Sub-Line No.:</th>
-      <td>{{ booking.sub_line_no }}</td>
+      <td>{{ igm.sub_line_no }}</td>
       <th>Marks & Nos.:</th>
-      <td>{{ booking.marks_nos }}</td>
+      <td>{{ bookings.marks_nos }}</td>
     </tr>
     <tr>
       <th>This Delivery Order is Valid Till:</th>
-      <td colspan="3">{{ booking.valid_till }}</td>
+      <td colspan="3">{{ bookings.validity }}</td>
     </tr>
   </table>
 
@@ -207,12 +222,15 @@
     NOTE: NO MANUAL REVALIDATION OF DATE IS ALLOWED ON THIS DELIVERY ORDER, ONLY FRESH DELIVERY ORDER TO BE ACCEPTED.
   </div>
 
-  <div class="do-block"><b>Remarks:</b> {{ booking.remarks }}</div>
+  <!-- <div class="do-block"><b>Remarks:</b> {{ bookings.remarks }}</div> -->
 
   <div class="do-sign">
-    <div>Thanking you,<br>Yours Faithfully,</div>
     <div>
-      <b>FOR SSR LOGISTIC SOLUTIONS Pvt. Ltd.</b><br><br><br>
+      Thanking you,<br />
+      Yours Faithfully,
+    </div>
+    <div>
+      <b>FOR SSR LOGISTIC SOLUTIONS Pvt. Ltd.</b><br /><br /><br />
       Authorized Signatory
     </div>
   </div>

@@ -1,146 +1,203 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import Navbar from "../NavBar/navbar";
 
-const mockFetchDoData = async ({ jobNo, blNo, type }) => {
-  // Replace with real fetch (API/localStorage lookup)
-  // type = "MBL" or "HBL"
-  return {
-    companyName: "SSR LOGISTIC SOLUTIONS PVT. LTD.",
-    addressLine1:
-      "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai-400703, Maharashtra, India",
-    email: "customerservice@ssrlogistic.net",
-    phone: "7700990630",
-    doNo: "MEDUVX583028",
-    doDate: "",
-    toParty:
-      type === "MBL"
-        ? "BUDGET CFS TERMINALS PRIVATE LIMITED"
-        : "MSC MEDITERRANEAN SHIPPING CO. S.A. (G)",
-    hblNo: "UB25042205",
-    hblDate: "04-05-2025",
-    mblNo: "MEDUVX583028",
-    mblDate: "04-05-2025",
-    containerNos:
-      "MSDU2056272, FCIU4251508, FCIU4159731, MEDU5760919",
-    mblConsignee: "SSR LOGISTIC SOLUTIONS PVT LTD",
-    hblConsignee: "SHLOKA ENTERPRISES",
-    notifyParty:
-      type === "MBL"
-        ? "SSR LOGISTIC SOLUTIONS PVT LTD"
-        : "SHLOKA ENTERPRISES",
-    cha: "ADITYA SHIPPING",
-    cargoDescription: "CARBON RAISER HS CODE 38249900",
-    delivery: "Full",
-    noOfPackages: "4320 BAGS",
-    measurement: "100.000",
-    grossWeight: "108216.000",
-    vesselVoyage: "MSC PALOMA V.FY518A",
-    igmNo: "1139433",
-    lineNo: type === "MBL" ? "252" : "1139433",
-    subLineNo: "1",
-    marksAndNos: type === "MBL"
-      ? "MADE IN CHINA"
-      : "RECARBURIZER LOT NO:202504-01 MADE IN CHINA",
-    validity: "",
-  };
-};
-
-const DoCreationPage = () => {
-  const [jobNo, setJobNo] = useState("");
-  const [selectedBl, setSelectedBl] = useState("");
-  const [blType, setBlType] = useState("MBL"); // MBL or HBL
+const DoPrintPage = () => {
+  const [jobs, setJobs] = useState([]);
+  const [selectedJobNo, setSelectedJobNo] = useState("");
+  const [selectedBlType, setSelectedBlType] = useState(""); // "MBL" or "HBL"
   const [previewData, setPreviewData] = useState(null);
-  const [loading, setLoading] = useState(false);
 
-  const handleSearch = async () => {
-    if (!jobNo || !selectedBl) return;
-    setLoading(true);
-    const data = await mockFetchDoData({
-      jobNo,
-      blNo: selectedBl,
-      type: blType,
-    });
-    setPreviewData(data);
-    setLoading(false);
+  // Load all jobs saved by Booking page
+  useEffect(() => {
+    const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+    setJobs(savedJobs);
+  }, []);
+
+  const selectedJob = useMemo(
+    () => jobs.find((j) => String(j.jobNo) === String(selectedJobNo)),
+    [jobs, selectedJobNo]
+  );
+
+  // Compute BL options for current job
+  const blOptions = useMemo(() => {
+    if (!selectedJob) return [];
+    const latestUpdate =
+      selectedJob.updates && selectedJob.updates.length
+        ? selectedJob.updates[selectedJob.updates.length - 1]
+        : null;
+
+    if (!latestUpdate) return [];
+
+    const opts = [];
+    if (latestUpdate.mblNo) {
+      opts.push({
+        type: "MBL",
+        label: `MBL - ${latestUpdate.mblNo}`,
+      });
+    }
+    if (latestUpdate.hblNo) {
+      opts.push({
+        type: "HBL",
+        label: `HBL - ${latestUpdate.hblNo}`,
+      });
+    }
+    return opts;
+  }, [selectedJob]);
+
+  const handleSearch = () => {
+    if (!selectedJob || !selectedBlType) return;
+    const latestUpdate =
+      selectedJob.updates && selectedJob.updates.length
+        ? selectedJob.updates[selectedJob.updates.length - 1]
+        : {};
+
+    // Common values (you can replace hard-coded ones with KYC/master data)
+    const companyName = "SSR LOGISTIC SOLUTIONS PVT. LTD.";
+    const addressLine1 =
+      "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai-400703, Maharashtra, India";
+    const email = "customerservice@ssrlogistic.net";
+    const phone = "7700990630";
+    const doNo = latestUpdate.mblNo || ""; // same as sample DO NO is MBL No.[file:21][file:22]
+
+    const base = {
+      companyName,
+      addressLine1,
+      email,
+      phone,
+      doNo,
+      doDate: "",
+
+      hblNo: latestUpdate.hblNo || "",
+      hblDate: latestUpdate.hblDate || "", // if you store it
+      mblNo: latestUpdate.mblNo || "",
+      mblDate: latestUpdate.mblDate || "",
+
+      containerNos: latestUpdate.containerNumbers || latestUpdate.containerNo || "",
+      mblConsignee: latestUpdate.mblConsignee || selectedJob.consignee || "",
+      hblConsignee: latestUpdate.hblConsignee || selectedJob.consignee || "",
+      notifyParty: latestUpdate.notifyParty || "",
+      cha: latestUpdate.chaName || "",
+      cargoDescription: latestUpdate.cargoDescription || latestUpdate.cargoType || "",
+      delivery: latestUpdate.delivery || "Full",
+      noOfPackages: latestUpdate.noOfPackages || "",
+      measurement: latestUpdate.measurement || "",
+      grossWeight: latestUpdate.grossWeight || "",
+      vesselVoyage: latestUpdate.vesselVoyage || latestUpdate.shippingLineName || "",
+      igmNo: latestUpdate.igmNo || "",
+      lineNo: latestUpdate.lineNo || "",
+      subLineNo: latestUpdate.subLineNo || "",
+      marksAndNos: latestUpdate.marksAndNumbers || "",
+      validity: latestUpdate.doValidity || "",
+    };
+
+    let specific;
+    if (selectedBlType === "MBL") {
+      // Match MBL PDF: To = CFS, Notify Party = SSR, Line No = 252, Marks = MADE IN CHINA in your sample.[file:21]
+      specific = {
+        toParty: latestUpdate.toPartyMbl || "BUDGET CFS TERMINALS PRIVATE LIMITED",
+        notifyParty:
+          latestUpdate.notifyPartyMbl ||
+          base.notifyParty ||
+          "SSR LOGISTIC SOLUTIONS PVT LTD",
+        lineNo: latestUpdate.lineNo || "252",
+        marksAndNos:
+          latestUpdate.marksAndNumbersMbl || base.marksAndNos || "MADE IN CHINA",
+      };
+    } else {
+      // Match HBL PDF: To = Line/Shipping Co, Notify = HBL consignee, Line No = IGM No in sample.[file:22]
+      specific = {
+        toParty:
+          latestUpdate.toPartyHbl ||
+          latestUpdate.shippingLineName ||
+          "MSC MEDITERRANEAN SHIPPING CO. S.A. (G)",
+        notifyParty:
+          latestUpdate.notifyPartyHbl ||
+          base.hblConsignee ||
+          "SHLOKA ENTERPRISES",
+        lineNo: latestUpdate.lineNo || base.igmNo || "1139433",
+        marksAndNos:
+          latestUpdate.marksAndNumbersHbl ||
+          base.marksAndNos ||
+          "RECARBURIZER LOT NO:202504-01 MADE IN CHINA",
+      };
+    }
+
+    setPreviewData({ ...base, ...specific, blType: selectedBlType });
   };
 
-  const handleCreateDo = () => {
+  const handleGeneratePdf = () => {
     if (!previewData) return;
-    // Here call backend / open new tab with actual PDF
-    alert("DO created/printed (wire this to backend).");
+    // Plug in your pdf/print logic: jsPDF, print window, or API call
+    alert(
+      `Generate ${previewData.blType} DO PDF for Job ${selectedJobNo} (${previewData.blType} No: ${
+        previewData.blType === "MBL" ? previewData.mblNo : previewData.hblNo
+      })`
+    );
   };
 
   return (
-    <div className="min-h-screen p-15">
+    <div className="min-h-screen p-20">
       <Navbar />
 
       <div className="max-w-6xl mx-auto mt-6 p-6 bg-white rounded-lg shadow">
-        <h3 className="text-3xl font-bold text-gray-800 mb-2">SI DO Print</h3>
+        <h2 className="text-3xl font-bold text-gray-800 mb-2">SI DO Print</h2>
 
-        {/* Search row */}
+        {/* Search controls */}
         <div className="flex flex-wrap items-end gap-4 mb-6 text-gray-800">
+          {/* Job No dropdown from savedJobs */}
           <div className="flex flex-col">
-            <label className="text-sm font-medium mb-1">
-              MBL Job No.
-            </label>
-            <input
-              type="text"
-              value={jobNo}
-              onChange={(e) => setJobNo(e.target.value)}
+            <label className="text-sm font-medium mb-1">Job No.</label>
+            <select
+              value={selectedJobNo}
+              onChange={(e) => {
+                setSelectedJobNo(e.target.value);
+                setSelectedBlType("");
+                setPreviewData(null);
+              }}
               className="px-3 py-2 border rounded w-40"
-              placeholder="5182"
-            />
+            >
+              <option value="">Select Job</option>
+              {jobs.map((job) => (
+                <option key={job.jobNo} value={job.jobNo}>
+                  {job.jobNo}
+                </option>
+              ))}
+            </select>
           </div>
 
+          {/* MBL / HBL selector for that job */}
           <div className="flex flex-col">
             <label className="text-sm font-medium mb-1">
               MBL / HBL No.
             </label>
             <select
-              value={selectedBl}
-              onChange={(e) => setSelectedBl(e.target.value)}
+              value={selectedBlType}
+              onChange={(e) => {
+                setSelectedBlType(e.target.value);
+                setPreviewData(null);
+              }}
               className="px-3 py-2 border rounded w-64"
+              disabled={!selectedJob || !blOptions.length}
             >
               <option value="">Select</option>
-              {/* Populate from job data: first option MBL, others HBLs */}
-              <option value="5182-MBL">5182-MBL</option>
-              <option value="UB25042205-HBL">UB25042205-HBL</option>
+              {blOptions.map((opt) => (
+                <option key={opt.type} value={opt.type}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <label className="flex items-center gap-1 text-sm">
-              <input
-                type="radio"
-                name="blType"
-                value="MBL"
-                checked={blType === "MBL"}
-                onChange={() => setBlType("MBL")}
-              />
-              <span>MBL</span>
-            </label>
-            <label className="flex items-center gap-1 text-sm">
-              <input
-                type="radio"
-                name="blType"
-                value="HBL"
-                checked={blType === "HBL"}
-                onChange={() => setBlType("HBL")}
-              />
-              <span>HBL</span>
-            </label>
           </div>
 
           <button
             onClick={handleSearch}
-            disabled={loading || !jobNo || !selectedBl}
+            disabled={!selectedJobNo || !selectedBlType}
             className="bg-blue-600 text-white px-5 py-2 rounded disabled:opacity-60"
           >
-            {loading ? "Loading..." : "Search"}
+            Search
           </button>
         </div>
 
-        {/* Preview */}
+        {/* DO preview – matches attached PDFs */}
         {previewData && (
           <div className="border border-gray-300 p-6 rounded-md bg-gray-50">
             <div className="text-center mb-4">
@@ -151,7 +208,7 @@ const DoCreationPage = () => {
                 {previewData.addressLine1}
               </p>
               <p className="text-xs mt-1">
-                E-mail: {previewData.email} | Tel:{" "}
+                E-mail ID: {previewData.email} | Tel.No :{" "}
                 {previewData.phone}
               </p>
               <h4 className="mt-4 text-base font-semibold">
@@ -165,10 +222,10 @@ const DoCreationPage = () => {
                 {previewData.toParty}
               </p>
               <p className="mt-2">
-                <span className="font-semibold">DO No.: </span>
+                <span className="font-semibold">DO NO. </span>
                 {previewData.doNo} &nbsp;&nbsp;
                 <span className="font-semibold">DO Date: </span>
-                {previewData.doDate || "—"}
+                {previewData.doDate || ""}
               </p>
             </div>
 
@@ -179,16 +236,24 @@ const DoCreationPage = () => {
 
             <div className="grid grid-cols-2 gap-2 text-sm mb-4">
               <p>
-                <span className="font-semibold">HBL No.: </span>
-                {previewData.hblNo} &nbsp; Date:{" "}
-                {previewData.hblDate}
+                <span className="font-semibold">HBL No: </span>
+                {previewData.hblNo}
+                {previewData.hblDate && (
+                  <>
+                    &nbsp; Date: {previewData.hblDate}
+                  </>
+                )}
               </p>
               <p>
-                <span className="font-semibold">MBL No.: </span>
-                {previewData.mblNo} &nbsp; Date:{" "}
-                {previewData.mblDate}
+                <span className="font-semibold">MBL No: </span>
+                {previewData.mblNo}
+                {previewData.mblDate && (
+                  <>
+                    &nbsp; Date: {previewData.mblDate}
+                  </>
+                )}
               </p>
-              <p>
+              <p className="col-span-2">
                 <span className="font-semibold">Container No.: </span>
                 {previewData.containerNos}
               </p>
@@ -201,15 +266,17 @@ const DoCreationPage = () => {
                 {previewData.hblConsignee}
               </p>
               <p>
-                <span className="font-semibold">Notify Party: </span>
+                <span className="font-semibold">Nofity Party: </span>
                 {previewData.notifyParty}
               </p>
               <p>
                 <span className="font-semibold">CHA: </span>
                 {previewData.cha}
               </p>
-              <p>
-                <span className="font-semibold">Cargo Description: </span>
+              <p className="col-span-2">
+                <span className="font-semibold">
+                  Cargo Description:
+                </span>{" "}
                 {previewData.cargoDescription}
               </p>
               <p>
@@ -233,11 +300,11 @@ const DoCreationPage = () => {
                 {previewData.vesselVoyage}
               </p>
               <p>
-                <span className="font-semibold">IGM No.: </span>
+                <span className="font-semibold">IGM No. : </span>
                 {previewData.igmNo}
               </p>
               <p>
-                <span className="font-semibold">Line No.: </span>
+                <span className="font-semibold">Line N0.: </span>
                 {previewData.lineNo}
               </p>
               <p>
@@ -252,7 +319,7 @@ const DoCreationPage = () => {
                 <span className="font-semibold">
                   This Delivery Order is Valid Till:
                 </span>{" "}
-                {previewData.validity || "—"}
+                {previewData.validity || ""}
               </p>
             </div>
 
@@ -263,19 +330,19 @@ const DoCreationPage = () => {
 
             <div className="mt-8 text-right text-sm">
               <p>Thanking you,</p>
-              <p>Yours faithfully,</p>
+              <p>Yours Faithfully,</p>
               <p className="mt-4 font-semibold">
-                FOR SSR LOGISTIC SOLUTIONS PVT. LTD.
+                FOR SSR LOGISTIC SOLUTIONS Pvt. Ltd.
               </p>
               <p>Authorized Signatory</p>
             </div>
 
             <div className="mt-6 text-right">
               <button
-                onClick={handleCreateDo}
+                onClick={handleGeneratePdf}
                 className="bg-green-600 text-white px-6 py-2 rounded"
               >
-                Create / Print DO
+                Generate {previewData.blType} PDF
               </button>
             </div>
           </div>
@@ -285,4 +352,4 @@ const DoCreationPage = () => {
   );
 };
 
-export default DoCreationPage;
+export default DoPrintPage;

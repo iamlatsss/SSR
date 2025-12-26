@@ -45,7 +45,7 @@ export default function KycListPage() {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState("");
-  const [showModal, setShowModal] = useState(false); // add/edit modal
+  const [showModal, setShowModal] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [files, setFiles] = useState({
     gstin_doc: null,
@@ -55,28 +55,20 @@ export default function KycListPage() {
   });
   const [submitting, setSubmitting] = useState(false);
   const [search, setSearch] = useState("");
-  const [detailsCustomer, setDetailsCustomer] = useState(null); // view‑only modal
+  const [detailsCustomer, setDetailsCustomer] = useState(null);
 
   function getAuthHeaders() {
     const token = localStorage.getItem("token");
-    return token
-      ? {
-          Authorization: `Bearer ${token}`,
-        }
-      : {};
+    return token ? { Authorization: `Bearer ${token}` } : {};
   }
 
   async function loadCustomers() {
     setLoading(true);
     try {
       const res = await fetch("/api/kyc", {
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
       });
-
-      const data = await res.json().catch(() => []);
+      const data = await res.json();
       if (!res.ok) {
         setMsg(data?.message || "Failed to fetch customers");
       } else {
@@ -95,10 +87,9 @@ export default function KycListPage() {
   }, []);
 
   function openAddModal() {
-    const today = new Date().toISOString().slice(0, 10);
     setForm({
       ...initialForm,
-      date: today,
+      date: new Date().toISOString().slice(0, 10),
     });
     setFiles({
       gstin_doc: null,
@@ -110,10 +101,7 @@ export default function KycListPage() {
   }
 
   function handleEdit(cust) {
-    setForm({
-      ...initialForm,
-      ...cust, // keep date from DB for existing records
-    });
+    setForm({ ...initialForm, ...cust });
     setFiles({
       gstin_doc: null,
       pan_doc: null,
@@ -125,23 +113,18 @@ export default function KycListPage() {
 
   async function handleDelete(id) {
     if (!window.confirm("Delete customer?")) return;
-
     try {
       const res = await fetch(`/api/kyc/delete/${id}`, {
         method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-          ...getAuthHeaders(),
-        },
+        headers: getAuthHeaders(),
       });
-
-      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        alert(data?.message || "Failed to delete customer");
+        alert("Failed to delete customer");
         return;
       }
-
-      setCustomers((prev) => prev.filter((c) => c.customer_id !== id));
+      setCustomers((prev) =>
+        prev.filter((c) => c.customer_id !== id)
+      );
       setMsg("Customer deleted");
       setTimeout(() => setMsg(""), 2000);
     } catch (err) {
@@ -156,59 +139,54 @@ export default function KycListPage() {
   }
 
   function handleFileChange(e) {
-    const { name, files: selected } = e.target;
-    setFiles((prev) => ({ ...prev, [name]: selected[0] || null }));
+    const { name, files } = e.target;
+    setFiles((prev) => ({ ...prev, [name]: files[0] || null }));
   }
 
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
+
     try {
       const isEdit = !!form.customer_id;
-
-      const formDataToSend = new FormData();
-      Object.entries(form).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formDataToSend.append(key, value);
-        }
-      });
-      Object.entries(files).forEach(([key, file]) => {
-        if (file) {
-          formDataToSend.append(key, file);
-        }
-      });
-
       const url = isEdit
         ? `/api/kyc/update/${form.customer_id}`
         : "/api/kyc/add";
-      const method = isEdit ? "PUT" : "POST";
+
+      const formDataToSend = new FormData();
+
+      Object.entries(form).forEach(([key, value]) => {
+        if (value !== null && value !== undefined && value !== "") {
+          formDataToSend.append(key, value);
+        }
+      });
+
+      Object.entries(files).forEach(([key, file]) => {
+        if (file) formDataToSend.append(key, file);
+      });
 
       const res = await fetch(url, {
-        method,
-        headers: {
-          // don't set Content-Type manually for FormData
-          ...getAuthHeaders(),
-        },
+        method: isEdit ? "PUT" : "POST",
+        headers: getAuthHeaders(),
         body: formDataToSend,
       });
 
-      const data = await res.json().catch(() => ({}));
+      const data = await res.json();
+
       if (!res.ok) {
         alert(data?.message || "Failed to save customer");
         return;
       }
 
-      const savedCustomer = data;
-
       if (isEdit) {
         setCustomers((prev) =>
           prev.map((c) =>
-            c.customer_id === savedCustomer.customer_id ? savedCustomer : c
+            c.customer_id === data.customer_id ? data : c
           )
         );
         setMsg("Customer updated");
       } else {
-        setCustomers((prev) => [savedCustomer, ...prev]);
+        setCustomers((prev) => [data, ...prev]);
         setMsg("Customer added");
       }
 
@@ -222,19 +200,21 @@ export default function KycListPage() {
     }
   }
 
+  function buildDocUrl(fieldName) {
+    return detailsCustomer
+      ? detailsCustomer[`${fieldName}_url`]
+      : null;
+  }
+
   const filteredCustomers = customers.filter((c) => {
     const q = search.toLowerCase();
     return (
-      c.name?.toLowerCase().includes(q) ||
-      c.gstin?.toLowerCase().includes(q) ||
-      c.address?.toLowerCase().includes(q)
+      c?.name?.toLowerCase().includes(q) ||
+      c?.gstin?.toLowerCase().includes(q) ||
+      c?.address?.toLowerCase().includes(q)
     );
   });
 
-  function buildDocUrl(customerId, fieldName) {
-    if (!customerId) return null;
-    return `/s3/file?directory=customers/${customerId}&key=${fieldName}`;
-  }
 
   return (
     <div className="min-h-screen p-20">
@@ -333,11 +313,10 @@ export default function KycListPage() {
 
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <span
-                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          c.status === "Active"
-                            ? "bg-green-100 text-green-800"
-                            : "bg-red-100 text-red-800"
-                        }`}
+                        className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${c.status === "Active"
+                          ? "bg-green-100 text-green-800"
+                          : "bg-red-100 text-red-800"
+                          }`}
                       >
                         {c.status}
                       </span>
@@ -1005,7 +984,7 @@ export default function KycListPage() {
               <div>
                 <span className="font-semibold">Remarks:</span>
                 <div className="mt-1 text-slate-700 whitespace-pre-wrap">
-                  {detailsCustomer.remarks || "-"}
+                  {detailsCustomer.gst_remarks || "-"}
                 </div>
               </div>
 
@@ -1015,10 +994,7 @@ export default function KycListPage() {
                   <li>
                     GST Certificate:{" "}
                     <a
-                      href={buildDocUrl(
-                        detailsCustomer.customer_id,
-                        "gstin_doc"
-                      )}
+                      href={buildDocUrl("gstin_doc")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline"
@@ -1029,10 +1005,7 @@ export default function KycListPage() {
                   <li>
                     PAN Card:{" "}
                     <a
-                      href={buildDocUrl(
-                        detailsCustomer.customer_id,
-                        "pan_doc"
-                      )}
+                      href={buildDocUrl("pan_doc")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline"
@@ -1043,7 +1016,7 @@ export default function KycListPage() {
                   <li>
                     IEC Form:{" "}
                     <a
-                      href={buildDocUrl(detailsCustomer.customer_id, "iec_doc")}
+                      href={buildDocUrl("iec_doc")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline"
@@ -1054,10 +1027,7 @@ export default function KycListPage() {
                   <li>
                     KYC Form (Signed Letterhead):{" "}
                     <a
-                      href={buildDocUrl(
-                        detailsCustomer.customer_id,
-                        "kyc_letterhead_doc"
-                      )}
+                      href={buildDocUrl("kyc_letterhead_doc")}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="underline"
