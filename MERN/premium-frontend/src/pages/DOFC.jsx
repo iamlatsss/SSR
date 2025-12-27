@@ -35,78 +35,87 @@ const DOFC = () => {
         [jobs, selectedJobNo]
     );
 
-    // Compute options based on available data in the job
+    // Compute options - MBL Disabled for now
     const typeOptions = useMemo(() => {
         if (!selectedJob) return [];
         const opts = [];
-        if (selectedJob.mbl_no) opts.push({ value: "MBL", label: `MBL - ${selectedJob.mbl_no}` });
-        if (selectedJob.hbl_no) opts.push({ value: "HBL", label: `HBL - ${selectedJob.hbl_no}` });
+        // HBL is default and only verify implementation for now
+        if (selectedJob.hbl_no) {
+            opts.push({ value: "HBL", label: `HBL - ${selectedJob.hbl_no}`, disabled: false });
+        }
+        // MBL future scope - show but disable
+        if (selectedJob.mbl_no) {
+            opts.push({ value: "MBL", label: `MBL - ${selectedJob.mbl_no} (Coming Soon)`, disabled: true });
+        }
         return opts;
     }, [selectedJob]);
 
-    const handleGeneratePreview = () => {
-        if (!selectedJob || !selectedType) return;
-
-        // Base Data Mapping (similar to old DOPage logic but adapted for new API fields)
-        const base = {
-            companyName: "SSR LOGISTIC SOLUTIONS PVT. LTD.",
-            addressLine1: "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai-400703, Maharashtra, India",
-            email: "customerservice@ssrlogistic.net",
-            phone: "7700990630",
-            
-            // Common Fields
-            doNo: selectedJob.mbl_no || "", // Defaulting to MBL per old logic
-            doDate: new Date().toLocaleDateString(),
-            
-            hblNo: selectedJob.hbl_no || "",
-            hblDate: selectedJob.hbl_date || "", 
-            mblNo: selectedJob.mbl_no || "",
-            mblDate: selectedJob.mbl_date || "",
-            
-            containerNos: selectedJob.container_number || "", // From IGM/Booking
-            containerDetails: `${selectedJob.container_count || 0} x ${selectedJob.container_size || ""}`,
-
-            mblConsignee: selectedJob.consignee_name || "",
-            hblConsignee: selectedJob.consignee_name || "", // Often same, or logic can differ
-            notifyParty: "", // No specific field in booking yet, placeholder
-            
-            cha: selectedJob.cha_name || "",
-            cargoDescription: selectedJob.cargo_type || "",
-            delivery: "Full", // Static per old code
-            noOfPackages: selectedJob.no_of_palette || "", // Mapping palette to packages
-            measurement: "", // Not in booking
-            grossWeight: selectedJob.gross_weight || "",
-            vesselVoyage: selectedJob.shipping_line_name || "", // Approx mapping
-            igmNo: selectedJob.igm_no || "",
-            lineNo: "", // Not in booking
-            subLineNo: "", // Not in booking
-            marksAndNos: selectedJob.marks_and_numbers || "",
-            validity: selectedJob.do_validity ? new Date(selectedJob.do_validity).toLocaleDateString() : "",
-        };
-
-        // Specific Logic based on Type (MBL vs HBL)
-        let specific = {};
-        if (selectedType === "MBL") {
-             specific = {
-                toParty: "BUDGET CFS TERMINALS PRIVATE LIMITED", // Static per old code
-                notifyParty: "SSR LOGISTIC SOLUTIONS PVT LTD",
-                lineNo: "252", // sample
-                marksAndNos: selectedJob.marks_and_numbers || "MADE IN CHINA",
-             };
+    // Auto-select HBL when job changes
+    useEffect(() => {
+        if (selectedJob && selectedJob.hbl_no) {
+            setSelectedType("HBL");
         } else {
-             specific = {
-                toParty: selectedJob.shipping_line_name || "MSC MEDITERRANEAN SHIPPING CO. S.A. (G)",
-                notifyParty: selectedJob.consignee_name || "SHLOKA ENTERPRISES",
-                lineNo: selectedJob.igm_no || "1139433",
-                marksAndNos: selectedJob.marks_and_numbers || "RECARBURIZER LOT NO:202504-01 MADE IN CHINA",
-             };
+            setSelectedType("");
         }
+    }, [selectedJob]);
 
-        setPreviewData({ ...base, ...specific, docType: activeTab === 'DO' ? 'DELIVERY ORDER' : 'FREIGHT CERTIFICATE' });
+    const handleGeneratePreview = async () => {
+        if (!selectedJob || !selectedType) return;
+        setLoading(true);
+
+        try {
+            // 1. Fetch the HTML template
+            const response = await fetch('/pdf-static/do_hbl.html');
+            if (!response.ok) throw new Error("Failed to load DO template");
+            let template = await response.text();
+
+            // 2. Prepare Data Map
+            // Mapping keys to match template placeholders: {{ bookings.hbl_no }}, {{ igm.cfsname }}, etc.
+            
+            const data = {
+                'bookings.hbl_no': selectedJob.hbl_no || "-",
+                'bookings.mbl_no': selectedJob.mbl_no || "-",
+                'bookings.nomination_date': selectedJob.hbl_date ? new Date(selectedJob.hbl_date).toLocaleDateString() : (selectedJob.date_of_nomination ? new Date(selectedJob.date_of_nomination).toLocaleDateString() : "-"),
+                'bookings.container_number': selectedJob.container_number || "-",
+                'bookings.consignee': selectedJob.consignee_name || "-",
+                'bookings.description': selectedJob.cargo_type || "-", 
+                'bookings.delivery_type': "Full", // Static per old logic
+                'bookings.no_of_packages': String(selectedJob.no_of_palette || "0"),
+                'bookings.measurement': "-", // Not in Booking fields yet
+                'bookings.gross_weight': String(selectedJob.gross_weight || "-"),
+                'bookings.vessel_voyage': selectedJob.shipping_line_name || "-",
+                'bookings.marks_nos': selectedJob.marks_and_numbers || "-",
+                'bookings.validity': selectedJob.do_validity ? new Date(selectedJob.do_validity).toLocaleDateString() : "-",
+                
+                'igm.cfsname': selectedJob.cfs_name || "BUDGET CFS TERMINALS PRIVATE LIMITED", // fallback
+                'igm.cha_name': selectedJob.cha_name || "-",
+                'igm.igm_no': selectedJob.igm_no || "-",
+                'igm.line_no': "252", // Static sample
+                'igm.sub_line_no': "-", // Static sample
+                
+                'do.do_date': new Date().toLocaleDateString(),
+            };
+
+            // 3. Inject Data
+            // Regex to match {{ key }} and replace
+            let htmlContent = template.replace(/\{\{\s*([\w\.]+)\s*\}\}/g, (match, key) => {
+                return data[key] !== undefined ? data[key] : "";
+            });
+
+            setPreviewData(htmlContent);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to generate preview");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handlePrint = () => {
-        window.print();
+        const iframe = document.getElementById('do-preview-frame');
+        if (iframe) {
+            iframe.contentWindow.print();
+        }
     };
 
     return (
@@ -146,10 +155,9 @@ const DOFC = () => {
                             value={selectedJobNo}
                             onChange={(e) => {
                                 setSelectedJobNo(e.target.value);
-                                setSelectedType("");
                                 setPreviewData(null);
                             }}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                             className="w-full px-3 py-2 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                         >
                             <option value="">-- Choose Job --</option>
                             {jobs.map(j => (
@@ -165,19 +173,22 @@ const DOFC = () => {
                                 setSelectedType(e.target.value);
                                 setPreviewData(null);
                             }}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                            className="w-full px-3 py-2 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             disabled={!selectedJobNo}
                         >
-                            <option value="">-- Select HBL / MBL --</option>
+                             {/* HBL is default options logic ensures HBL is first/selected */}
+                            {!selectedType && <option value="">-- Select --</option>}
                             {typeOptions.map(opt => (
-                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                <option key={opt.value} value={opt.value} disabled={opt.disabled} className={opt.disabled ? "text-slate-400 italic" : ""}>
+                                    {opt.label}
+                                </option>
                             ))}
                         </select>
                     </div>
                     <button
                         onClick={handleGeneratePreview}
                         disabled={!selectedJobNo || !selectedType}
-                        className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-colors flex items-center justify-center gap-2"
+                        className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-xl font-medium transition-all shadow-sm flex items-center justify-center gap-2"
                     >
                         <Search size={18} /> Generate Preview
                     </button>
@@ -186,110 +197,25 @@ const DOFC = () => {
 
             {/* Preview Area */}
             {previewData ? (
-                 <div className="bg-white p-8 md:p-12 rounded-xl shadow-lg border border-slate-200 max-w-4xl mx-auto print:shadow-none print:border-0 print:w-full print:max-w-none">
-                    {/* Print Header - Hidden in Screen used for actual printing usually, but here simulating paper look */}
-                    <div className="text-center mb-8 border-b-2 border-slate-800 pb-6">
-                        <h2 className="text-2xl font-bold text-slate-900 tracking-wide uppercase">{previewData.companyName}</h2>
-                        <p className="text-sm text-slate-600 mt-2 max-w-lg mx-auto">{previewData.addressLine1}</p>
-                        <p className="text-sm text-slate-600 mt-1">Email: {previewData.email} | Tel: {previewData.phone}</p>
-                        
-                        <h1 className="text-xl font-black text-slate-900 mt-6 underline decoration-2 underline-offset-4 uppercase">
-                            {previewData.docType}
-                        </h1>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-8 text-sm text-slate-800 mb-8">
-                        <div>
-                             <p><span className="font-bold">To,</span></p>
-                             <p className="uppercase font-medium mt-1">{previewData.toParty}</p>
-                        </div>
-                        <div className="text-right">
-                             <p><span className="font-bold">{activeTab === 'DO' ? 'DO' : 'FC'} No:</span> {previewData.doNo}</p>
-                             <p><span className="font-bold">Date:</span> {previewData.doDate}</p>
-                        </div>
-                    </div>
-
-                    <div className="mb-6 text-sm text-slate-800">
-                        <p>You are requested to kindly make delivery of the below mentioned container(s), whose details are as follows:</p>
-                    </div>
-
-                    <div className="border border-slate-300 rounded-lg overflow-hidden text-sm">
-                         <div className="grid grid-cols-2 border-b border-slate-300">
-                            <div className="p-3 border-r border-slate-300"><span className="font-bold">HBL No:</span> {previewData.hblNo}</div>
-                            <div className="p-3"><span className="font-bold">Date:</span> {previewData.hblDate || "-"}</div>
-                         </div>
-                         <div className="grid grid-cols-2 border-b border-slate-300">
-                            <div className="p-3 border-r border-slate-300"><span className="font-bold">MBL No:</span> {previewData.mblNo}</div>
-                            <div className="p-3"><span className="font-bold">Date:</span> {previewData.mblDate || "-"}</div>
-                         </div>
-                         <div className="p-3 border-b border-slate-300">
-                             <span className="font-bold">Container No(s):</span> {previewData.containerNos} ({previewData.containerDetails})
-                         </div>
-                         <div className="grid grid-cols-2 border-b border-slate-300">
-                            <div className="p-3 border-r border-slate-300">
-                                <span className="font-bold block mb-1">MBL Consignee:</span>
-                                {previewData.mblConsignee}
-                            </div>
-                             <div className="p-3">
-                                <span className="font-bold block mb-1">HBL Consignee:</span>
-                                {previewData.hblConsignee}
-                            </div>
-                         </div>
-                         <div className="p-3 border-b border-slate-300">
-                             <span className="font-bold">Notify Party:</span> {previewData.notifyParty}
-                         </div>
-                         <div className="p-3 border-b border-slate-300">
-                             <span className="font-bold">CHA:</span> {previewData.cha}
-                         </div>
-                         <div className="grid grid-cols-2 border-b border-slate-300">
-                            <div className="p-3 border-r border-slate-300">
-                                <span className="font-bold">Cargo:</span> {previewData.cargoDescription}
-                            </div>
-                             <div className="p-3">
-                                <span className="font-bold">Delivery:</span> {previewData.delivery}
-                            </div>
-                         </div>
-                         <div className="grid grid-cols-3 border-b border-slate-300">
-                            <div className="p-3 border-r border-slate-300"><span className="font-bold">Pkgs:</span> {previewData.noOfPackages}</div>
-                            <div className="p-3 border-r border-slate-300"><span className="font-bold">G. Weight:</span> {previewData.grossWeight}</div>
-                             <div className="p-3"><span className="font-bold">Voyage:</span> {previewData.vesselVoyage}</div>
-                         </div>
-                         <div className="grid grid-cols-3 border-b border-slate-300">
-                            <div className="p-3 border-r border-slate-300"><span className="font-bold">IGM No:</span> {previewData.igmNo}</div>
-                            <div className="p-3 border-r border-slate-300"><span className="font-bold">Line No:</span> {previewData.lineNo}</div>
-                             <div className="p-3"><span className="font-bold">Sub Line:</span> {previewData.subLineNo}</div>
-                         </div>
-                         <div className="p-3">
-                            <span className="font-bold block mb-1">Marks & Numbers:</span>
-                            {previewData.marksAndNos}
-                         </div>
-                    </div>
-
-                    {activeTab === 'DO' && (
-                        <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
-                            <span className="font-bold">VALIDITY:</span> This Delivery Order is Valid Till <span className="font-bold">{previewData.validity}</span>.
-                            <div className="mt-1 text-xs">NOTE: NO MANUAL REVALIDATION OF DATE IS ALLOWED ON THIS DELIVERY ORDER, ONLY FRESH DELIVERY ORDER TO BE ACCEPTED.</div>
-                        </div>
-                    )}
-
-                    <div className="mt-12 flex justify-between items-end">
-                        <div className="text-sm">
-                            {/* Footer info/QR if needed */}
-                        </div>
-                        <div className="text-right text-sm">
-                            <p className="mb-8">For <strong>SSR LOGISTIC SOLUTIONS PVT. LTD.</strong></p>
-                            <p className="border-t border-slate-400 pt-2 inline-block">Authorized Signatory</p>
-                        </div>
-                    </div>
-
-                    {/* Action Footer */}
-                    <div className="mt-8 pt-6 border-t border-slate-100 flex justify-end print:hidden">
+                 <div className="bg-white p-4 rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+                    <div className="flex justify-between items-center mb-4 px-4">
+                        <h3 className="font-bold text-slate-700">Document Preview</h3>
                         <button 
                             onClick={handlePrint}
-                            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-xl font-medium transition-colors shadow-sm"
+                            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
                         >
-                            <Printer size={18} /> Print {activeTab}
+                            <Printer size={16} /> Print Document
                         </button>
+                    </div>
+                    
+                    <div className="border border-slate-300 bg-gray-50 flex justify-center p-4">
+                         <iframe 
+                            id="do-preview-frame"
+                            srcDoc={previewData}
+                            title="DO Preview"
+                            className="bg-white shadow-xl"
+                            style={{ width: '794px', height: '1123px', border: 'none' }} // A4 dimensions
+                        />
                     </div>
                  </div>
             ) : (
