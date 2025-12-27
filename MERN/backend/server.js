@@ -32,11 +32,11 @@ app.use(cors({
 }));
 
 app.use(express.json());
-app.use('/api/auth', Auth);
-app.use('/api/admin', Admin);
-app.use('/api/booking', Booking);
-app.use('/api/mail', Mail);
-app.use('/api/kyc', KYC);
+app.use('/auth', Auth);
+app.use('/admin', Admin);
+app.use('/booking', Booking);
+app.use('/mail', Mail);
+app.use('/kyc', KYC);
 
 
 app.get('/', (req, res) => {
@@ -45,5 +45,5 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`Backend server listening on http://127.0.0.1:${PORT}`);
-}); 
+});
 

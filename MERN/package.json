@@ -3,9 +3,11 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start": "concurrently \"npm run server\" \"npm run client\" ",
+    "start": "concurrently \"npm run server\" \"npm run client\"",
+    "start:new": "concurrently \"npm run server\" \"npm run client:new\"",
     "server": "cd backend && npm start",
     "client": "cd frontend && npm run dev",
+    "client:new": "cd premium-frontend && npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
