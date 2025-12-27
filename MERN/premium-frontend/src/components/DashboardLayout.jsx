@@ -105,6 +105,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                     <SidebarItem icon={<LayoutDashboard size={20} />} text="Dashboard" to="/" />
                     <SidebarItem icon={<FileText size={20} />} text="Quotation" to="/quotation" />
                     <SidebarItem icon={<Briefcase size={20} />} text="Bookings" to="/bookings" />
+                    <SidebarItem icon={<FileText size={20} />} text="DO / FC" to="/do-fc" />
                     <SidebarItem icon={<Anchor size={20} />} text="IGM" to="/igm" />
                     <SidebarItem icon={<ShieldCheck size={20} />} text="KYC" to="/kyc" />
                     

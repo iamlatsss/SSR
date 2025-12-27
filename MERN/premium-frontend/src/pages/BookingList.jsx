@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
+import api from "../services/api";
 import { 
     Search, Filter, Plus, Edit2, Eye, Truck, CheckCircle, FileText, XCircle 
 } from "lucide-react";
+import { toast } from "react-toastify";
 
 const BookingList = () => {
     const [jobs, setJobs] = useState([]);
@@ -16,22 +18,19 @@ const BookingList = () => {
     const navigate = useNavigate();
     const location = useLocation();
 
-    // Load jobs from localStorage
     useEffect(() => {
         loadJobs();
     }, []);
 
-    const loadJobs = () => {
+    const loadJobs = async () => {
         try {
-            const savedJobs = localStorage.getItem("savedJobs");
-            if (savedJobs) {
-                setJobs(JSON.parse(savedJobs));
-            } else {
-                setJobs([]);
+            const res = await api.get("/booking/get");
+            if (res.data.success) {
+                setJobs(res.data.bookings || []);
             }
         } catch (error) {
             console.error("Error loading jobs:", error);
-            setJobs([]);
+            toast.error("Failed to load bookings");
         } finally {
             setLoading(false);
         }
@@ -45,13 +44,23 @@ const BookingList = () => {
         navigate('/booking-form');
     };
 
-    // Change status inline and persist
-    const handleStatusChange = (jobNo, newStatus) => {
+    // Change status inline
+    const handleStatusChange = async (jobNo, newStatus) => {
+        // Optimistic update
+        const originalJobs = [...jobs];
         const updatedJobs = jobs.map((job) =>
-            job.jobNo === jobNo ? { ...job, status: newStatus } : job
+            job.job_no === jobNo ? { ...job, status: newStatus } : job
         );
         setJobs(updatedJobs);
-        localStorage.setItem("savedJobs", JSON.stringify(updatedJobs));
+
+        try {
+            await api.put(`/booking/update/${jobNo}`, { status: newStatus });
+            toast.success(`Job #${jobNo} marked as ${newStatus}`);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to update status");
+            setJobs(originalJobs); // Revert
+        }
     };
 
     const handleViewJob = (job) => {
@@ -66,9 +75,9 @@ const BookingList = () => {
 
     const filteredJobs = jobs.filter((job) => {
         const matchesSearch =
-            (job.shipper?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-            (job.consignee?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
-            job.jobNo.toString().includes(searchTerm);
+            (job.shipper_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            (job.consignee_name?.toLowerCase() || "").includes(searchTerm.toLowerCase()) ||
+            String(job.job_no).includes(searchTerm);
         const matchesStatus =
             filterStatus === "all" || job.status === filterStatus;
         return matchesSearch && matchesStatus;
@@ -108,6 +117,7 @@ const BookingList = () => {
                         <div className="text-sm text-slate-500 dark:text-slate-400">Total Jobs</div>
                     </div>
                 </div>
+                {/* ... existing stats ... just using jobs array ... */}
                 <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl text-emerald-600 dark:text-emerald-400">
                         <CheckCircle size={24} />
@@ -119,7 +129,8 @@ const BookingList = () => {
                         <div className="text-sm text-slate-500 dark:text-slate-400">Confirmed</div>
                     </div>
                 </div>
-                <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
+                {/* Simplified stats rendering for brevity/correctness */}
+                 <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
                     <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-xl text-purple-600 dark:text-purple-400">
                         <Truck size={24} />
                     </div>
@@ -207,12 +218,16 @@ const BookingList = () => {
                                 </tr>
                             ) : (
                                 filteredJobs.map((job) => (
-                                    <tr key={job.jobNo} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                        <td className="p-4 font-mono font-medium text-indigo-600 dark:text-indigo-400">#{job.jobNo}</td>
-                                        <td className="p-4 text-slate-600 dark:text-slate-300 text-sm">{job.dateOfNomination}</td>
+                                    <tr key={job.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                        <td className="p-4 font-mono font-medium text-indigo-600 dark:text-indigo-400">#{job.job_no}</td>
+                                        <td className="p-4 text-slate-600 dark:text-slate-300 text-sm">
+                                            {job.date_of_nomination ? new Date(job.date_of_nomination).toLocaleDateString() : "-"}
+                                        </td>
                                         <td className="p-4">
-                                            <div className="font-medium text-slate-800 dark:text-slate-200 text-sm">{job.shipper || "—"}</div>
-                                            <div className="text-xs text-slate-500">{job.containerCount} × {job.containerSize}</div>
+                                            <div className="font-medium text-slate-800 dark:text-slate-200 text-sm">
+                                                {job.shipper_name || "—"}
+                                            </div>
+                                            <div className="text-xs text-slate-500">{job.container_count} × {job.container_size}</div>
                                         </td>
                                         <td className="p-4 text-slate-600 dark:text-slate-300 text-sm">
                                             {job.pol} → {job.pod}
@@ -220,7 +235,7 @@ const BookingList = () => {
                                         <td className="p-4">
                                              <select
                                                 value={job.status || "draft"}
-                                                onChange={(e) => handleStatusChange(job.jobNo, e.target.value)}
+                                                onChange={(e) => handleStatusChange(job.job_no, e.target.value)}
                                                 className={`px-2 py-1 rounded text-xs font-medium border focus:outline-none focus:ring-2 focus:ring-indigo-500 appearance-none cursor-pointer ${getStatusColor(job.status || 'draft')}`}
                                             >
                                                 <option value="draft">Draft</option>
@@ -239,7 +254,7 @@ const BookingList = () => {
                                                 <Eye size={16} />
                                             </button>
                                             <button
-                                                onClick={() => handleEditJob(job.jobNo)}
+                                                onClick={() => handleEditJob(job.job_no)}
                                                 className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
                                                 title="Edit"
                                             >
@@ -260,7 +275,7 @@ const BookingList = () => {
                     <div className="bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 max-w-2xl w-full p-6 animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="text-xl font-bold text-slate-900 dark:text-white">
-                                Job #{selectedJob.jobNo}
+                                Job #{selectedJob.job_no}
                             </h3>
                             <button onClick={handleCloseViewModal} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
                                 <XCircle size={24} />
@@ -269,7 +284,9 @@ const BookingList = () => {
                         <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
                              <div>
                                 <label className="block text-xs uppercase font-semibold text-slate-500 mb-1">Date</label>
-                                <div className="text-slate-800 dark:text-slate-200">{selectedJob.dateOfNomination}</div>
+                                <div className="text-slate-800 dark:text-slate-200">
+                                    {selectedJob.date_of_nomination ? new Date(selectedJob.date_of_nomination).toLocaleDateString() : "-"}
+                                </div>
                              </div>
                              <div>
                                 <label className="block text-xs uppercase font-semibold text-slate-500 mb-1">Status</label>
@@ -277,11 +294,11 @@ const BookingList = () => {
                              </div>
                              <div>
                                 <label className="block text-xs uppercase font-semibold text-slate-500 mb-1">Shipper</label>
-                                <div className="text-slate-800 dark:text-slate-200">{selectedJob.shipper || "—"}</div>
+                                <div className="text-slate-800 dark:text-slate-200">{selectedJob.shipper_name || "—"}</div>
                              </div>
                              <div>
                                 <label className="block text-xs uppercase font-semibold text-slate-500 mb-1">Consignee</label>
-                                <div className="text-slate-800 dark:text-slate-200">{selectedJob.consignee || "—"}</div>
+                                <div className="text-slate-800 dark:text-slate-200">{selectedJob.consignee_name || "—"}</div>
                              </div>
                              <div>
                                 <label className="block text-xs uppercase font-semibold text-slate-500 mb-1">Route</label>
@@ -289,28 +306,9 @@ const BookingList = () => {
                              </div>
                              <div>
                                 <label className="block text-xs uppercase font-semibold text-slate-500 mb-1">Equipment</label>
-                                <div className="text-slate-800 dark:text-slate-200">{selectedJob.containerCount} × {selectedJob.containerSize}</div>
+                                <div className="text-slate-800 dark:text-slate-200">{selectedJob.container_count} × {selectedJob.container_size}</div>
                              </div>
                         </div>
-                        {selectedJob.updates && selectedJob.updates.length > 0 && (
-                             <div className="mt-6 pt-6 border-t border-slate-100 dark:border-slate-800">
-                                <h4 className="font-semibold text-slate-900 dark:text-white mb-3">Latest Tracking Update</h4>
-                                <div className="grid grid-cols-2 gap-4 text-sm">
-                                     <div>
-                                        <span className="text-slate-500 mr-2">HBL:</span>
-                                        <span className="text-slate-800 dark:text-slate-200">{selectedJob.updates[selectedJob.updates.length -1].hblNo || "—"}</span>
-                                     </div>
-                                     <div>
-                                        <span className="text-slate-500 mr-2">MBL:</span>
-                                        <span className="text-slate-800 dark:text-slate-200">{selectedJob.updates[selectedJob.updates.length -1].mblNo || "—"}</span>
-                                     </div>
-                                      <div>
-                                        <span className="text-slate-500 mr-2">ETA:</span>
-                                        <span className="text-slate-800 dark:text-slate-200">{selectedJob.updates[selectedJob.updates.length -1].eta || "—"}</span>
-                                     </div>
-                                </div>
-                             </div>
-                        )}
                         <div className="mt-8 flex justify-end">
                              <button
                                 onClick={handleCloseViewModal}

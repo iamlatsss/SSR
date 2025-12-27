@@ -160,7 +160,15 @@ const ALLOWED_BOOKING_FIELDS = new Set([
   "hbl_telex_received",
   "mbl_telex_received",
   "no_of_palette",
-  "marks_and_numbers"
+  "marks_and_numbers",
+  "igm_no",
+  "igm_on",
+  "cha",
+  "cfs",
+  "freight_amount",
+  "freight_currency",
+  "do_validity",
+  "container_number"
 ]);
 
 // Insert Booking
