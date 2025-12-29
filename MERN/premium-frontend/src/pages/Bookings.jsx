@@ -5,25 +5,25 @@ import { Save, FilePlus, ChevronLeft } from "lucide-react";
 import { toast } from "react-toastify";
 
 const PORTS = [
-  "Nhava Sheva, INNSA", "Mundra, INMUN", "Chennai, INMAA", "Mumbai, INBOM",
-  "Singapore, SGSIN", "Shanghai, CNSHA", "Rotterdam, NLRTM", "Jebel Ali, AEJEA",
+    "Nhava Sheva, INNSA", "Mundra, INMUN", "Chennai, INMAA", "Mumbai, INBOM",
+    "Singapore, SGSIN", "Shanghai, CNSHA", "Rotterdam, NLRTM", "Jebel Ali, AEJEA",
 ];
 const CONTAINER_SIZES = ["20' GP", "40' GP", "40' HC", "45' HC"];
 const CARGO_TYPES = ["HAZ", "General Cargo", "Special Equipment", "Machineries", "Spare Parts"];
 const BASE_JOB_NO = 6000;
 
 const INITIAL_KYC = {
-  shippers: ["ABC Exports Pvt Ltd", "Global Traders Inc"],
-  consignees: ["XYZ Imports LLC", "Oceanic Retailers"],
-  agents: ["SeaLink Logistics", "PortSide Agencies"],
+    shippers: ["ABC Exports Pvt Ltd", "Global Traders Inc"],
+    consignees: ["XYZ Imports LLC", "Oceanic Retailers"],
+    agents: ["SeaLink Logistics", "PortSide Agencies"],
 };
 
 const getNextJobNo = () => {
-  const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
-  if (!existingJobs.length) return BASE_JOB_NO;
-  // Simple max + 1
-  const maxJob = existingJobs.reduce((max, job) => Math.max(max, job.jobNo), BASE_JOB_NO - 1);
-  return maxJob + 1;
+    const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+    if (!existingJobs.length) return BASE_JOB_NO;
+    // Simple max + 1
+    const maxJob = existingJobs.reduce((max, job) => Math.max(max, job.jobNo), BASE_JOB_NO - 1);
+    return maxJob + 1;
 };
 
 const Bookings = () => {
@@ -52,59 +52,93 @@ const Bookings = () => {
         hblTelexReceived: "No", mblTelexReceived: "No", noOfPalette: "", marksAndNumbers: "",
     });
 
+    const [isEditMode, setIsEditMode] = useState(false);
+
     const [showAddNew, setShowAddNew] = useState({ type: null, value: "" });
 
+    /* ================= API HELPERS ================= */
+    const getHeaders = () => {
+        const token = localStorage.getItem("token");
+        return {
+            "Content-Type": "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+        };
+    };
+
     useEffect(() => {
-        const today = new Date().toISOString().slice(0, 10);
-        const searchParams = new URLSearchParams(location.search);
-        const jobNoParam = searchParams.get("jobNo");
-        const savedJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
+        const initForm = async () => {
+            const today = new Date().toISOString().slice(0, 10);
+            const searchParams = new URLSearchParams(location.search);
+            const jobNoParam = searchParams.get("jobNo");
 
-        if (jobNoParam) {
-            const jobNoInt = parseInt(jobNoParam, 10);
-            const existingJob = savedJobs.find((j) => j.jobNo === jobNoInt);
+            try {
+                // 1. Fetch Init Data (Next Job No & Customers)
+                const resInit = await fetch("/api/booking/init", { headers: getHeaders() });
+                const dataInit = await resInit.json();
 
-            if (existingJob) {
-                setJobNo(existingJob.jobNo);
-                setBookingForm({
-                    dateOfNomination: existingJob.dateOfNomination || today,
-                    shipper: existingJob.shipper || "",
-                    consignee: existingJob.consignee || "",
-                    pol: existingJob.pol || "",
-                    pod: existingJob.pod || "",
-                    finalPod: existingJob.finalPod || "",
-                    containerSize: existingJob.containerSize || "",
-                    containerCount: existingJob.containerCount || 1,
-                    agent: existingJob.agent || "",
-                });
+                if (dataInit.customers) {
+                    const customerNames = dataInit.customers.map(c => c.name);
+                    setKycData(prev => ({
+                        ...prev,
+                        shippers: customerNames,
+                        consignees: customerNames,
+                        agents: customerNames
+                    }));
+                }
 
-                const lastUpdate = existingJob.updates && existingJob.updates.length
-                    ? existingJob.updates[existingJob.updates.length - 1]
-                    : {};
+                if (jobNoParam) {
+                    setIsEditMode(true);
+                    // Edit Mode - Fetch existing booking
+                    const resJob = await fetch(`/api/booking/get/${jobNoParam}`, { headers: getHeaders() });
+                    const dataJob = await resJob.json();
 
-                setUpdateForm({
-                    hblNo: lastUpdate.hblNo || "",
-                    mblNo: lastUpdate.mblNo || "",
-                    eta: lastUpdate.eta || "",
-                    etd: lastUpdate.etd || "",
-                    shipperInvoiceNo: lastUpdate.shipperInvoiceNo || "",
-                    netWeight: lastUpdate.netWeight || "",
-                    grossWeight: lastUpdate.grossWeight || "",
-                    cargoType: lastUpdate.cargoType || "",
-                    shippingLineName: lastUpdate.shippingLineName || "",
-                    hblTelexReceived: lastUpdate.hblTelexReceived || "No",
-                    mblTelexReceived: lastUpdate.mblTelexReceived || "No",
-                    noOfPalette: lastUpdate.noOfPalette || "",
-                    marksAndNumbers: lastUpdate.marksAndNumbers || "",
-                });
-                return;
+                    if (dataJob.success && dataJob.booking) {
+                        const job = dataJob.booking;
+                        setJobNo(job.job_no);
+                        setBookingForm({
+                            dateOfNomination: job.date_of_nomination ? job.date_of_nomination.split('T')[0] : today,
+                            shipper: job.shipper_name || job.shipper || "", // Handle ID vs Name if needed. Backend GET joins them.
+                            consignee: job.consignee_name || job.consignee || "",
+                            pol: job.pol || "",
+                            pod: job.pod || "",
+                            finalPod: job.final_pod || "",
+                            containerSize: job.container_size || "",
+                            containerCount: job.container_count || 1,
+                            agent: job.agent_name || job.agent || "",
+                        });
+
+                        setUpdateForm({
+                            hblNo: job.hbl_no || "",
+                            mblNo: job.mbl_no || "",
+                            eta: job.eta ? job.eta.split('T')[0] : "",
+                            etd: job.etd ? job.etd.split('T')[0] : "",
+                            shipperInvoiceNo: job.shipper_invoice_no || "",
+                            netWeight: job.net_weight || "",
+                            grossWeight: job.gross_weight || "",
+                            cargoType: job.cargo_type || "",
+                            shippingLineName: job.shipping_line_name || "",
+                            hblTelexReceived: job.hbl_telex_received || "No",
+                            mblTelexReceived: job.mbl_telex_received || "No",
+                            noOfPalette: job.no_of_palette || "",
+                            marksAndNumbers: job.marks_and_numbers || "",
+                        });
+                    }
+                } else {
+                    setIsEditMode(false);
+                    // Create Mode
+                    if (dataInit.nextJobNo) {
+                        setJobNo(dataInit.nextJobNo);
+                    }
+                    setBookingForm((prev) => ({ ...prev, dateOfNomination: today }));
+                }
+
+            } catch (error) {
+                console.error("Error initializing booking form:", error);
+                toast.error("Failed to load booking data");
             }
-        }
+        };
 
-        // New Job
-        const nextJob = getNextJobNo();
-        setJobNo(nextJob);
-        setBookingForm((prev) => ({ ...prev, dateOfNomination: today }));
+        initForm();
     }, [location.search]);
 
     const handleBookingChange = (e) => {
@@ -130,50 +164,98 @@ const Bookings = () => {
         const trimmed = showAddNew.value.trim();
         setKycData(prev => ({
             ...prev,
-            [showAddNew.type + "s"]: [...prev[showAddNew.type + "s"], trimmed]
+            [showAddNew.type + "s"]: [...(prev[showAddNew.type + "s"] || []), trimmed]
         }));
         setBookingForm(prev => ({ ...prev, [showAddNew.type]: trimmed }));
         setShowAddNew({ type: null, value: "" });
-        toast.success(`New ${showAddNew.type} added`);
+        toast.success(`New ${showAddNew.type} added locally`);
+        // Note: Ideally this should POST to backend to create new customer
     };
 
-    const handleSaveBooking = () => {
-        const jobData = { jobNo, ...bookingForm, status: "draft", updates: [] };
-        const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
-        
-        // Remove existing if overwriting
-        const updatedJobs = existingJobs.filter((j) => j.jobNo !== jobNo).concat(jobData);
-        
-        localStorage.setItem("savedJobs", JSON.stringify(updatedJobs));
-        toast.success("Booking saved successfully!");
-        navigate('/bookings');
-    };
+    const handleSaveBooking = async () => {
+        const jobData = {
+            job_no: jobNo, // Backend might ignore this if auto-increment, or verify it
+            date_of_nomination: bookingForm.dateOfNomination,
+            shipper: bookingForm.shipper,
+            consignee: bookingForm.consignee,
+            pol: bookingForm.pol,
+            pod: bookingForm.pod,
+            final_pod: bookingForm.finalPod,
+            container_size: bookingForm.containerSize,
+            container_count: bookingForm.containerCount,
+            agent: bookingForm.agent,
+            // Only set status to draft if new, otherwise backend keeps current status or we omit it
+            // Actually API allows status update. If editing, we might want to keep existing status or use specific update logic.
+            // For now, if editing, we don't force 'draft'.
+            status: isEditMode ? undefined : 'draft'
+        };
 
-    const handleSaveBookingUpdate = () => {
-        const updateData = updateForm;
-        const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
-        const jobIndex = existingJobs.findIndex((j) => j.jobNo === jobNo);
+        try {
+            const url = isEditMode ? `/api/booking/update/${jobNo}` : "/api/booking/insert";
+            const method = isEditMode ? "PUT" : "POST";
 
-        if (jobIndex !== -1) {
-            existingJobs[jobIndex].updates = existingJobs[jobIndex].updates || [];
-            existingJobs[jobIndex].updates.push({
-                ...updateData,
-                date: new Date().toISOString().slice(0, 10),
+            const res = await fetch(url, {
+                method: method,
+                headers: getHeaders(),
+                body: JSON.stringify(jobData)
             });
-            existingJobs[jobIndex].status = "confirmed"; // Auto confirm on update
-            localStorage.setItem("savedJobs", JSON.stringify(existingJobs));
-            toast.success("Booking update saved!");
-            navigate('/bookings');
-        } else {
-            toast.error("Job not found. Save booking first.");
+            const data = await res.json();
+
+            if (res.ok) {
+                toast.success(isEditMode ? "Booking updated!" : "Booking saved successfully!");
+                navigate('/bookings');
+            } else {
+                toast.error(data.message || "Failed to save booking");
+            }
+        } catch (error) {
+            console.error("Save error:", error);
+            toast.error("Error saving booking");
+        }
+    };
+
+    const handleSaveBookingUpdate = async () => {
+        const updateData = {
+            hbl_no: updateForm.hblNo,
+            mbl_no: updateForm.mblNo,
+            eta: updateForm.eta,
+            etd: updateForm.etd,
+            shipper_invoice_no: updateForm.shipperInvoiceNo,
+            net_weight: updateForm.netWeight,
+            gross_weight: updateForm.grossWeight,
+            cargo_type: updateForm.cargoType,
+            shipping_line_name: updateForm.shippingLineName,
+            hbl_telex_received: updateForm.hblTelexReceived,
+            mbl_telex_received: updateForm.mblTelexReceived,
+            no_of_palette: updateForm.noOfPalette,
+            marks_and_numbers: updateForm.marksAndNumbers,
+            status: 'confirmed'
+        };
+
+        try {
+            const res = await fetch(`/api/booking/update/${jobNo}`, {
+                method: "PUT",
+                headers: getHeaders(),
+                body: JSON.stringify(updateData)
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                toast.success("Booking update saved!");
+                navigate('/bookings');
+            } else {
+                toast.error(data.message || "Failed to update booking");
+            }
+        } catch (error) {
+            console.error("Update error:", error);
+            toast.error("Error updating booking");
         }
     };
 
     return (
         <DashboardLayout title="Booking Form">
-             <div className="flex items-center gap-4 mb-6">
+            <div className="flex items-center gap-4 mb-6">
                 <button onClick={() => navigate('/bookings')} className="p-2 bg-white dark:bg-dark-card rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
-                    <ChevronLeft size={20} className="text-slate-600 dark:text-slate-300"/>
+                    <ChevronLeft size={20} className="text-slate-600 dark:text-slate-300" />
                 </button>
                 <div className="flex flex-col">
                     <h2 className="text-xl font-bold text-slate-800 dark:text-white">Job #{jobNo}</h2>
@@ -182,9 +264,9 @@ const Bookings = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                 {/* Main Form Area */}
+                {/* Main Form Area */}
                 <div className="lg:col-span-2 space-y-6">
-                     {/* Tabs */}
+                    {/* Tabs */}
                     <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-xl w-fit">
                         <button
                             onClick={() => setActiveTab('booking')}
@@ -222,7 +304,7 @@ const Bookings = () => {
                                             <option value="ADD_NEW">+ Add New</option>
                                         </select>
                                     </div>
-                                     {/* POL/POD */}
+                                    {/* POL/POD */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POL</label>
                                         <select name="pol" value={bookingForm.pol} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
@@ -237,15 +319,15 @@ const Bookings = () => {
                                             {PORTS.map(p => <option key={p} value={p}>{p}</option>)}
                                         </select>
                                     </div>
-                                     {/* Final POD */}
-                                     <div>
+                                    {/* Final POD */}
+                                    <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Final POD</label>
                                         <select name="finalPod" value={bookingForm.finalPod} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
                                             <option value="">Select Final POD</option>
                                             {PORTS.map(p => <option key={p} value={p}>{p}</option>)}
                                         </select>
                                     </div>
-                                     {/* Agent */}
+                                    {/* Agent */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Agent</label>
                                         <select name="agent" value={bookingForm.agent} onChange={(e) => handleSelectKyc('agent', e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
@@ -265,14 +347,14 @@ const Bookings = () => {
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Count</label>
                                         <select name="containerCount" value={bookingForm.containerCount} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
-                                            {[...Array(10)].map((_, i) => <option key={i+1} value={i+1}>{i+1}</option>)}
+                                            {[...Array(10)].map((_, i) => <option key={i + 1} value={i + 1}>{i + 1}</option>)}
                                         </select>
                                     </div>
                                 </div>
                                 <div className="pt-4">
-                                     <button onClick={handleSaveBooking} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-md transition-all flex items-center justify-center gap-2">
+                                    <button onClick={handleSaveBooking} className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-semibold shadow-md transition-all flex items-center justify-center gap-2">
                                         <Save size={20} /> Save Booking
-                                     </button>
+                                    </button>
                                 </div>
                             </div>
                         ) : (
@@ -280,24 +362,24 @@ const Bookings = () => {
                                 <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Update Details</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     {['hblNo', 'mblNo'].map(f => (
-                                         <div key={f}>
+                                        <div key={f}>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 uppercase">{f.replace(/([A-Z])/g, ' $1').trim()}</label>
                                             <input type="text" name={f} value={updateForm[f]} onChange={handleUpdateChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
                                         </div>
                                     ))}
                                     {['eta', 'etd'].map(f => (
-                                         <div key={f}>
+                                        <div key={f}>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 uppercase">{f}</label>
                                             <input type="date" name={f} value={updateForm[f]} onChange={handleUpdateChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
                                         </div>
                                     ))}
                                     {['netWeight', 'grossWeight', 'noOfPalette', 'shipperInvoiceNo', 'shippingLineName'].map(f => (
-                                         <div key={f}>
+                                        <div key={f}>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 capitalize">{f.replace(/([A-Z])/g, ' $1').trim()}</label>
                                             <input type={f.includes('Weight') || f.includes('Palette') ? "number" : "text"} name={f} value={updateForm[f]} onChange={handleUpdateChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white" />
                                         </div>
                                     ))}
-                                     <div>
+                                    <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Cargo Type</label>
                                         <select name="cargoType" value={updateForm.cargoType} onChange={handleUpdateChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
                                             <option value="">Select Type</option>
@@ -305,7 +387,7 @@ const Bookings = () => {
                                         </select>
                                     </div>
                                     {['hblTelexReceived', 'mblTelexReceived'].map(f => (
-                                         <div key={f}>
+                                        <div key={f}>
                                             <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 uppercase">{f.replace(/([A-Z])/g, ' $1').trim().replace('Received', '')} Received</label>
                                             <select name={f} value={updateForm[f]} onChange={handleUpdateChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
                                                 <option value="No">No</option>
@@ -318,10 +400,10 @@ const Bookings = () => {
                                         <textarea name="marksAndNumbers" value={updateForm.marksAndNumbers} onChange={handleUpdateChange} rows={3} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white resize-none" />
                                     </div>
                                 </div>
-                                 <div className="pt-4">
-                                     <button onClick={handleSaveBookingUpdate} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-md transition-all flex items-center justify-center gap-2">
+                                <div className="pt-4">
+                                    <button onClick={handleSaveBookingUpdate} className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold shadow-md transition-all flex items-center justify-center gap-2">
                                         <Save size={20} /> Save Update
-                                     </button>
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -329,11 +411,11 @@ const Bookings = () => {
                 </div>
 
                 {/* Sidebar Summary */}
-                 <div className="space-y-6">
+                <div className="space-y-6">
                     <div className="bg-slate-100 dark:bg-slate-800/50 p-6 rounded-2xl border border-slate-200 dark:border-slate-700 sticky top-6">
                         <h4 className="font-bold text-lg text-slate-800 dark:text-white mb-4">Summary</h4>
                         <div className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
-                             <div className="flex justify-between">
+                            <div className="flex justify-between">
                                 <span>Shipper:</span>
                                 <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{bookingForm.shipper || "—"}</span>
                             </div>
@@ -341,11 +423,11 @@ const Bookings = () => {
                                 <span>Consignee:</span>
                                 <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{bookingForm.consignee || "—"}</span>
                             </div>
-                             <div className="flex justify-between">
+                            <div className="flex justify-between">
                                 <span>Route:</span>
                                 <span className="font-medium text-slate-800 dark:text-white">{bookingForm.pol && bookingForm.pod ? `${bookingForm.pol.split(',')[0]} → ${bookingForm.pod.split(',')[0]}` : "—"}</span>
                             </div>
-                             <div className="flex justify-between">
+                            <div className="flex justify-between">
                                 <span>Agent:</span>
                                 <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{bookingForm.agent || "—"}</span>
                             </div>
@@ -356,19 +438,19 @@ const Bookings = () => {
 
             {/* Add New Modal */}
             {showAddNew.type && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddNew({type:null, value:''})}>
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddNew({ type: null, value: '' })}>
                     <div className="bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
                         <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 capitalize">Add New {showAddNew.type}</h3>
                         <input
                             autoFocus
                             type="text"
                             value={showAddNew.value}
-                            onChange={(e) => setShowAddNew(prev => ({...prev, value: e.target.value}))}
+                            onChange={(e) => setShowAddNew(prev => ({ ...prev, value: e.target.value }))}
                             className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white mb-4"
                             placeholder={`Enter ${showAddNew.type} name`}
                         />
                         <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowAddNew({type:null, value:''})} className="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
+                            <button onClick={() => setShowAddNew({ type: null, value: '' })} className="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
                             <button onClick={handleSaveNewKyc} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
                         </div>
                     </div>

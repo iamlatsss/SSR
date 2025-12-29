@@ -14,8 +14,10 @@ const PORT = 5001;
 const public_ip = process.env.URI;
 
 const allowedOrigins = [
-  'http://localhost:5173',
+  'http://127.0.0.1:5173',
   `http://${public_ip}:5173`,
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
   // 'https://my-frontend-domain.com'
 ];
 
@@ -43,7 +45,7 @@ app.get('/', (req, res) => {
   res.send('Backend is running 🚀');
 });
 
-app.listen(PORT, '127.0.0.1', () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`Backend server listening on http://127.0.0.1:${PORT}`);
 });
 

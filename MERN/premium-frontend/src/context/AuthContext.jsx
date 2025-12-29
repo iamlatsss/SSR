@@ -36,6 +36,12 @@ export const AuthProvider = ({ children }) => {
       body: JSON.stringify({ email, password, rememberMe }),
     });
     if (!res.ok) throw new Error("Login failed");
+
+    const data = await res.json();
+    if (data.jwt_token) {
+      localStorage.setItem("token", data.jwt_token);
+    }
+
     await fetchUser();
   };
 

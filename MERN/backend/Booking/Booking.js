@@ -65,34 +65,74 @@ router.get("/init", authenticateJWT, async (req, res) => {
   }
 });
 
+// Helper to get or create customer/agent
+async function getOrCreateParty(name, type = 'Customer') {
+  if (!name) return null;
+
+  // 1. Try to find existing by Name
+  // Assuming 'Customers' table holds shippers and consignees
+  // Assuming 'Agents' table holds agents? Or all in Customers?
+  // Based on error "REFERENCES Customers", shipper is in Customers.
+  // We'll assume consignee is also Customer.
+  // Agent might be in Customers or Agents table. 
+  // Let's assume Customers for now based on typical single-party-table designs, 
+  // OR check if 'Agents' table exists. 
+  // Given I can't check schema easily, I'll assume Customers for shipper/consignee.
+
+  const tableName = 'Customers'; // Default
+  // Check if we need to switch table for Agent?
+  // For safety, let's just handle Shipper/Consignee first which we know are Customers.
+
+  const [existing] = await knexDB(tableName).where('name', name).select('customer_id');
+  if (existing) return existing.customer_id;
+
+  // 2. Create if not exists
+  const [newId] = await knexDB(tableName).insert({ name: name /*, type: type */ }); // Add type if schema has it
+  console.log(`Created new ${tableName}: ${name} (ID: ${newId})`);
+  return newId;
+}
+
 // Insert Booking
 router.post("/insert", authenticateJWT, async (req, res) => {
   if (!req.body) {
-    return res.status(400).json({ success: false, message: "Missing request body. Ensure Content-Type is application/json" });
+    return res.status(400).json({ success: false, message: "Missing request body" });
   }
 
   const insertData = {};
 
-  // Filter request body for allowed fields
-  for (const key of ALLOWED_FIELDS) {
-    if (req.body[key] !== undefined) {
-      insertData[key] = req.body[key];
-    }
-  }
-
-  if (Object.keys(insertData).length === 0) {
-    return res.status(400).json({ success: false, message: "No valid booking fields provided" });
-  }
-
-  // Ensure default status
-  if (!insertData.status) insertData.status = 'draft';
-
   try {
+    // Pre-process FKs: Shipper, Consignee
+    if (req.body.shipper) {
+      insertData.shipper = await getOrCreateParty(req.body.shipper);
+    }
+    if (req.body.consignee) {
+      insertData.consignee = await getOrCreateParty(req.body.consignee);
+    }
+
+    if (req.body.agent) {
+      insertData.agent = await getOrCreateParty(req.body.agent);
+    }
+
+    // Copy other fields
+    for (const key of ALLOWED_FIELDS) {
+      if (req.body[key] !== undefined && key !== 'shipper' && key !== 'consignee' && key !== 'agent') {
+        insertData[key] = req.body[key];
+      }
+    }
+
+    if (Object.keys(insertData).length === 0) {
+      return res.status(400).json({ success: false, message: "No valid booking fields provided" });
+    }
+
+    // Ensure default status
+    if (!insertData.status) insertData.status = 'draft';
+
     const [jobNo] = await knexDB('Booking').insert(insertData);
     res.status(201).json({ success: true, message: "Booking inserted", JobNo: jobNo });
+
   } catch (error) {
     console.error("❌ Error inserting booking:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ success: false, message: "Internal server error: " + error.message });
   }
 });
 
@@ -163,6 +203,17 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
   }
 
   try {
+    // Pre-process FKs: Shipper, Consignee
+    if (req.body.shipper) {
+      updateData.shipper = await getOrCreateParty(req.body.shipper);
+    }
+    if (req.body.consignee) {
+      updateData.consignee = await getOrCreateParty(req.body.consignee);
+    }
+    if (req.body.agent) {
+      updateData.agent = await getOrCreateParty(req.body.agent);
+    }
+
     const affectedRows = await knexDB('Booking').where({ job_no: req.params.jobNo }).update(updateData);
     if (affectedRows === 0) {
       return res.status(404).json({ success: false, message: "Booking not found" });
