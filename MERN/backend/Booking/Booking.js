@@ -100,6 +100,56 @@ async function getOrCreateParty(name, type = 'Customer') {
   return newId;
 }
 
+// Helper to process hybrid numeric/string fields
+function processHybridFields(inputBody, targetData) {
+  const hybridFields = ['shipper', 'consignee', 'agent'];
+  let manualDetails = {};
+
+  // If manual_party_details passed explicitly, start with it
+  if (inputBody.manual_party_details) {
+    try {
+      manualDetails = typeof inputBody.manual_party_details === 'string'
+        ? JSON.parse(inputBody.manual_party_details)
+        : inputBody.manual_party_details;
+    } catch (e) {
+      console.warn("Invalid manual_party_details format", e);
+    }
+  }
+
+  hybridFields.forEach(field => {
+    const val = inputBody[field];
+    if (val !== undefined) {
+      // Check if it's a valid number (ID)
+      if (val && !isNaN(val) && Number.isInteger(Number(val))) {
+        targetData[field] = val; // Set FK
+        // If switching to FK, ensure we remove manual entry for this field if it existed (though we are building fresh obj usually)
+        delete manualDetails[field];
+      } else if (val && typeof val === 'string' && val.trim() !== '') {
+        // It's a string name
+        targetData[field] = null; // Nullify FK
+        manualDetails[field] = val.trim(); // Add to JSON
+      } else {
+        // Empty or null
+        // If specifically set to null/empty in body, maybe clear both?
+        // For now, if empty string passed, we assume clearing.
+        if (val === '') {
+          targetData[field] = null;
+          delete manualDetails[field];
+        }
+      }
+    }
+  });
+
+  if (Object.keys(manualDetails).length > 0) {
+    targetData.manual_party_details = JSON.stringify(manualDetails);
+  } else {
+    // If we cleared everything manual, should we set it to NULL or empty JSON? 
+    // safer to leave it if we are patching, but for full update/insert:
+    targetData.manual_party_details = JSON.stringify({});
+  }
+}
+
+
 // Insert Booking
 router.post("/insert", authenticateJWT, async (req, res) => {
   if (!req.body) {
@@ -109,24 +159,15 @@ router.post("/insert", authenticateJWT, async (req, res) => {
   const insertData = {};
 
   try {
-    // Pre-process FKs: Shipper, Consignee
-    if (req.body.shipper) {
-      insertData.shipper = await getOrCreateParty(req.body.shipper);
-    }
-    if (req.body.consignee) {
-      insertData.consignee = await getOrCreateParty(req.body.consignee);
-    }
-
-    if (req.body.agent) {
-      insertData.agent = await getOrCreateParty(req.body.agent);
-    }
-
-    // Copy other fields
+    // Standard Fields
     for (const key of ALLOWED_FIELDS) {
-      if (req.body[key] !== undefined && key !== 'shipper' && key !== 'consignee' && key !== 'agent') {
+      if (req.body[key] !== undefined && !['shipper', 'consignee', 'agent', 'manual_party_details'].includes(key)) {
         insertData[key] = req.body[key];
       }
     }
+
+    // Hybrid Fields Logic
+    processHybridFields(req.body, insertData);
 
     if (Object.keys(insertData).length === 0) {
       return res.status(400).json({ success: false, message: "No valid booking fields provided" });
@@ -193,7 +234,8 @@ router.get("/get", authenticateJWT, async (req, res) => {
         knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name"),
         'CHA.name as cha_name',
         'CFS.name as cfs_name'
-      );
+      )
+      .orderBy('Booking.created_at', 'desc');
 
     res.json({ success: true, bookings });
   } catch (error) {
@@ -209,25 +251,44 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
 
   // Filter request body for allowed fields
   for (const key of ALLOWED_FIELDS) {
-    if (req.body[key] !== undefined) {
+    if (req.body[key] !== undefined && !['shipper', 'consignee', 'agent', 'manual_party_details'].includes(key)) {
       updateData[key] = req.body[key];
     }
   }
 
-  if (Object.keys(updateData).length === 0) {
-    return res.status(400).json({ success: false, message: "No valid fields to update" });
-  }
-
   try {
-    // Pre-process FKs: Shipper, Consignee
-    if (req.body.shipper) {
-      updateData.shipper = await getOrCreateParty(req.body.shipper);
+    // If we are updating hybrid fields, we need to be careful not to overwrite existing manual details if NOT provided
+    // BUT usually update comes with full form data. 
+    // Let's assume we construct manual_details from what's passed + what might be missing?
+    // Given the complexity, let's assume the frontend sends the current state of these fields.
+    // We will fetch existing manual details if we want to merge, but simpler is to re-construct if fields are present.
+
+    // However, we can't easily merge without fetching first.
+    // Optimization: If shipper/consignee/agent are NOT in req.body, don't touch them.
+    // If they ARE in req.body, re-process them.
+
+    if (req.body.shipper !== undefined || req.body.consignee !== undefined || req.body.agent !== undefined) {
+      // We essentially need to rebuild the hybrid state for these 3 fields.
+      // We'll fetch current first to respect existing manual details of UNTOUCHED fields?
+      // Or just rely on what is passed. 
+      // Strategy: Process the passed fields. If `manual_party_details` is needed, we need to fetch current first to merge?
+      // NO, let's standardise: The caller should send all 3 if they rely on manual details, or we fetch.
+      // Let's fetch to be safe to merge.
+
+      const current = await knexDB('Booking').select('manual_party_details').where({ job_no: req.params.jobNo }).first();
+      let currentManual = {};
+      if (current && current.manual_party_details) {
+        try { currentManual = typeof current.manual_party_details === 'string' ? JSON.parse(current.manual_party_details) : current.manual_party_details; } catch (e) { }
+      }
+
+      // Mock a body that includes current manual details so our helper can merge/overwrite
+      const mockBody = { ...req.body, manual_party_details: currentManual };
+      processHybridFields(mockBody, updateData);
     }
-    if (req.body.consignee) {
-      updateData.consignee = await getOrCreateParty(req.body.consignee);
-    }
-    if (req.body.agent) {
-      updateData.agent = await getOrCreateParty(req.body.agent);
+
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({ success: false, message: "No valid fields to update" });
     }
 
     const affectedRows = await knexDB('Booking').where({ job_no: req.params.jobNo }).update(updateData);
