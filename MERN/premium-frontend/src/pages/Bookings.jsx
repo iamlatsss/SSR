@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
-import { Save, FilePlus, ChevronLeft } from "lucide-react";
+import api from "../services/api";
+import { Save, ChevronLeft } from "lucide-react";
 import { toast } from "react-toastify";
 
 const PORTS = [
@@ -10,6 +11,7 @@ const PORTS = [
 ];
 const CONTAINER_SIZES = ["20' GP", "40' GP", "40' HC", "45' HC"];
 const CARGO_TYPES = ["HAZ", "General Cargo", "Special Equipment", "Machineries", "Spare Parts"];
+<<<<<<< HEAD
 const BASE_JOB_NO = 6000;
 
 const INITIAL_KYC = {
@@ -25,17 +27,19 @@ const getNextJobNo = () => {
     const maxJob = existingJobs.reduce((max, job) => Math.max(max, job.jobNo), BASE_JOB_NO - 1);
     return maxJob + 1;
 };
+=======
+>>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
 
 const Bookings = () => {
     const location = useLocation();
     const navigate = useNavigate();
 
-    const [kycData, setKycData] = useState(INITIAL_KYC);
-    const [jobNo, setJobNo] = useState(BASE_JOB_NO);
-    const [activeTab, setActiveTab] = useState("booking"); // booking | update
+    const [jobNo, setJobNo] = useState(null);
+    const [customers, setCustomers] = useState([]);
+    const [activeTab, setActiveTab] = useState("booking"); 
 
     const [bookingForm, setBookingForm] = useState({
-        dateOfNomination: "",
+        dateOfNomination: new Date().toISOString().slice(0, 10),
         shipper: "",
         consignee: "",
         pol: "",
@@ -51,10 +55,16 @@ const Bookings = () => {
         netWeight: "", grossWeight: "", cargoType: "", shippingLineName: "",
         hblTelexReceived: "No", mblTelexReceived: "No", noOfPalette: "", marksAndNumbers: "",
     });
+<<<<<<< HEAD
 
     const [isEditMode, setIsEditMode] = useState(false);
 
     const [showAddNew, setShowAddNew] = useState({ type: null, value: "" });
+=======
+    
+    // Display names for summary
+    const [names, setNames] = useState({ shipper: "", consignee: "", agent: "" });
+>>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
 
     /* ================= API HELPERS ================= */
     const getHeaders = () => {
@@ -66,6 +76,7 @@ const Bookings = () => {
     };
 
     useEffect(() => {
+<<<<<<< HEAD
         const initForm = async () => {
             const today = new Date().toISOString().slice(0, 10);
             const searchParams = new URLSearchParams(location.search);
@@ -139,11 +150,86 @@ const Bookings = () => {
         };
 
         initForm();
+=======
+        initPage();
+>>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
     }, [location.search]);
+
+    const initPage = async () => {
+        try {
+            const searchParams = new URLSearchParams(location.search);
+            const jobNoParam = searchParams.get("jobNo");
+            
+            // 1. Fetch Init Data (Customers & Next Job No)
+            const initRes = await api.get("/booking/init");
+            if (initRes.data.success) {
+                setCustomers(initRes.data.customers || []);
+                if (!jobNoParam) {
+                    setJobNo(initRes.data.nextJobNo);
+                }
+            }
+
+            // 2. Fetch Existing Job if param present
+            if (jobNoParam) {
+                setJobNo(jobNoParam);
+                const jobRes = await api.get(`/booking/get/${jobNoParam}`);
+                if (jobRes.data.success) {
+                    const b = jobRes.data.booking;
+                    // Populate Booking Form
+                    setBookingForm({
+                        dateOfNomination: b.date_of_nomination ? b.date_of_nomination.slice(0,10) : "",
+                        shipper: b.shipper,
+                        consignee: b.consignee,
+                        pol: b.pol,
+                        pod: b.pod,
+                        finalPod: b.final_pod,
+                        containerSize: b.container_size,
+                        containerCount: b.container_count,
+                        agent: b.agent,
+                    });
+                     // Populate Update Form
+                    setUpdateForm({
+                        hblNo: b.hbl_no || "",
+                        mblNo: b.mbl_no || "",
+                        eta: b.eta ? b.eta.slice(0, 10) : "",
+                        etd: b.etd ? b.etd.slice(0, 10) : "",
+                        shipperInvoiceNo: b.shipper_invoice_no || "",
+                        netWeight: b.net_weight || "",
+                        grossWeight: b.gross_weight || "",
+                        cargoType: b.cargo_type || "",
+                        shippingLineName: b.shipping_line_name || "",
+                        hblTelexReceived: b.hbl_telex_received || "No",
+                        mblTelexReceived: b.mbl_telex_received || "No",
+                        noOfPalette: b.no_of_palette || "",
+                        marksAndNumbers: b.marks_and_numbers || "",
+                    });
+                    
+                    setNames({
+                        shipper: b.shipper_name,
+                        consignee: b.consignee_name,
+                        agent: b.agent_name
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to load booking data");
+        }
+    };
 
     const handleBookingChange = (e) => {
         const { name, value } = e.target;
         setBookingForm((prev) => ({ ...prev, [name]: value }));
+        
+        // Update summary names if customer selected
+        if (['shipper', 'consignee', 'agent'].includes(name)) {
+             const cust = customers.find(c => c.customer_id == value);
+             if (cust) {
+                 setNames(prev => ({...prev, [name]: cust.name}));
+             } else {
+                 setNames(prev => ({...prev, [name]: ""}));
+             }
+        }
     };
 
     const handleUpdateChange = (e) => {
@@ -151,14 +237,32 @@ const Bookings = () => {
         setUpdateForm((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSelectKyc = (role, value) => {
-        if (value === "ADD_NEW") {
-            setShowAddNew({ type: role, value: "" });
-        } else {
-            setBookingForm((prev) => ({ ...prev, [role]: value }));
+    const handleSaveBooking = async () => {
+        try {
+             // Map to snake_case
+             const payload = {
+                 job_no: jobNo,
+                 date_of_nomination: bookingForm.dateOfNomination,
+                 shipper: bookingForm.shipper,
+                 consignee: bookingForm.consignee,
+                 pol: bookingForm.pol,
+                 pod: bookingForm.pod,
+                 final_pod: bookingForm.finalPod,
+                 container_size: bookingForm.containerSize,
+                 container_count: bookingForm.containerCount,
+                 agent: bookingForm.agent,
+             };
+             
+             await api.post("/booking/insert", payload);
+             toast.success("Booking saved successfully!");
+             navigate('/bookings');
+        } catch (error) {
+            console.error(error);
+            toast.error(error.response?.data?.message || "Failed to save booking");
         }
     };
 
+<<<<<<< HEAD
     const handleSaveNewKyc = () => {
         if (!showAddNew.type || !showAddNew.value.trim()) return;
         const trimmed = showAddNew.value.trim();
@@ -248,6 +352,33 @@ const Bookings = () => {
         } catch (error) {
             console.error("Update error:", error);
             toast.error("Error updating booking");
+=======
+    const handleSaveBookingUpdate = async () => {
+         try {
+             // Map to snake_case
+             const payload = {
+                 hbl_no: updateForm.hblNo,
+                 mbl_no: updateForm.mblNo,
+                 eta: updateForm.eta,
+                 etd: updateForm.etd,
+                 shipper_invoice_no: updateForm.shipperInvoiceNo,
+                 net_weight: updateForm.netWeight,
+                 gross_weight: updateForm.grossWeight,
+                 cargo_type: updateForm.cargoType,
+                 shipping_line_name: updateForm.shippingLineName,
+                 hbl_telex_received: updateForm.hblTelexReceived,
+                 mbl_telex_received: updateForm.mblTelexReceived,
+                 no_of_palette: updateForm.noOfPalette,
+                 marks_and_numbers: updateForm.marksAndNumbers,
+             };
+             
+             await api.put(`/booking/update/${jobNo}`, payload);
+             toast.success("Booking update saved!");
+             navigate('/bookings');
+        } catch (error) {
+            console.error(error);
+             toast.error(error.response?.data?.message || "Failed to save update");
+>>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
         }
     };
 
@@ -258,7 +389,7 @@ const Bookings = () => {
                     <ChevronLeft size={20} className="text-slate-600 dark:text-slate-300" />
                 </button>
                 <div className="flex flex-col">
-                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Job #{jobNo}</h2>
+                    <h2 className="text-xl font-bold text-slate-800 dark:text-white">Job #{jobNo || "..."}</h2>
                     <span className="text-sm text-slate-500">{bookingForm.dateOfNomination}</span>
                 </div>
             </div>
@@ -290,18 +421,16 @@ const Bookings = () => {
                                     {/* Shipper/Consignee */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Shipper</label>
-                                        <select name="shipper" value={bookingForm.shipper} onChange={(e) => handleSelectKyc('shipper', e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+                                        <select name="shipper" value={bookingForm.shipper} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
                                             <option value="">Select Shipper</option>
-                                            {kycData.shippers.map(s => <option key={s} value={s}>{s}</option>)}
-                                            <option value="ADD_NEW">+ Add New</option>
+                                            {customers.map(s => <option key={s.customer_id} value={s.customer_id}>{s.name} ({s.customer_type})</option>)}
                                         </select>
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Consignee</label>
-                                        <select name="consignee" value={bookingForm.consignee} onChange={(e) => handleSelectKyc('consignee', e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+                                        <select name="consignee" value={bookingForm.consignee} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
                                             <option value="">Select Consignee</option>
-                                            {kycData.consignees.map(s => <option key={s} value={s}>{s}</option>)}
-                                            <option value="ADD_NEW">+ Add New</option>
+                                            {customers.map(s => <option key={s.customer_id} value={s.customer_id}>{s.name} ({s.customer_type})</option>)}
                                         </select>
                                     </div>
                                     {/* POL/POD */}
@@ -330,10 +459,9 @@ const Bookings = () => {
                                     {/* Agent */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Agent</label>
-                                        <select name="agent" value={bookingForm.agent} onChange={(e) => handleSelectKyc('agent', e.target.value)} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
+                                        <select name="agent" value={bookingForm.agent} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
                                             <option value="">Select Agent</option>
-                                            {kycData.agents.map(s => <option key={s} value={s}>{s}</option>)}
-                                            <option value="ADD_NEW">+ Add New</option>
+                                            {customers.map(s => <option key={s.customer_id} value={s.customer_id}>{s.name} ({s.customer_type})</option>)}
                                         </select>
                                     </div>
                                     {/* Containers */}
@@ -417,11 +545,11 @@ const Bookings = () => {
                         <div className="space-y-3 text-sm text-slate-600 dark:text-slate-400">
                             <div className="flex justify-between">
                                 <span>Shipper:</span>
-                                <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{bookingForm.shipper || "—"}</span>
+                                <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{names.shipper || "—"}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Consignee:</span>
-                                <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{bookingForm.consignee || "—"}</span>
+                                <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{names.consignee || "—"}</span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Route:</span>
@@ -429,12 +557,13 @@ const Bookings = () => {
                             </div>
                             <div className="flex justify-between">
                                 <span>Agent:</span>
-                                <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{bookingForm.agent || "—"}</span>
+                                <span className="font-medium text-slate-800 dark:text-white truncate max-w-[150px]">{names.agent || "—"}</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+<<<<<<< HEAD
 
             {/* Add New Modal */}
             {showAddNew.type && (
@@ -456,6 +585,8 @@ const Bookings = () => {
                     </div>
                 </div>
             )}
+=======
+>>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
         </DashboardLayout>
     );
 };

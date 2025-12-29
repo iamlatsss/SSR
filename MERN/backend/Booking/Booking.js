@@ -28,7 +28,15 @@ const ALLOWED_FIELDS = [
   "mbl_telex_received",
   "no_of_palette",
   "marks_and_numbers",
-  "manual_party_details"
+  "manual_party_details",
+  "igm_no",
+  "igm_on",
+  "cha",
+  "cfs",
+  "freight_amount",
+  "freight_currency",
+  "do_validity",
+  "container_number"
 ];
 
 // Booking Init
@@ -55,8 +63,8 @@ router.get("/init", authenticateJWT, async (req, res) => {
 
     console.log(`[Init] DB: ${dbName}, Schema AI: ${autoIncrementVal}, MaxJob: ${maxResult.maxJobNo} -> Next: ${nextJobNo}`);
 
-    // 3. Get Customers (id, name only)
-    const customers = await knexDB("Customers").select("customer_id", "name");
+    // 3. Get Customers (id, name, type)
+    const customers = await knexDB("Customers").select("customer_id", "name", "customer_type");
 
     res.json({ success: true, nextJobNo, customers });
   } catch (error) {
@@ -144,11 +152,15 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
       .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
       .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
       .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
+      .leftJoin('Customers as CHA', 'Booking.cha', 'CHA.customer_id')
+      .leftJoin('Customers as CFS', 'Booking.cfs', 'CFS.customer_id')
       .select(
         'Booking.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.shipper'))) as shipper_name"),
         knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.consignee'))) as consignee_name"),
-        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name")
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name"),
+        'CHA.name as cha_name',
+        'CFS.name as cfs_name'
       )
       .where({ 'Booking.job_no': req.params.JobNo })
       .first();
@@ -172,11 +184,15 @@ router.get("/get", authenticateJWT, async (req, res) => {
       .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
       .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
       .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
+      .leftJoin('Customers as CHA', 'Booking.cha', 'CHA.customer_id')
+      .leftJoin('Customers as CFS', 'Booking.cfs', 'CFS.customer_id')
       .select(
         'Booking.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.shipper'))) as shipper_name"),
         knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.consignee'))) as consignee_name"),
-        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name")
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name"),
+        'CHA.name as cha_name',
+        'CFS.name as cfs_name'
       );
 
     res.json({ success: true, bookings });

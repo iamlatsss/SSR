@@ -12,6 +12,7 @@ import BookingList from './pages/BookingList';
 import BookingForm from './pages/Bookings';
 import IGM from './pages/IGM';
 import KYCList from './pages/KYCList';
+import DOFC from './pages/DOFC.jsx'; // Combined DO/FC
 
 // Placeholder for now
 const Settings = () => (
@@ -38,6 +39,7 @@ function App() {
                 <Route path="/igm" element={<IGM />} />
                 <Route path="/kyc" element={<KYCList />} />
                 <Route path="/settings" element={<Settings />} />
+                <Route path="/do-fc" element={<DOFC />} />
                 
                 {/* Users Management (formerly Admin) - Restricted to Admin */}
                 <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
@@ -48,7 +50,7 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         </Router>
-    </AuthProvider>
+    </AuthProvider> 
   );
 }
 

@@ -46,6 +46,10 @@ app.get('/', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
+<<<<<<< HEAD
   console.log(`Backend server listening on http://127.0.0.1:${PORT}`);
+=======
+  console.log(`Backend server listening on http://0.0.0.0:${PORT}`);
+>>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
 });
 
