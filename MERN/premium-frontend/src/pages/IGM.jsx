@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import api from "../services/api";
-import { 
-    Search, Plus, Edit2, Save, XCircle, Trash2, FileText, Anchor, Container 
+import {
+    Search, Plus, Edit2, Save, XCircle, Trash2, FileText, Anchor, Container, Eye
 } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -14,7 +14,7 @@ const EMPTY_FORM = {
     freight_amount: "", freight_currency: "INR",
     do_validity: "", container_number: "",
     // Display only
-    shipper_name: "", consignee_name: "" 
+    shipper_name: "", consignee_name: ""
 };
 
 const IGM = () => {
@@ -25,6 +25,10 @@ const IGM = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [igmForm, setIgmForm] = useState(EMPTY_FORM);
     const [loading, setLoading] = useState(true);
+
+    // View Modal State
+    const [viewModalOpen, setViewModalOpen] = useState(false);
+    const [selectedIGM, setSelectedIGM] = useState(null);
 
     useEffect(() => {
         fetchData();
@@ -76,7 +80,7 @@ const IGM = () => {
                 igm_on: selectedBooking.igm_on || "HBL",
                 freight_currency: selectedBooking.freight_currency || "INR",
                 // Map API fields if different (they match snake_case now)
-             });
+            });
         }
     };
 
@@ -89,6 +93,11 @@ const IGM = () => {
         setIsModalOpen(true);
     };
 
+    const handleViewIGM = (item) => {
+        setSelectedIGM(item);
+        setViewModalOpen(true);
+    };
+
     const handleSaveIGM = async (e) => {
         e.preventDefault();
         try {
@@ -99,7 +108,7 @@ const IGM = () => {
 
             // Update the booking with IGM details
             await api.put(`/booking/update/${igmForm.job_no}`, igmForm);
-            
+
             toast.success("IGM details saved successfully");
             setIsModalOpen(false);
             fetchData(); // Refresh list
@@ -110,11 +119,11 @@ const IGM = () => {
     };
 
     const handleDeleteIGM = async (jobNo) => {
-        if(window.confirm("Are you sure you want to remove IGM details for this Job?")) {
+        if (window.confirm("Are you sure you want to remove IGM details for this Job?")) {
             try {
                 // We don't delete the booking, we just clear IGM fields
                 await api.put(`/booking/update/${jobNo}`, {
-                    igm_no: null, igm_on: null, cha: null, cfs: null, 
+                    igm_no: null, igm_on: null, cha: null, cfs: null,
                     do_validity: null, container_number: null // Clear others if needed
                 });
                 toast.info("IGM details removed");
@@ -160,7 +169,7 @@ const IGM = () => {
             </div>
 
             {/* List */}
-             <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
@@ -173,50 +182,53 @@ const IGM = () => {
                                 <th className="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
-                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                             {loading ? (
-                                 <tr><td colSpan="6" className="p-8 text-center text-slate-500">Loading...</td></tr>
-                             ) : filteredIGMs.length === 0 ? (
+                        <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                            {loading ? (
+                                <tr><td colSpan="6" className="p-8 text-center text-slate-500">Loading...</td></tr>
+                            ) : filteredIGMs.length === 0 ? (
                                 <tr><td colSpan="6" className="p-8 text-center text-slate-500">No IGM records found.</td></tr>
-                             ) : (
-                                 filteredIGMs.map(item => (
-                                     <tr key={item.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                          <td className="p-4 text-sm font-medium text-slate-900 dark:text-white">
-                                             #{item.job_no}
-                                         </td>
-                                         <td className="p-4">
+                            ) : (
+                                filteredIGMs.map(item => (
+                                    <tr key={item.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                        <td className="p-4 text-sm font-medium text-slate-900 dark:text-white">
+                                            #{item.job_no}
+                                        </td>
+                                        <td className="p-4">
                                             <div className="font-mono text-sm text-indigo-600 dark:text-indigo-400">{item.hbl_no || "—"}</div>
                                             <div className="text-xs text-slate-500">{item.mbl_no}</div>
-                                         </td>
-                                         <td className="p-4">
-                                             <div className="flex items-center gap-2 text-sm text-slate-800 dark:text-white">
-                                                 <FileText size={16} className="text-slate-400"/> {item.igm_no} <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{item.igm_on}</span>
-                                             </div>
-                                         </td>
-                                         <td className="p-4">
-                                             <div className="flex items-center gap-2 text-sm text-slate-800 dark:text-white">
-                                                <Container size={16} className="text-slate-400"/> {item.container_number}
-                                             </div>
-                                         </td>
-                                         <td className="p-4 text-sm">
-                                             <div className="text-slate-800 dark:text-white truncate max-w-[150px]" title={item.cha_name}>{item.cha_name || "—"}</div>
-                                             <div className="text-xs text-slate-500 truncate max-w-[150px]" title={item.cfs_name}>{item.cfs_name || "—"}</div>
-                                         </td>
-                                         <td className="p-4 text-right flex justify-end gap-2">
-                                             <button onClick={() => handleOpenModal(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
-                                                 <Edit2 size={18} />
-                                             </button>
-                                              <button onClick={() => handleDeleteIGM(item.job_no)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-red-600 transition-colors">
-                                                 <Trash2 size={18} />
-                                             </button>
-                                         </td>
-                                     </tr>
-                                 ))
-                             )}
-                         </tbody>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-2 text-sm text-slate-800 dark:text-white">
+                                                <FileText size={16} className="text-slate-400" /> {item.igm_no} <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{item.igm_on}</span>
+                                            </div>
+                                        </td>
+                                        <td className="p-4">
+                                            <div className="flex items-center gap-2 text-sm text-slate-800 dark:text-white">
+                                                <Container size={16} className="text-slate-400" /> {item.container_number}
+                                            </div>
+                                        </td>
+                                        <td className="p-4 text-sm">
+                                            <div className="text-slate-800 dark:text-white truncate max-w-[150px]" title={item.cha_name}>{item.cha_name || "—"}</div>
+                                            <div className="text-xs text-slate-500 truncate max-w-[150px]" title={item.cfs_name}>{item.cfs_name || "—"}</div>
+                                        </td>
+                                        <td className="p-4 text-right flex justify-end gap-2">
+                                            <button onClick={() => handleViewIGM(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors" title="View Details">
+                                                <Eye size={18} />
+                                            </button>
+                                            <button onClick={() => handleOpenModal(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors" title="Edit">
+                                                <Edit2 size={18} />
+                                            </button>
+                                            <button onClick={() => handleDeleteIGM(item.job_no)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-red-600 transition-colors">
+                                                <Trash2 size={18} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
                     </table>
                 </div>
-             </div>
+            </div>
 
             {/* Modal */}
             {isModalOpen && (
@@ -230,16 +242,16 @@ const IGM = () => {
                                 <XCircle size={24} />
                             </button>
                         </div>
-                        
+
                         <form onSubmit={handleSaveIGM} className="p-6 space-y-6">
-                            
+
                             {/* Job Select */}
-                             <div>
+                            <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select Job No. (Booking)</label>
-                                <select 
-                                    name="job_no" 
-                                    value={igmForm.job_no || ""} 
-                                    onChange={handleJobSelect} 
+                                <select
+                                    name="job_no"
+                                    value={igmForm.job_no || ""}
+                                    onChange={handleJobSelect}
                                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                                     disabled={!!igmForm.job_no} // If editing existing IGM, maybe lock it? Or user can clear and select another. Let's allowing switching if needed, but normally editing implies same job.
                                 >
@@ -256,21 +268,21 @@ const IGM = () => {
                                 {/* HBL / MBL (Editable as per user request to be synced) */}
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">HBL No.</label>
-                                    <input type="text" name="hbl_no" value={igmForm.hbl_no || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                                    <input type="text" name="hbl_no" value={igmForm.hbl_no || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">MBL No.</label>
-                                    <input type="text" name="mbl_no" value={igmForm.mbl_no || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                                    <input type="text" name="mbl_no" value={igmForm.mbl_no || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                                 </div>
 
                                 {/* Dates */}
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ETA</label>
-                                    <input type="date" name="eta" value={igmForm.eta ? igmForm.eta.slice(0, 10) : ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                                    <input type="date" name="eta" value={igmForm.eta ? igmForm.eta.slice(0, 10) : ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">ETD</label>
-                                    <input type="date" name="etd" value={igmForm.etd ? igmForm.etd.slice(0, 10) : ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                                    <input type="date" name="etd" value={igmForm.etd ? igmForm.etd.slice(0, 10) : ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                                 </div>
 
                                 {/* IGM Info */}
@@ -284,7 +296,7 @@ const IGM = () => {
                                     </div>
                                     <div className="md:col-span-2">
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IGM No.</label>
-                                        <input type="text" name="igm_no" value={igmForm.igm_no || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                                        <input type="text" name="igm_no" value={igmForm.igm_no || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                                     </div>
                                 </div>
 
@@ -306,13 +318,13 @@ const IGM = () => {
 
                                 {/* Freight / Container */}
                                 <div className="grid grid-cols-2 gap-4">
-                                     <div>
+                                    <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Freight Amount</label>
-                                        <input type="number" name="freight_amount" value={igmForm.freight_amount || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                                        <input type="number" name="freight_amount" value={igmForm.freight_amount || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                                     </div>
                                     <div>
-                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Currency</label>
-                                         <select name="freight_currency" value={igmForm.freight_currency || "INR"} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Currency</label>
+                                        <select name="freight_currency" value={igmForm.freight_currency || "INR"} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none">
                                             <option value="INR">INR</option>
                                             <option value="USD">USD</option>
                                             <option value="EUR">EUR</option>
@@ -320,12 +332,12 @@ const IGM = () => {
                                     </div>
                                 </div>
                                 <div>
-                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">DO Validity</label>
-                                     <input type="date" name="do_validity" value={igmForm.do_validity ? igmForm.do_validity.slice(0, 10) : ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"/>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">DO Validity</label>
+                                    <input type="date" name="do_validity" value={igmForm.do_validity ? igmForm.do_validity.slice(0, 10) : ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                                 </div>
                                 <div className="md:col-span-2">
-                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Container Number</label>
-                                     <input type="text" name="container_number" value={igmForm.container_number || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Enter container number"/>
+                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Container Number</label>
+                                    <input type="text" name="container_number" value={igmForm.container_number || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="Enter container number" />
                                 </div>
                             </div>
                             <div className="flex justify-end gap-3 pt-6 border-t border-slate-100 dark:border-slate-700">
@@ -338,6 +350,112 @@ const IGM = () => {
                     </div>
                 </div>
             )}
+
+            {/* View Modal */}
+            {
+                viewModalOpen && selectedIGM && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setViewModalOpen(false)}>
+                        <div className="bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-3xl p-6 animate-in fade-in zoom-in duration-200" onClick={e => e.stopPropagation()}>
+                            <div className="flex justify-between items-center mb-6 pb-4 border-b border-slate-100 dark:border-slate-700">
+                                <div>
+                                    <h3 className="text-xl font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                                        IGM Details <span className="text-slate-400 font-normal">#{selectedIGM.job_no}</span>
+                                    </h3>
+                                    <div className="text-sm text-slate-500 mt-1">Status: {selectedIGM.status || "Active"}</div>
+                                </div>
+                                <button onClick={() => setViewModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                                    <XCircle size={24} />
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-sm">
+                                <div>
+                                    <h4 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                                        <FileText size={16} className="text-indigo-600" /> Shipment Info
+                                    </h4>
+                                    <div className="space-y-3 pl-2 border-l-2 border-slate-100 dark:border-slate-800">
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <span className="text-slate-500">HBL No:</span>
+                                            <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200">{selectedIGM.hbl_no || "—"}</span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <span className="text-slate-500">MBL No:</span>
+                                            <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200">{selectedIGM.mbl_no || "—"}</span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <span className="text-slate-500">ETA / ETD:</span>
+                                            <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200">
+                                                {selectedIGM.eta ? selectedIGM.eta.slice(0, 10) : "-"} / {selectedIGM.etd ? selectedIGM.etd.slice(0, 10) : "-"}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h4 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                                        <Container size={16} className="text-indigo-600" /> IGM & Cargo
+                                    </h4>
+                                    <div className="space-y-3 pl-2 border-l-2 border-slate-100 dark:border-slate-800">
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <span className="text-slate-500">IGM No:</span>
+                                            <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200">{selectedIGM.igm_no || "—"} ({selectedIGM.igm_on})</span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <span className="text-slate-500">Container:</span>
+                                            <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200">{selectedIGM.container_number || "—"}</span>
+                                        </div>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            <span className="text-slate-500">Validity:</span>
+                                            <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200">{selectedIGM.do_validity ? selectedIGM.do_validity.slice(0, 10) : "—"}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div className="md:col-span-2">
+                                    <h4 className="font-bold text-slate-900 dark:text-white mb-3 flex items-center gap-2">
+                                        <Anchor size={16} className="text-indigo-600" /> Parties
+                                    </h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pl-2 border-l-2 border-slate-100 dark:border-slate-800">
+                                        <div>
+                                            <span className="block text-xs uppercase text-slate-500 mb-1">CHA</span>
+                                            <div className="font-medium text-slate-800 dark:text-slate-200">{selectedIGM.cha_name || "—"}</div>
+                                        </div>
+                                        <div>
+                                            <span className="block text-xs uppercase text-slate-500 mb-1">CFS</span>
+                                            <div className="font-medium text-slate-800 dark:text-slate-200">{selectedIGM.cfs_name || "—"}</div>
+                                        </div>
+                                        <div>
+                                            <span className="block text-xs uppercase text-slate-500 mb-1">Shipper</span>
+                                            <div className="font-medium text-slate-800 dark:text-slate-200">{selectedIGM.shipper_name || "—"}</div>
+                                        </div>
+                                        <div>
+                                            <span className="block text-xs uppercase text-slate-500 mb-1">Consignee</span>
+                                            <div className="font-medium text-slate-800 dark:text-slate-200">{selectedIGM.consignee_name || "—"}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 flex justify-end gap-3">
+                                <button
+                                    onClick={() => {
+                                        setViewModalOpen(false);
+                                        handleOpenModal(selectedIGM);
+                                    }}
+                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors font-medium text-sm"
+                                >
+                                    <Edit2 size={16} /> Edit IGM
+                                </button>
+                                <button
+                                    onClick={() => setViewModalOpen(false)}
+                                    className="px-6 py-2 bg-slate-800 dark:bg-slate-700 text-white rounded-lg hover:bg-slate-900 dark:hover:bg-slate-600 transition-colors font-medium text-sm"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
         </DashboardLayout>
     );
 };

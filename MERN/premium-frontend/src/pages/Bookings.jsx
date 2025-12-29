@@ -11,24 +11,7 @@ const PORTS = [
 ];
 const CONTAINER_SIZES = ["20' GP", "40' GP", "40' HC", "45' HC"];
 const CARGO_TYPES = ["HAZ", "General Cargo", "Special Equipment", "Machineries", "Spare Parts"];
-<<<<<<< HEAD
-const BASE_JOB_NO = 6000;
 
-const INITIAL_KYC = {
-    shippers: ["ABC Exports Pvt Ltd", "Global Traders Inc"],
-    consignees: ["XYZ Imports LLC", "Oceanic Retailers"],
-    agents: ["SeaLink Logistics", "PortSide Agencies"],
-};
-
-const getNextJobNo = () => {
-    const existingJobs = JSON.parse(localStorage.getItem("savedJobs") || "[]");
-    if (!existingJobs.length) return BASE_JOB_NO;
-    // Simple max + 1
-    const maxJob = existingJobs.reduce((max, job) => Math.max(max, job.jobNo), BASE_JOB_NO - 1);
-    return maxJob + 1;
-};
-=======
->>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
 
 const Bookings = () => {
     const location = useLocation();
@@ -36,7 +19,7 @@ const Bookings = () => {
 
     const [jobNo, setJobNo] = useState(null);
     const [customers, setCustomers] = useState([]);
-    const [activeTab, setActiveTab] = useState("booking"); 
+    const [activeTab, setActiveTab] = useState("booking");
 
     const [bookingForm, setBookingForm] = useState({
         dateOfNomination: new Date().toISOString().slice(0, 10),
@@ -55,16 +38,9 @@ const Bookings = () => {
         netWeight: "", grossWeight: "", cargoType: "", shippingLineName: "",
         hblTelexReceived: "No", mblTelexReceived: "No", noOfPalette: "", marksAndNumbers: "",
     });
-<<<<<<< HEAD
 
-    const [isEditMode, setIsEditMode] = useState(false);
-
-    const [showAddNew, setShowAddNew] = useState({ type: null, value: "" });
-=======
-    
     // Display names for summary
     const [names, setNames] = useState({ shipper: "", consignee: "", agent: "" });
->>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
 
     /* ================= API HELPERS ================= */
     const getHeaders = () => {
@@ -76,90 +52,14 @@ const Bookings = () => {
     };
 
     useEffect(() => {
-<<<<<<< HEAD
-        const initForm = async () => {
-            const today = new Date().toISOString().slice(0, 10);
-            const searchParams = new URLSearchParams(location.search);
-            const jobNoParam = searchParams.get("jobNo");
-
-            try {
-                // 1. Fetch Init Data (Next Job No & Customers)
-                const resInit = await fetch("/api/booking/init", { headers: getHeaders() });
-                const dataInit = await resInit.json();
-
-                if (dataInit.customers) {
-                    const customerNames = dataInit.customers.map(c => c.name);
-                    setKycData(prev => ({
-                        ...prev,
-                        shippers: customerNames,
-                        consignees: customerNames,
-                        agents: customerNames
-                    }));
-                }
-
-                if (jobNoParam) {
-                    setIsEditMode(true);
-                    // Edit Mode - Fetch existing booking
-                    const resJob = await fetch(`/api/booking/get/${jobNoParam}`, { headers: getHeaders() });
-                    const dataJob = await resJob.json();
-
-                    if (dataJob.success && dataJob.booking) {
-                        const job = dataJob.booking;
-                        setJobNo(job.job_no);
-                        setBookingForm({
-                            dateOfNomination: job.date_of_nomination ? job.date_of_nomination.split('T')[0] : today,
-                            shipper: job.shipper_name || job.shipper || "", // Handle ID vs Name if needed. Backend GET joins them.
-                            consignee: job.consignee_name || job.consignee || "",
-                            pol: job.pol || "",
-                            pod: job.pod || "",
-                            finalPod: job.final_pod || "",
-                            containerSize: job.container_size || "",
-                            containerCount: job.container_count || 1,
-                            agent: job.agent_name || job.agent || "",
-                        });
-
-                        setUpdateForm({
-                            hblNo: job.hbl_no || "",
-                            mblNo: job.mbl_no || "",
-                            eta: job.eta ? job.eta.split('T')[0] : "",
-                            etd: job.etd ? job.etd.split('T')[0] : "",
-                            shipperInvoiceNo: job.shipper_invoice_no || "",
-                            netWeight: job.net_weight || "",
-                            grossWeight: job.gross_weight || "",
-                            cargoType: job.cargo_type || "",
-                            shippingLineName: job.shipping_line_name || "",
-                            hblTelexReceived: job.hbl_telex_received || "No",
-                            mblTelexReceived: job.mbl_telex_received || "No",
-                            noOfPalette: job.no_of_palette || "",
-                            marksAndNumbers: job.marks_and_numbers || "",
-                        });
-                    }
-                } else {
-                    setIsEditMode(false);
-                    // Create Mode
-                    if (dataInit.nextJobNo) {
-                        setJobNo(dataInit.nextJobNo);
-                    }
-                    setBookingForm((prev) => ({ ...prev, dateOfNomination: today }));
-                }
-
-            } catch (error) {
-                console.error("Error initializing booking form:", error);
-                toast.error("Failed to load booking data");
-            }
-        };
-
-        initForm();
-=======
         initPage();
->>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
     }, [location.search]);
 
     const initPage = async () => {
         try {
             const searchParams = new URLSearchParams(location.search);
             const jobNoParam = searchParams.get("jobNo");
-            
+
             // 1. Fetch Init Data (Customers & Next Job No)
             const initRes = await api.get("/booking/init");
             if (initRes.data.success) {
@@ -177,7 +77,7 @@ const Bookings = () => {
                     const b = jobRes.data.booking;
                     // Populate Booking Form
                     setBookingForm({
-                        dateOfNomination: b.date_of_nomination ? b.date_of_nomination.slice(0,10) : "",
+                        dateOfNomination: b.date_of_nomination ? b.date_of_nomination.slice(0, 10) : "",
                         shipper: b.shipper,
                         consignee: b.consignee,
                         pol: b.pol,
@@ -187,7 +87,7 @@ const Bookings = () => {
                         containerCount: b.container_count,
                         agent: b.agent,
                     });
-                     // Populate Update Form
+                    // Populate Update Form
                     setUpdateForm({
                         hblNo: b.hbl_no || "",
                         mblNo: b.mbl_no || "",
@@ -203,7 +103,7 @@ const Bookings = () => {
                         noOfPalette: b.no_of_palette || "",
                         marksAndNumbers: b.marks_and_numbers || "",
                     });
-                    
+
                     setNames({
                         shipper: b.shipper_name,
                         consignee: b.consignee_name,
@@ -220,15 +120,15 @@ const Bookings = () => {
     const handleBookingChange = (e) => {
         const { name, value } = e.target;
         setBookingForm((prev) => ({ ...prev, [name]: value }));
-        
+
         // Update summary names if customer selected
         if (['shipper', 'consignee', 'agent'].includes(name)) {
-             const cust = customers.find(c => c.customer_id == value);
-             if (cust) {
-                 setNames(prev => ({...prev, [name]: cust.name}));
-             } else {
-                 setNames(prev => ({...prev, [name]: ""}));
-             }
+            const cust = customers.find(c => c.customer_id == value);
+            if (cust) {
+                setNames(prev => ({ ...prev, [name]: cust.name }));
+            } else {
+                setNames(prev => ({ ...prev, [name]: "" }));
+            }
         }
     };
 
@@ -239,146 +139,54 @@ const Bookings = () => {
 
     const handleSaveBooking = async () => {
         try {
-             // Map to snake_case
-             const payload = {
-                 job_no: jobNo,
-                 date_of_nomination: bookingForm.dateOfNomination,
-                 shipper: bookingForm.shipper,
-                 consignee: bookingForm.consignee,
-                 pol: bookingForm.pol,
-                 pod: bookingForm.pod,
-                 final_pod: bookingForm.finalPod,
-                 container_size: bookingForm.containerSize,
-                 container_count: bookingForm.containerCount,
-                 agent: bookingForm.agent,
-             };
-             
-             await api.post("/booking/insert", payload);
-             toast.success("Booking saved successfully!");
-             navigate('/bookings');
+            // Map to snake_case
+            const payload = {
+                job_no: jobNo,
+                date_of_nomination: bookingForm.dateOfNomination,
+                shipper: bookingForm.shipper,
+                consignee: bookingForm.consignee,
+                pol: bookingForm.pol,
+                pod: bookingForm.pod,
+                final_pod: bookingForm.finalPod,
+                container_size: bookingForm.containerSize,
+                container_count: bookingForm.containerCount,
+                agent: bookingForm.agent,
+            };
+
+            await api.post("/booking/insert", payload);
+            toast.success("Booking saved successfully!");
+            navigate('/bookings');
         } catch (error) {
             console.error(error);
             toast.error(error.response?.data?.message || "Failed to save booking");
         }
     };
 
-<<<<<<< HEAD
-    const handleSaveNewKyc = () => {
-        if (!showAddNew.type || !showAddNew.value.trim()) return;
-        const trimmed = showAddNew.value.trim();
-        setKycData(prev => ({
-            ...prev,
-            [showAddNew.type + "s"]: [...(prev[showAddNew.type + "s"] || []), trimmed]
-        }));
-        setBookingForm(prev => ({ ...prev, [showAddNew.type]: trimmed }));
-        setShowAddNew({ type: null, value: "" });
-        toast.success(`New ${showAddNew.type} added locally`);
-        // Note: Ideally this should POST to backend to create new customer
-    };
-
-    const handleSaveBooking = async () => {
-        const jobData = {
-            job_no: jobNo, // Backend might ignore this if auto-increment, or verify it
-            date_of_nomination: bookingForm.dateOfNomination,
-            shipper: bookingForm.shipper,
-            consignee: bookingForm.consignee,
-            pol: bookingForm.pol,
-            pod: bookingForm.pod,
-            final_pod: bookingForm.finalPod,
-            container_size: bookingForm.containerSize,
-            container_count: bookingForm.containerCount,
-            agent: bookingForm.agent,
-            // Only set status to draft if new, otherwise backend keeps current status or we omit it
-            // Actually API allows status update. If editing, we might want to keep existing status or use specific update logic.
-            // For now, if editing, we don't force 'draft'.
-            status: isEditMode ? undefined : 'draft'
-        };
-
-        try {
-            const url = isEditMode ? `/api/booking/update/${jobNo}` : "/api/booking/insert";
-            const method = isEditMode ? "PUT" : "POST";
-
-            const res = await fetch(url, {
-                method: method,
-                headers: getHeaders(),
-                body: JSON.stringify(jobData)
-            });
-            const data = await res.json();
-
-            if (res.ok) {
-                toast.success(isEditMode ? "Booking updated!" : "Booking saved successfully!");
-                navigate('/bookings');
-            } else {
-                toast.error(data.message || "Failed to save booking");
-            }
-        } catch (error) {
-            console.error("Save error:", error);
-            toast.error("Error saving booking");
-        }
-    };
-
     const handleSaveBookingUpdate = async () => {
-        const updateData = {
-            hbl_no: updateForm.hblNo,
-            mbl_no: updateForm.mblNo,
-            eta: updateForm.eta,
-            etd: updateForm.etd,
-            shipper_invoice_no: updateForm.shipperInvoiceNo,
-            net_weight: updateForm.netWeight,
-            gross_weight: updateForm.grossWeight,
-            cargo_type: updateForm.cargoType,
-            shipping_line_name: updateForm.shippingLineName,
-            hbl_telex_received: updateForm.hblTelexReceived,
-            mbl_telex_received: updateForm.mblTelexReceived,
-            no_of_palette: updateForm.noOfPalette,
-            marks_and_numbers: updateForm.marksAndNumbers,
-            status: 'confirmed'
-        };
-
         try {
-            const res = await fetch(`/api/booking/update/${jobNo}`, {
-                method: "PUT",
-                headers: getHeaders(),
-                body: JSON.stringify(updateData)
-            });
-            const data = await res.json();
+            // Map to snake_case
+            const payload = {
+                hbl_no: updateForm.hblNo,
+                mbl_no: updateForm.mblNo,
+                eta: updateForm.eta,
+                etd: updateForm.etd,
+                shipper_invoice_no: updateForm.shipperInvoiceNo,
+                net_weight: updateForm.netWeight,
+                gross_weight: updateForm.grossWeight,
+                cargo_type: updateForm.cargoType,
+                shipping_line_name: updateForm.shippingLineName,
+                hbl_telex_received: updateForm.hblTelexReceived,
+                mbl_telex_received: updateForm.mblTelexReceived,
+                no_of_palette: updateForm.noOfPalette,
+                marks_and_numbers: updateForm.marksAndNumbers,
+            };
 
-            if (res.ok) {
-                toast.success("Booking update saved!");
-                navigate('/bookings');
-            } else {
-                toast.error(data.message || "Failed to update booking");
-            }
-        } catch (error) {
-            console.error("Update error:", error);
-            toast.error("Error updating booking");
-=======
-    const handleSaveBookingUpdate = async () => {
-         try {
-             // Map to snake_case
-             const payload = {
-                 hbl_no: updateForm.hblNo,
-                 mbl_no: updateForm.mblNo,
-                 eta: updateForm.eta,
-                 etd: updateForm.etd,
-                 shipper_invoice_no: updateForm.shipperInvoiceNo,
-                 net_weight: updateForm.netWeight,
-                 gross_weight: updateForm.grossWeight,
-                 cargo_type: updateForm.cargoType,
-                 shipping_line_name: updateForm.shippingLineName,
-                 hbl_telex_received: updateForm.hblTelexReceived,
-                 mbl_telex_received: updateForm.mblTelexReceived,
-                 no_of_palette: updateForm.noOfPalette,
-                 marks_and_numbers: updateForm.marksAndNumbers,
-             };
-             
-             await api.put(`/booking/update/${jobNo}`, payload);
-             toast.success("Booking update saved!");
-             navigate('/bookings');
+            await api.put(`/booking/update/${jobNo}`, payload);
+            toast.success("Booking update saved!");
+            navigate('/bookings');
         } catch (error) {
             console.error(error);
-             toast.error(error.response?.data?.message || "Failed to save update");
->>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
+            toast.error(error.response?.data?.message || "Failed to save update");
         }
     };
 
@@ -563,30 +371,6 @@ const Bookings = () => {
                     </div>
                 </div>
             </div>
-<<<<<<< HEAD
-
-            {/* Add New Modal */}
-            {showAddNew.type && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowAddNew({ type: null, value: '' })}>
-                    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-sm p-6" onClick={e => e.stopPropagation()}>
-                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-4 capitalize">Add New {showAddNew.type}</h3>
-                        <input
-                            autoFocus
-                            type="text"
-                            value={showAddNew.value}
-                            onChange={(e) => setShowAddNew(prev => ({ ...prev, value: e.target.value }))}
-                            className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white mb-4"
-                            placeholder={`Enter ${showAddNew.type} name`}
-                        />
-                        <div className="flex justify-end gap-2">
-                            <button onClick={() => setShowAddNew({ type: null, value: '' })} className="px-4 py-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg">Cancel</button>
-                            <button onClick={handleSaveNewKyc} className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">Save</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-=======
->>>>>>> 7fe6dd56d675f239e83a72ea605e3b420cfc258a
         </DashboardLayout>
     );
 };
