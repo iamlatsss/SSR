@@ -51,7 +51,7 @@ const SidebarItem = ({ icon, text, to }) => {
 const DashboardLayout = ({ children, title = "Dashboard" }) => {
     const { logout, user } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    
+
     const [theme, setTheme] = useState(() => {
         if (typeof window !== 'undefined') {
             return localStorage.getItem('theme') || 'light';
@@ -73,7 +73,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
         setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
     };
 
-    const userInitials = user?.user_name 
+    const userInitials = user?.user_name
         ? user.user_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
         : 'U';
 
@@ -107,15 +107,16 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                     <SidebarItem icon={<Briefcase size={20} />} text="Bookings" to="/bookings" />
                     <SidebarItem icon={<FileText size={20} />} text="DO / FC" to="/do-fc" />
                     <SidebarItem icon={<Anchor size={20} />} text="IGM" to="/igm" />
+                    <SidebarItem icon={<FileText size={20} />} text="Invoice" to="/invoice" />
                     <SidebarItem icon={<ShieldCheck size={20} />} text="KYC" to="/kyc" />
-                    
+
                     {user?.role === 'Admin' && (
-                         <SidebarItem icon={<Users size={20} />} text="Users" to="/users" />
+                        <SidebarItem icon={<Users size={20} />} text="Users" to="/users" />
                     )}
                     <SidebarItem icon={<Settings size={20} />} text="Settings" to="/settings" />
                 </nav>
                 <div className="p-4 border-t border-slate-100 dark:border-slate-800">
-                    <button 
+                    <button
                         onClick={logout}
                         className="flex items-center gap-3 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors w-full px-4 py-2 text-sm font-medium">
                         <LogOut size={18} />

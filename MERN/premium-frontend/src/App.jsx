@@ -13,6 +13,7 @@ import BookingForm from './pages/Bookings';
 import IGM from './pages/IGM';
 import KYCList from './pages/KYCList';
 import DOFC from './pages/DOFC.jsx'; // Combined DO/FC
+import Invoice from './pages/Invoice.jsx';
 
 // Placeholder for now
 const Settings = () => (
@@ -27,30 +28,31 @@ const Settings = () => (
 function App() {
   return (
     <AuthProvider>
-        <Router>
+      <Router>
         <Routes>
-            <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
-            
-            <Route element={<ProtectedRoute />}>
-                <Route path="/" element={<Home />} />
-                <Route path="/quotation" element={<Quotation />} />
-                <Route path="/bookings" element={<BookingList />} />
-                <Route path="/booking-form" element={<BookingForm />} />
-                <Route path="/igm" element={<IGM />} />
-                <Route path="/kyc" element={<KYCList />} />
-                <Route path="/settings" element={<Settings />} />
-                <Route path="/do-fc" element={<DOFC />} />
-                
-                {/* Users Management (formerly Admin) - Restricted to Admin */}
-                <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
-                    <Route path="/users" element={<Admin />} />
-                </Route>
-            </Route>
+          <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
 
-            <Route path="*" element={<Navigate to="/" replace />} />
+          <Route element={<ProtectedRoute />}>
+            <Route path="/" element={<Home />} />
+            <Route path="/quotation" element={<Quotation />} />
+            <Route path="/bookings" element={<BookingList />} />
+            <Route path="/booking-form" element={<BookingForm />} />
+            <Route path="/igm" element={<IGM />} />
+            <Route path="/kyc" element={<KYCList />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/do-fc" element={<DOFC />} />
+            <Route path="/invoice" element={<Invoice />} />
+
+            {/* Users Management (formerly Admin) - Restricted to Admin */}
+            <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
+              <Route path="/users" element={<Admin />} />
+            </Route>
+          </Route>
+
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-        </Router>
-    </AuthProvider> 
+      </Router>
+    </AuthProvider>
   );
 }
 
