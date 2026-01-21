@@ -8,6 +8,7 @@ import Admin from './Admin/admin.js';
 import Booking from './Booking/Booking.js';
 import Mail from './Mail/Mail.js';
 import KYC from './KYC/KYC.js';
+import Ports from './Data/Ports.js';
 
 const app = express();
 const PORT = 5001;
@@ -39,6 +40,7 @@ app.use('/admin', Admin);
 app.use('/booking', Booking);
 app.use('/mail', Mail);
 app.use('/kyc', KYC);
+app.use('/ports', Ports);
 
 
 app.get('/', (req, res) => {
