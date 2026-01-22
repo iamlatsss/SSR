@@ -149,20 +149,39 @@ const InvoicePreview = ({ data, onClose }) => {
                                     ))}
                                 </tbody>
                                 <tfoot>
-                                    <tr className="border-t-2 border-slate-900 font-bold bg-slate-100">
-                                        <td colSpan="7" className="text-right p-1 border-r border-slate-900">IGST 18%</td>
-                                        <td className="text-right p-1 border-r border-slate-900">{totals.igst.toFixed(2)}</td>
-                                        <td className="text-right p-1"></td>
-                                    </tr>
+                                    {/* Dynamic Tax Rows */}
+                                    {totals.igst > 0 && (
+                                        <tr className="border-t border-slate-900 font-bold bg-slate-100">
+                                            <td colSpan="7" className="text-right p-1 border-r border-slate-900">IGST</td>
+                                            <td className="text-right p-1 border-r border-slate-900">{totals.igst.toFixed(2)}</td>
+                                            <td className="text-right p-1"></td>
+                                        </tr>
+                                    )}
+                                    {totals.cgst > 0 && (
+                                        <tr className="border-t border-slate-900 font-bold bg-slate-100">
+                                            <td colSpan="7" className="text-right p-1 border-r border-slate-900">CGST</td>
+                                            <td className="text-right p-1 border-r border-slate-900">{totals.cgst.toFixed(2)}</td>
+                                            <td className="text-right p-1"></td>
+                                        </tr>
+                                    )}
+                                    {totals.sgst > 0 && (
+                                        <tr className="border-t border-slate-900 font-bold bg-slate-100">
+                                            <td colSpan="7" className="text-right p-1 border-r border-slate-900">SGST</td>
+                                            <td className="text-right p-1 border-r border-slate-900">{totals.sgst.toFixed(2)}</td>
+                                            <td className="text-right p-1"></td>
+                                        </tr>
+                                    )}
+
                                     <tr className="border-t border-slate-900 font-bold">
-                                        <td colSpan="7" className="text-right p-1 border-r border-slate-900"></td>
-                                        <td className="text-right p-1 border-r border-slate-900">{totals.igst.toFixed(2)}</td>
-                                        <td className="text-right p-1">{totals.igst.toFixed(2)}</td>
+                                        <td colSpan="7" className="text-right p-1 border-r border-slate-900">Total Tax</td>
+                                        <td className="text-right p-1 border-r border-slate-900">{(totals.igst + totals.cgst + totals.sgst).toFixed(2)}</td>
+                                        <td className="text-right p-1">{(totals.igst + totals.cgst + totals.sgst).toFixed(2)}</td>
                                     </tr>
+
                                     <tr className="border-t border-slate-900 font-bold">
                                         <td colSpan="7" className="text-right p-1 border-r border-slate-900">Round Off</td>
-                                        <td className="text-right p-1 border-r border-slate-900">0.00</td>
-                                        <td className="text-right p-1">0.00</td>
+                                        <td className="text-right p-1 border-r border-slate-900">{(Math.round(totals.grandTotal) - totals.grandTotal).toFixed(2)}</td>
+                                        <td className="text-right p-1">{(Math.round(totals.grandTotal) - totals.grandTotal).toFixed(2)}</td>
                                     </tr>
                                     <tr className="border-t-2 border-slate-900 font-bold bg-slate-200">
                                         <td colSpan="6" className="text-left p-1 border-r border-slate-900">INR - {numberToWords(Math.round(totals.grandTotal))}</td>

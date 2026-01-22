@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import DashboardLayout from "../components/DashboardLayout";
+import PortSelect from "../components/PortSelect";
 import { Copy, Mail, RefreshCw } from "lucide-react";
 import { toast } from "react-toastify";
 
@@ -9,12 +10,16 @@ const Quotation = () => {
         pol: "",
         pod: "",
         containerSize: "",
-        rate: "",
+        // Charges
         Ocean_freight: "",
+        Ocean_freight_currency: "USD",
         Shipping_line_charges: "",
+        Shipping_line_charges_currency: "INR",
         DO_charges: "",
-        shipperDetails: "",
-        consigneeDetails: "",
+        DO_charges_currency: "INR",
+        cfsCharges: "",
+        cfsCharges_currency: "INR",
+
         terms: "",
         validity: "",
     });
@@ -31,7 +36,10 @@ const Quotation = () => {
         if (!isoDate) return "";
         try {
             const d = new Date(isoDate);
-            return d.toLocaleDateString();
+            const day = String(d.getDate()).padStart(2, '0');
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const year = d.getFullYear();
+            return `${day}/${month}/${year}`;
         } catch {
             return isoDate;
         }
@@ -47,16 +55,12 @@ const Quotation = () => {
             `POL: ${formData.pol || ""}`,
             `POD: ${formData.pod || ""}`,
             `Container Size: ${formData.containerSize || ""}`,
-            `Rate: ${formData.rate || ""}`,
-            `Ocean Freight: ${formData.Ocean_freight || ""}`,
-            `Shipping Line Charges: ${formData.Shipping_line_charges || ""}`,
-            `DO Charges: ${formData.DO_charges || ""}`,
             "",
-            "Shipper Details:",
-            formData.shipperDetails || "",
-            "",
-            "Consignee Details:",
-            formData.consigneeDetails || "",
+            "CHARGES:",
+            `Ocean Freight: ${formData.Ocean_freight || "0"} ${formData.Ocean_freight_currency}`,
+            `Shipping Line Charges: ${formData.Shipping_line_charges || "0"} ${formData.Shipping_line_charges_currency}`,
+            `DO Charges: ${formData.DO_charges || "0"} ${formData.DO_charges_currency}`,
+            `CFS Charges: ${formData.cfsCharges || "0"} ${formData.cfsCharges_currency}`,
             "",
             "Terms & Conditions:",
             formData.terms || "",
@@ -102,9 +106,11 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333333; backgro
 .header { text-align: center; border-bottom: 2px solid #4f46e5; padding-bottom: 10px; margin-bottom: 20px; }
 .header h1 { color: #4f46e5; margin: 0; font-size: 24px; }
 .content { margin-bottom: 20px; }
-.quotation-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-.quotation-table th, .quotation-table td { padding: 10px; text-align: left; border-bottom: 1px solid #dddddd; }
-.quotation-table tr:nth-child(even) { background-color: #f9f9f9; }
+.details-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+.details-table td { padding: 8px; border-bottom: 1px solid #eee; }
+.charges-table { width: 100%; border-collapse: collapse; margin-top: 15px; border: 1px solid #ddd; }
+.charges-table th { background-color: #f8f9fa; text-align: left; padding: 10px; border-bottom: 2px solid #ddd; }
+.charges-table td { padding: 10px; border-bottom: 1px solid #ddd; }
 .signature { margin-top: 20px; font-style: italic; }
 </style>
 </head>
@@ -117,20 +123,51 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333333; backgro
     <p>Dear Sir,</p>
     <p>Thank you for your inquiry. We are pleased to provide our best offer for your kind reference:</p>
 
-    <h3>Quotation Details</h3>
-    <table class="quotation-table">
-      <tr><td><strong>POL:</strong></td><td>${formData.pol || ""}</td></tr>
-      <tr><td><strong>POD:</strong></td><td>${formData.pod || ""}</td></tr>
-      <tr><td><strong>Container Size:</strong></td><td>${formData.containerSize || ""}</td></tr>
-      <tr><td><strong>Rate:</strong></td><td>${formData.rate || ""}</td></tr>
-      <tr><td><strong>Ocean Freight:</strong></td><td>${formData.Ocean_freight || ""}</td></tr>
-      <tr><td><strong>Shipping Line Charges:</strong></td><td>${formData.Shipping_line_charges || ""}</td></tr>
-      <tr><td><strong>DO Charges:</strong></td><td>${formData.DO_charges || ""}</td></tr>
-      <tr><td><strong>Shipper Details:</strong></td><td>${(formData.shipperDetails || "").replace(/\n/g, "<br/>")}</td></tr>
-      <tr><td><strong>Consignee Details:</strong></td><td>${(formData.consigneeDetails || "").replace(/\n/g, "<br/>")}</td></tr>
-      <tr><td><strong>Terms:</strong></td><td>${(formData.terms || "").replace(/\n/g, "<br/>")}</td></tr>
-      <tr><td><strong>Validity:</strong></td><td>${formatDate(formData.validity) || ""}</td></tr>
+    <h3>Shipment Details</h3>
+    <table class="details-table">
+      <tr><td style="width: 150px; font-weight: bold;">POL:</td><td>${formData.pol || ""}</td></tr>
+      <tr><td style="font-weight: bold;">POD:</td><td>${formData.pod || ""}</td></tr>
+      <tr><td style="font-weight: bold;">Container Size:</td><td>${formData.containerSize || ""}</td></tr>
+      <tr><td style="font-weight: bold;">Validity:</td><td>${formatDate(formData.validity) || ""}</td></tr>
     </table>
+
+    <h3>Charges</h3>
+    <table class="charges-table">
+      <thead>
+        <tr>
+          <th>Charge Description</th>
+          <th>Amount</th>
+          <th>Currency</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Ocean Freight</td>
+          <td>${formData.Ocean_freight || "0"}</td>
+          <td>${formData.Ocean_freight_currency}</td>
+        </tr>
+        <tr>
+          <td>Shipping Line Charges</td>
+          <td>${formData.Shipping_line_charges || "0"}</td>
+          <td>${formData.Shipping_line_charges_currency}</td>
+        </tr>
+        <tr>
+          <td>DO Charges</td>
+          <td>${formData.DO_charges || "0"}</td>
+          <td>${formData.DO_charges_currency}</td>
+        </tr>
+        <tr>
+          <td>CFS Charges</td>
+          <td>${formData.cfsCharges || "0"}</td>
+          <td>${formData.cfsCharges_currency}</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div style="margin-top: 20px;">
+        <strong>Terms & Conditions:</strong>
+        <p style="white-space: pre-wrap; margin-top: 5px;">${formData.terms || "Standard Terms Apply"}</p>
+    </div>
 
     <p style="margin-top: 25px;">
       We trust that the above offer is competitive and meets your requirements. We look forward to your kind confirmation for further bookings.
@@ -169,166 +206,172 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333333; backgro
 
     return (
         <DashboardLayout title="Quotation">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-8rem)]">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 h-[calc(100vh-8rem)]">
                 {/* FORM SECTION */}
-                <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-6 overflow-y-auto">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold text-slate-800 dark:text-white">
-                            Details
+                <div className="bg-white dark:bg-dark-card rounded-2xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 overflow-y-auto custom-scrollbar">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                            <Mail size={18} className="text-indigo-600" /> Quotation Details
                         </h3>
-                        <button 
+                        <button
                             onClick={() => setFormData({
-                                email: "", pol: "", pod: "", containerSize: "", rate: "", 
-                                Ocean_freight: "", Shipping_line_charges: "", DO_charges: "", 
-                                shipperDetails: "", consigneeDetails: "", terms: "", validity: ""
+                                email: "", pol: "", pod: "", containerSize: "",
+                                Ocean_freight: "", Ocean_freight_currency: "USD",
+                                Shipping_line_charges: "", Shipping_line_charges_currency: "INR",
+                                DO_charges: "", DO_charges_currency: "INR",
+                                cfsCharges: "", cfsCharges_currency: "INR",
+                                terms: "", validity: ""
                             })}
-                            className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors"
+                            className="p-1.5 text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-all"
                             title="Reset Form"
                         >
-                            <RefreshCw size={18} />
+                            <RefreshCw size={16} />
                         </button>
                     </div>
 
-                    <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); openMailClient(); }}>
-                         {/* Email */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email To</label>
-                            <input
-                                type="email"
-                                name="email"
-                                value={formData.email}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-                            />
+                    <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); openMailClient(); }}>
+
+                        {/* Row 1: Email & Validity */}
+                        <div className="flex gap-3">
+                            <div className="flex-1">
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider">Email To</label>
+                                <input
+                                    type="email"
+                                    name="email"
+                                    value={formData.email}
+                                    onChange={handleChange}
+                                    placeholder="client@example.com"
+                                    className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                                />
+                            </div>
+                            <div className="w-40">
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider">Validity</label>
+                                <input
+                                    type="date"
+                                    name="validity"
+                                    value={formData.validity}
+                                    onChange={handleChange}
+                                    className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                                />
+                            </div>
                         </div>
 
-                         {/* POL / POD */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {/* Row 2: POL, POD, Size */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POL</label>
-                                <input
-                                    type="text"
+                                <PortSelect
+                                    label="POL"
                                     name="pol"
                                     value={formData.pol}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                                    placeholder="Loading Port"
+                                    className="py-1.5 text-sm"
                                 />
                             </div>
                             <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POD</label>
-                                <input
-                                    type="text"
+                                <PortSelect
+                                    label="POD"
                                     name="pod"
                                     value={formData.pod}
                                     onChange={handleChange}
-                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                                    placeholder="Discharge Port"
+                                    className="py-1.5 text-sm"
                                 />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Container</label>
+                                <select
+                                    name="containerSize"
+                                    value={formData.containerSize}
+                                    onChange={handleChange}
+                                    className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all appearance-none"
+                                >
+                                    <option value="">Size</option>
+                                    {[
+                                        "20 Dry Standard", "40 Dry Standard", "40 Dry High", "45 Dry High",
+                                        "20 Tank", "40 Tank",
+                                        "20' Reefer Standard", "40' Reefer High",
+                                        "20 Open Top", "40 Open Top", "40 Open Top High",
+                                        "40 Flat Standard", "40 Flat High", "20 Flat"
+                                    ].map(size => (
+                                        <option key={size} value={size}>{size}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
 
-                        {/* Container Size */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Container Size</label>
-                            <select
-                                name="containerSize"
-                                value={formData.containerSize}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all appearance-none"
-                            >
-                                <option value="">Select size</option>
-                                <option value="20'GP">20'GP</option>
-                                <option value="20'HQ">20'HQ</option>
-                                <option value="40'DRY">40'DRY</option>
-                                <option value="40'HQ">40'HQ</option>
-                                <option value="20'Reefer">20'Reefer</option>
-                                <option value="40'Reefer">40'Reefer</option>
-                                <option value="20'Flat rack">20'Flat rack</option>
-                                <option value="40'Flat rack">40'Flat rack</option>
-                                <option value="20'Open top">20'Open top</option>
-                                <option value="40'Open top">40'Open top</option>
-                            </select>
-                        </div>
+                        <div className="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
 
-                         {/* Charges Grid */}
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {['rate', 'Ocean_freight', 'Shipping_line_charges', 'DO_charges'].map(field => (
-                                <div key={field}>
-                                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 capitalize">
-                                        {field.replace(/_/g, ' ')}
-                                    </label>
-                                    <input
-                                        type="text"
-                                        name={field}
-                                        value={formData[field]}
-                                        onChange={handleChange}
-                                        className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
-                                    />
+                        {/* Charges */}
+                        <div className="space-y-2">
+                            <label className="block text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-2">Freight & Charges</label>
+
+                            {[
+                                { key: 'Ocean_freight', label: 'Ocean Freight' },
+                                { key: 'Shipping_line_charges', label: 'Shipping Line' },
+                                { key: 'DO_charges', label: 'DO Charges' },
+                                { key: 'cfsCharges', label: 'CFS Charges' },
+                            ].map((charge) => (
+                                <div key={charge.key} className="grid grid-cols-12 gap-4 items-center">
+                                    <div className="col-span-9">
+                                        <div className="relative">
+                                            <label className="absolute -top-1.5 left-2 px-1 bg-white dark:bg-dark-card text-[10px] font-semibold text-slate-500">{charge.label}</label>
+                                            <input
+                                                type="text"
+                                                name={charge.key}
+                                                value={formData[charge.key]}
+                                                onChange={handleChange}
+                                                placeholder="0.00"
+                                                className="w-full px-3 py-1.5 text-sm bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="col-span-2 col-start-11">
+                                        <select
+                                            name={`${charge.key}_currency`}
+                                            value={formData[`${charge.key}_currency`]}
+                                            onChange={handleChange}
+                                            className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                                        >
+                                            <option value="USD">USD</option>
+                                            <option value="INR">INR</option>
+                                            <option value="EUR">EUR</option>
+                                            <option value="GBP">GBP</option>
+                                            <option value="AED">AED</option>
+                                        </select>
+                                    </div>
                                 </div>
                             ))}
                         </div>
 
-                        {/* Details Textareas */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Shipper Details</label>
-                                <textarea
-                                    name="shipperDetails"
-                                    value={formData.shipperDetails}
-                                    onChange={handleChange}
-                                    rows={3}
-                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all resize-none"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Consignee Details</label>
-                                <textarea
-                                    name="consigneeDetails"
-                                    value={formData.consigneeDetails}
-                                    onChange={handleChange}
-                                    rows={3}
-                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all resize-none"
-                                />
-                            </div>
-                        </div>
+                        <div className="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
 
                         {/* Terms */}
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Terms & Conditions</label>
+                            <label className="block text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-2">Terms & Conditions</label>
                             <textarea
                                 name="terms"
                                 value={formData.terms}
                                 onChange={handleChange}
                                 rows={2}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all resize-none"
-                            />
-                        </div>
-
-                        {/* Validity */}
-                         <div>
-                            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Validity</label>
-                            <input
-                                type="date"
-                                name="validity"
-                                value={formData.validity}
-                                onChange={handleChange}
-                                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all"
+                                className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all resize-none"
                             />
                         </div>
 
                         {/* Buttons */}
-                        <div className="flex gap-3 pt-4">
+                        <div className="flex gap-3 pt-2">
                             <button
                                 type="submit"
-                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                                className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2 shadow-sm"
                             >
-                                <Mail size={18} /> Open Mail Client
+                                <Mail size={16} /> Open Mail Client
                             </button>
                             <button
                                 type="button"
                                 onClick={copyHtmlToClipboard}
-                                className="flex-1 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white px-4 py-2.5 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
+                                className="flex-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 px-4 py-2 rounded-lg transition-colors font-medium text-sm flex items-center justify-center gap-2"
                             >
-                                <Copy size={18} /> Copy HTML
+                                <Copy size={16} /> Copy HTML
                             </button>
                         </div>
                     </form>
@@ -336,13 +379,13 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333333; backgro
 
                 {/* VISUALIZATION SECTION */}
                 <div className="bg-slate-100 dark:bg-black/20 rounded-2xl border border-slate-200 dark:border-slate-700 p-2 flex flex-col h-full overflow-hidden">
-                     <div className="bg-white rounded-xl shadow-sm h-full overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-sm h-full overflow-hidden">
                         <iframe
                             title="Email Preview"
                             style={{ width: "100%", height: "100%", border: "0" }}
                             srcDoc={emailHtml}
                         />
-                     </div>
+                    </div>
                 </div>
             </div>
         </DashboardLayout>

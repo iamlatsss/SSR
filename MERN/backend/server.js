@@ -9,6 +9,7 @@ import Booking from './Booking/Booking.js';
 import Mail from './Mail/Mail.js';
 import KYC from './KYC/KYC.js';
 import Ports from './Data/Ports.js';
+import Invoice from './Invoice/Invoice.js';
 
 const app = express();
 const PORT = 5001;
@@ -41,13 +42,14 @@ app.use('/booking', Booking);
 app.use('/mail', Mail);
 app.use('/kyc', KYC);
 app.use('/ports', Ports);
+app.use('/invoice', Invoice);
 
 
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Backend server listening on http://0.0.0.0:${PORT}`);
+app.listen(PORT, () => {
+  console.log(`Backend server listening on port ${PORT}`);
 });
 

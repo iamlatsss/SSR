@@ -5,11 +5,15 @@ import api from "../services/api";
 import { Save, ChevronLeft } from "lucide-react";
 import { toast } from "react-toastify";
 
-const PORTS = [
-    "Nhava Sheva, INNSA", "Mundra, INMUN", "Chennai, INMAA", "Mumbai, INBOM",
-    "Singapore, SGSIN", "Shanghai, CNSHA", "Rotterdam, NLRTM", "Jebel Ali, AEJEA",
+import PortSelect from "../components/PortSelect";
+
+const CONTAINER_SIZES = [
+    "20 Dry Standard", "40 Dry Standard", "40 Dry High", "45 Dry High",
+    "20 Tank", "40 Tank",
+    "20' Reefer Standard", "40' Reefer High",
+    "20 Open Top", "40 Open Top", "40 Open Top High",
+    "40 Flat Standard", "40 Flat High", "20 Flat"
 ];
-const CONTAINER_SIZES = ["20' GP", "40' GP", "40' HC", "45' HC"];
 const CARGO_TYPES = ["HAZ", "General Cargo", "Special Equipment", "Machineries", "Spare Parts"];
 
 
@@ -32,6 +36,8 @@ const Bookings = () => {
         containerCount: 1,
         agent: "",
     });
+
+    // ... (rest of state unchanged) ...
 
     const [updateForm, setUpdateForm] = useState({
         hblNo: "", mblNo: "", eta: "", etd: "", shipperInvoiceNo: "",
@@ -190,6 +196,7 @@ const Bookings = () => {
         }
     };
 
+
     return (
         <DashboardLayout title="Booking Form">
             <div className="flex items-center gap-4 mb-6">
@@ -243,26 +250,32 @@ const Bookings = () => {
                                     </div>
                                     {/* POL/POD */}
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POL</label>
-                                        <select name="pol" value={bookingForm.pol} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
-                                            <option value="">Select POL</option>
-                                            {PORTS.map(p => <option key={p} value={p}>{p}</option>)}
-                                        </select>
+                                        <PortSelect
+                                            label="POL"
+                                            name="pol"
+                                            value={bookingForm.pol}
+                                            onChange={handleBookingChange}
+                                            placeholder="Select POL"
+                                        />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">POD</label>
-                                        <select name="pod" value={bookingForm.pod} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
-                                            <option value="">Select POD</option>
-                                            {PORTS.map(p => <option key={p} value={p}>{p}</option>)}
-                                        </select>
+                                        <PortSelect
+                                            label="POD"
+                                            name="pod"
+                                            value={bookingForm.pod}
+                                            onChange={handleBookingChange}
+                                            placeholder="Select POD"
+                                        />
                                     </div>
                                     {/* Final POD */}
                                     <div>
-                                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Final POD</label>
-                                        <select name="finalPod" value={bookingForm.finalPod} onChange={handleBookingChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white">
-                                            <option value="">Select Final POD</option>
-                                            {PORTS.map(p => <option key={p} value={p}>{p}</option>)}
-                                        </select>
+                                        <PortSelect
+                                            label="Final POD"
+                                            name="finalPod"
+                                            value={bookingForm.finalPod}
+                                            onChange={handleBookingChange}
+                                            placeholder="Select Final POD"
+                                        />
                                     </div>
                                     {/* Agent */}
                                     <div>
@@ -361,7 +374,14 @@ const Bookings = () => {
                             </div>
                             <div className="flex justify-between">
                                 <span>Route:</span>
-                                <span className="font-medium text-slate-800 dark:text-white">{bookingForm.pol && bookingForm.pod ? `${bookingForm.pol.split(',')[0]} → ${bookingForm.pod.split(',')[0]}` : "—"}</span>
+                                <span className="font-medium text-slate-800 dark:text-white">
+                                    {(bookingForm.pol && bookingForm.pod) ? (
+                                        <>
+                                            {bookingForm.pol.split(',')[0]} → {bookingForm.pod.split(',')[0]}
+                                            {bookingForm.finalPod && <> → {bookingForm.finalPod.split(',')[0]}</>}
+                                        </>
+                                    ) : "—"}
+                                </span>
                             </div>
                             <div className="flex justify-between">
                                 <span>Agent:</span>

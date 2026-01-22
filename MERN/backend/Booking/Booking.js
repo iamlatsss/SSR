@@ -42,6 +42,11 @@ const ALLOWED_FIELDS = [
 // Booking Init
 router.get("/init", authenticateJWT, async (req, res) => {
   try {
+    // Cache mechanism to prevent DB overload from frontend loops
+    if (global.bookingInitCache && (Date.now() - global.bookingInitCache.timestamp < 5000)) {
+      return res.json(global.bookingInitCache.data);
+    }
+
     const dbName = process.env.MYSQL_DATABASE || 'ssr';
 
     // 1. Get AUTO_INCREMENT from schema
@@ -61,12 +66,18 @@ router.get("/init", authenticateJWT, async (req, res) => {
     // Use the greater of the two to be safe
     const nextJobNo = Math.max(autoIncrementVal, maxJobNo + 1);
 
-    console.log(`[Init] DB: ${dbName}, Schema AI: ${autoIncrementVal}, MaxJob: ${maxResult.maxJobNo} -> Next: ${nextJobNo}`);
-
     // 3. Get Customers (id, name, type)
     const customers = await knexDB("Customers").select("customer_id", "name", "customer_type");
 
-    res.json({ success: true, nextJobNo, customers });
+    const responseData = { success: true, nextJobNo, customers };
+
+    // Update Cache
+    global.bookingInitCache = {
+      timestamp: Date.now(),
+      data: responseData
+    };
+
+    res.json(responseData);
   } catch (error) {
     console.error("Error initializing booking page:", error);
     res.status(500).json({ success: false, message: "Internal server error" });

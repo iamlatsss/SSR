@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import api from "../services/api";
-import { Search, Plus, Trash2, X, FileText, Calculator, Printer } from "lucide-react";
+import { Search, Plus, Trash2, X, FileText, Calculator, Printer, ChevronLeft, ChevronRight } from "lucide-react";
 import { toast } from "react-toastify";
 import InvoicePreview from "../components/InvoicePreview";
 
@@ -21,424 +22,301 @@ const INITIAL_ROW = {
 };
 
 const Invoice = () => {
+    const navigate = useNavigate();
+
     // Job Selection State
     const [jobs, setJobs] = useState([]);
+    const [invoices, setInvoices] = useState([]);
     const [customers, setCustomers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
-    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [selectedJob, setSelectedJob] = useState(null);
 
-    // Invoice Modal State
-    const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+    // Invoice Modal State (Removed - Refactored to Page)
     const [showPreview, setShowPreview] = useState(false);
-    const [invoiceNo, setInvoiceNo] = useState("");
-    const [invoiceItems, setInvoiceItems] = useState([INITIAL_ROW]);
-    const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0]);
 
-    // Totals State
-    const [totals, setTotals] = useState({
-        taxable: 0,
-        cgst: 0,
-        sgst: 0,
-        igst: 0,
-        grandTotal: 0
-    });
+    // Preview States (Only needed for Dashboard Preview)
+    const [selectedJob, setSelectedJob] = useState(null);
+    const [invoiceNo, setInvoiceNo] = useState("");
+    const [invoiceItems, setInvoiceItems] = useState([]);
+    const [invoiceDate, setInvoiceDate] = useState("");
+    const [totals, setTotals] = useState({});
+
+    // Totals State (Removed from here, calculated in Generator or Preview only)
+
+    const [chargeOptions, setChargeOptions] = useState([]);
+
+    // Pagination State
+    const [currentPage, setCurrentPage] = useState(1);
+    const [rowsPerPage, setRowsPerPage] = useState(10);
 
     useEffect(() => {
         fetchData();
     }, []);
 
-    // Load Jobs and Customers
     const fetchData = async () => {
         try {
-            const [jobsRes, initRes] = await Promise.all([
+            setLoading(true);
+            const [jobsResponse, invoiceResponse, customersResponse] = await Promise.all([
                 api.get("/booking/get"),
+                api.get("/invoice/all"),
                 api.get("/booking/init")
             ]);
 
-            if (jobsRes.data.success) {
-                setJobs(jobsRes.data.bookings || []);
+            if (jobsResponse.data.success) {
+                setJobs(jobsResponse.data.bookings || []);
             }
-            if (initRes.data.success) {
-                setCustomers(initRes.data.customers || []);
+            if (invoiceResponse.data.success) {
+                setInvoices(invoiceResponse.data.invoices || []);
+            }
+            if (customersResponse.data.success) {
+                setCustomers(customersResponse.data.customers || []);
             }
         } catch (error) {
-            console.error("Error loading data:", error);
+            console.error("Error fetching data:", error);
             toast.error("Failed to load data");
         } finally {
             setLoading(false);
         }
     };
 
-    // Filter Jobs (Confirmed/Completed/In-Transit)
     const filteredOptions = useMemo(() => {
-        const allowedStatuses = ["confirmed", "completed", "in-transit"];
-        const validJobs = jobs.filter(j => allowedStatuses.includes(j.status));
+        if (!jobs) return [];
 
-        if (!searchQuery) return validJobs;
+        // Filter jobs based on status (in-transit, completed) and search query
+        const allowedStatuses = ["completed", "in-transit", "in transit"];
 
-        return validJobs.filter(j =>
-            String(j.job_no).toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (j.shipper_name || "").toLowerCase().includes(searchQuery.toLowerCase())
-        );
+        return jobs.filter(job => {
+            const matchesStatus = allowedStatuses.includes(job.status?.toLowerCase());
+            const matchesSearch =
+                job.job_no?.toString().includes(searchQuery) ||
+                job.shipper_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                job.consignee_name?.toLowerCase().includes(searchQuery.toLowerCase());
+
+            return matchesStatus && matchesSearch;
+        });
     }, [jobs, searchQuery]);
 
-    const handleSelectJob = (job) => {
-        setSelectedJob(job);
-        setSearchQuery(`#${job.job_no} - ${job.shipper_name}`);
-        setIsDropdownOpen(false);
-        // Reset modal state when new job selected
-        setInvoiceNo("");
-        setInvoiceDate(new Date().toISOString().split('T')[0]);
-        setInvoiceItems([{ ...INITIAL_ROW, id: Date.now() }]);
+    // Pagination Logic
+    const indexOfLastRow = currentPage * rowsPerPage;
+    const indexOfFirstRow = indexOfLastRow - rowsPerPage;
+    const currentRows = filteredOptions.slice(indexOfFirstRow, indexOfLastRow);
+
+    const handleCreateInvoice = (job) => {
+        navigate(`/invoice/edit/${job.job_no}`);
     };
 
-    // --- Invoice Logic ---
-
-    const handleOpenModal = () => {
-        if (!selectedJob) return;
-        setShowInvoiceModal(true);
-    };
-
-    const handleAddRow = () => {
-        setInvoiceItems(prev => [...prev, { ...INITIAL_ROW, id: Date.now() }]);
-    };
-
-    const handleRemoveRow = (id) => {
-        if (invoiceItems.length === 1) return; // Prevent deleting last row
-        setInvoiceItems(prev => prev.filter(item => item.id !== id));
-    };
-
-    const updateRow = (id, field, value) => {
-        setInvoiceItems(prev => prev.map(item => {
-            if (item.id !== id) return item;
-
-            const updated = { ...item, [field]: value };
-
-            // Recalculate amounts if relevant fields change
-            if (['qty', 'rate', 'exRate', 'currency'].includes(field)) {
-                const qty = Number(updated.qty) || 0;
-                const rate = Number(updated.rate) || 0;
-                const exRate = updated.currency === 'USD' ? (Number(updated.exRate) || 1) : 1;
-
-                updated.amountFC = (updated.currency === 'USD') ? (rate * qty) : 0;
-                // Note: Logic adjustment based on screenshot columns (Amnt_FC is typically for foreign currency)
-                // If INR, usually Amnt_FC is empty or same. Let's strictly calculate amountINR.
-
-                if (updated.currency === 'INR') {
-                    updated.amountINR = rate * qty;
-                    updated.amountFC = 0;
-                    updated.exRate = 1.0;
-                } else {
-                    updated.amountINR = rate * qty * exRate; // Assuming rate is in USD
-                }
-            }
-
-            // Auto-reset ExRate to 1 if currency is INR
-            if (field === 'currency' && value === 'INR') {
-                updated.exRate = 1.0;
-                updated.amountFC = 0;
-                updated.amountINR = updated.rate * updated.qty;
-            }
-
-            return updated;
-        }));
-    };
-
-    // Recalculate Totals whenever items change
-    useEffect(() => {
-        let taxable = 0;
-        let gstTotal = 0;
-
-        invoiceItems.forEach(item => {
-            taxable += item.amountINR;
-            if (item.isGST) {
-                // Assuming 18% GST for now
-                gstTotal += (item.amountINR * 0.18);
-            }
-        });
-
-        // Split GST (simplified logic: if intra-state split, else IGST. 
-        // For now, logic is generic, purely visual based on user request to see tax breakdown)
-        // We will default to showing IGST for simplicity or split equally for CGST/SGST if needed.
-        // Let's assume IGST for now as it's common in logistics across states.
-
-        setTotals({
-            taxable: taxable,
-            cgst: 0, // Placeholder
-            sgst: 0, // Placeholder
-            igst: gstTotal,
-            grandTotal: taxable + gstTotal
-        });
-    }, [invoiceItems]);
+    // Removed handleSaveInvoice, updateRow, effects etc. as they are now in InvoiceGenerator.
 
     const getCustomerDetails = () => {
         if (!selectedJob || !customers.length) return null;
-        // Try to find customer by shipper name
-        // This is a loose match. Ideally we should have customer_id in booking.
-        // For now, assume shipper_name matches customer Name or we look up by some other means if available.
-        // If not found, returns a dummy object or null.
         return customers.find(c => c.name?.toLowerCase() === selectedJob.shipper_name?.toLowerCase()) ||
             { name: selectedJob.shipper_name, address: "Address not found in KYC", gstin: "N/A" };
     };
 
     return (
         <DashboardLayout title="Generate Invoice">
-            {/* Job Selection Section */}
-            <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm mb-6">
-                <div className="flex flex-col md:flex-row gap-4 items-end">
-                    <div className="relative flex-1">
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select Job</label>
-                        <div className="relative">
-                            <input
-                                type="text"
-                                placeholder="Type Job No or Shipper..."
-                                value={searchQuery}
-                                onChange={(e) => {
-                                    setSearchQuery(e.target.value);
-                                    setIsDropdownOpen(true);
-                                    if (e.target.value === "") setSelectedJob(null);
-                                }}
-                                onFocus={() => setIsDropdownOpen(true)}
-                                onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
-                                className="w-full px-3 py-2 pl-10 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                            />
-                            <Search className="absolute left-3 top-2.5 text-slate-400 pointer-events-none" size={18} />
-                        </div>
-                        {isDropdownOpen && (
-                            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                {filteredOptions.length > 0 ? (
-                                    filteredOptions.map((job) => (
-                                        <div
-                                            key={job.job_no}
-                                            onClick={() => handleSelectJob(job)}
-                                            className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm"
-                                        >
-                                            <div className="font-medium text-slate-900 dark:text-white">#{job.job_no}</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{job.shipper_name}</div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="px-4 py-3 text-sm text-slate-500 text-center">No jobs found</div>
-                                )}
-                            </div>
-                        )}
+            {/* Dashboard Table View */}
+            <div className="bg-white dark:bg-dark-card rounded-lg border border-slate-300 dark:border-slate-700 shadow-sm overflow-hidden mb-8">
+                {/* Search Header */}
+                <div className="p-4 border-b border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <h2 className="text-lg font-bold text-slate-800 dark:text-white">Recent Jobs</h2>
+                    <div className="relative w-full sm:w-96">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                        <input
+                            type="text"
+                            placeholder="Search by Job No, Shipper..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="pl-10 pr-4 py-2 w-full border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-dark-card text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
                     </div>
-                    <button
-                        onClick={handleOpenModal}
-                        disabled={!selectedJob}
-                        className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                    >
-                        <Calculator size={18} /> Create Invoice
-                    </button>
                 </div>
-            </div>
 
-            {/* Instruction / Placeholder */}
-            {!showInvoiceModal && (
-                <div className="text-center py-20 text-slate-400 bg-slate-50 dark:bg-slate-800/30 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
-                    <FileText size={48} className="mx-auto mb-4 opacity-50" />
-                    <p>Select a job and click "Create Invoice" to start.</p>
-                </div>
-            )}
-
-            {/* Invoice Modal - Full Screen / Large */}
-            {showInvoiceModal && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-2xl w-full max-w-[95vw] h-[90vh] flex flex-col overflow-hidden border border-slate-200 dark:border-slate-700">
-                        {/* Modal Header */}
-                        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
-                            <div className="flex items-center gap-4">
-                                <h2 className="text-lg font-bold text-slate-800 dark:text-white">New Invoice for Job #{selectedJob?.job_no}</h2>
-                                <div className="flex items-center gap-2">
-                                    <label className="text-sm font-medium text-slate-600 dark:text-slate-400">Invoice No:</label>
-                                    <input
-                                        type="text"
-                                        value={invoiceNo}
-                                        onChange={(e) => setInvoiceNo(e.target.value)}
-                                        className="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-dark-card text-sm w-40"
-                                        placeholder="Enter Invoice No"
-                                    />
-                                    <input
-                                        type="date"
-                                        value={invoiceDate}
-                                        onChange={(e) => setInvoiceDate(e.target.value)}
-                                        className="px-2 py-1 border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-dark-card text-sm"
-                                    />
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setShowPreview(true)}
-                                    className="px-4 py-1.5 bg-slate-800 text-white text-sm rounded hover:bg-slate-900 flex items-center gap-2"
-                                >
-                                    <Printer size={16} /> Preview / Print
-                                </button>
-                                <button onClick={() => setShowInvoiceModal(false)} className="text-slate-400 hover:text-red-500">
-                                    <X size={24} />
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Modal Body - Scrollable Table */}
-                        <div className="flex-1 overflow-auto p-4">
-                            <table className="w-full text-left border-collapse min-w-[1200px]">
-                                <thead>
-                                    <tr className="bg-slate-100 dark:bg-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold border-b border-slate-200 dark:border-slate-700">
-                                        <th className="p-3 w-48">Description / Charge</th>
-                                        <th className="p-3 text-center w-12">GST</th>
-                                        <th className="p-3 text-center w-12">TDS</th>
-                                        <th className="p-3 w-28">Type of Unit</th>
-                                        <th className="p-3 w-20">Qty</th>
-                                        <th className="p-3 w-28">Rate</th>
-                                        <th className="p-3 w-20">Cur</th>
-                                        <th className="p-3 w-20">Ex.Rate</th>
-                                        <th className="p-3 w-28 text-right">Amount (INR)</th>
-                                        <th className="p-3 w-28 text-right">Amount (FC)</th>
-                                        <th className="p-3 w-40">Narration</th>
-                                        <th className="p-3 w-10"></th>
+                <div className="overflow-x-auto">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
+                                    <th className="p-4 w-16">Edit</th>
+                                    <th className="p-4">Job No</th>
+                                    <th className="p-4">Date</th>
+                                    <th className="p-4">Shipper</th>
+                                    <th className="p-4">Route</th>
+                                    <th className="p-4">Status</th>
+                                    <th className="p-4">Invoice Status</th>
+                                    <th className="p-4 text-right">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                                {loading ? (
+                                    <tr><td colSpan="8" className="p-8 text-center text-slate-500">Loading jobs...</td></tr>
+                                ) : filteredOptions.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="8" className="p-8 text-center text-slate-500">
+                                            No active jobs found (In-Transit or Completed).
+                                        </td>
                                     </tr>
-                                </thead>
-                                <tbody className="text-sm divide-y divide-slate-100 dark:divide-slate-700">
-                                    {invoiceItems.map((item) => (
-                                        <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30">
-                                            <td className="p-2">
-                                                <input
-                                                    type="text"
-                                                    value={item.chargeName}
-                                                    onChange={(e) => updateRow(item.id, 'chargeName', e.target.value)}
-                                                    className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none dark:text-white"
-                                                    placeholder="Charge Name"
-                                                />
-                                            </td>
-                                            <td className="p-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.isGST}
-                                                    onChange={(e) => updateRow(item.id, 'isGST', e.target.checked)}
-                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                                />
-                                            </td>
-                                            <td className="p-2 text-center">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.isTDS}
-                                                    onChange={(e) => updateRow(item.id, 'isTDS', e.target.checked)}
-                                                    className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                                                />
-                                            </td>
-                                            <td className="p-2">
-                                                <select
-                                                    value={item.unit}
-                                                    onChange={(e) => updateRow(item.id, 'unit', e.target.value)}
-                                                    className="w-full bg-transparent border border-slate-200 dark:border-slate-700 rounded px-1 py-0.5 text-xs dark:text-slate-300"
-                                                >
-                                                    <option value="20' GP">20' GP</option>
-                                                    <option value="40' GP">40' GP</option>
-                                                    <option value="40' HC">40' HC</option>
-                                                    <option value="45' HC">45' HC</option>
-                                                </select>
-                                            </td>
-                                            <td className="p-2">
-                                                <input
-                                                    type="number"
-                                                    value={item.qty}
-                                                    onChange={(e) => updateRow(item.id, 'qty', e.target.value)}
-                                                    className="w-full bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-right dark:text-white"
-                                                    min="0"
-                                                />
-                                            </td>
-                                            <td className="p-2">
-                                                <input
-                                                    type="number"
-                                                    value={item.rate}
-                                                    onChange={(e) => updateRow(item.id, 'rate', e.target.value)}
-                                                    className="w-full bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-right dark:text-white"
-                                                    min="0"
-                                                />
-                                            </td>
-                                            <td className="p-2">
-                                                <select
-                                                    value={item.currency}
-                                                    onChange={(e) => updateRow(item.id, 'currency', e.target.value)}
-                                                    className="w-full bg-transparent border border-slate-200 dark:border-slate-700 rounded px-1 py-0.5 text-xs dark:text-slate-300"
-                                                >
-                                                    <option value="INR">INR</option>
-                                                    <option value="USD">USD</option>
-                                                </select>
-                                            </td>
-                                            <td className="p-2">
-                                                <input
-                                                    type="number"
-                                                    value={item.exRate}
-                                                    onChange={(e) => updateRow(item.id, 'exRate', e.target.value)}
-                                                    disabled={item.currency === 'INR'}
-                                                    className="w-full bg-transparent border border-slate-200 dark:border-slate-700 rounded px-2 py-1 text-right disabled:opacity-50 dark:text-white"
-                                                    min="0"
-                                                />
-                                            </td>
-                                            <td className="p-2 text-right font-medium dark:text-white">{item.amountINR.toFixed(2)}</td>
-                                            <td className="p-2 text-right text-slate-500 dark:text-slate-400">{item.amountFC.toFixed(2)}</td>
-                                            <td className="p-2">
-                                                <input
-                                                    type="text"
-                                                    value={item.narration}
-                                                    onChange={(e) => updateRow(item.id, 'narration', e.target.value)}
-                                                    className="w-full bg-transparent border-b border-transparent focus:border-indigo-500 focus:outline-none dark:text-slate-300 text-xs"
-                                                />
-                                            </td>
-                                            <td className="p-2 text-center">
+                                ) : currentRows.map((job) => {
+                                    // Check if we have an existing invoice for this job
+                                    const inv = invoices.find(i => i.job_no === job.job_no);
+                                    const totals = inv?.totals ? (typeof inv.totals === 'string' ? JSON.parse(inv.totals) : inv.totals) : { grandTotal: 0 };
+
+                                    return (
+                                        <tr key={job.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                            {/* Edit Action */}
+                                            <td className="p-4 text-center">
                                                 <button
-                                                    onClick={() => handleRemoveRow(item.id)}
-                                                    disabled={invoiceItems.length === 1}
-                                                    className="text-slate-400 hover:text-red-500 disabled:opacity-30 p-1"
+                                                    onClick={() => handleCreateInvoice(job)}
+                                                    className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
+                                                    title={inv ? "Edit Invoice" : "Create Invoice"}
                                                 >
-                                                    <Trash2 size={16} />
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                                 </button>
                                             </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            <button
-                                onClick={handleAddRow}
-                                className="mt-4 flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 font-medium px-2 py-1 hover:bg-indigo-50 dark:hover:bg-slate-800 rounded transition-colors"
-                            >
-                                <Plus size={16} /> Add Charge
-                            </button>
-                        </div>
 
-                        {/* Modal Footer - Totals Table */}
-                        <div className="bg-slate-50 dark:bg-slate-800/50 p-4 border-t border-slate-200 dark:border-slate-700">
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-dark-card rounded-lg overflow-hidden">
-                                    <thead>
-                                        <tr className="bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-b border-slate-200 dark:border-slate-700">
-                                            <th className="py-2 px-4 text-center font-medium border-r border-slate-200 dark:border-slate-700">Taxable Amount</th>
-                                            <th className="py-2 px-4 text-center font-medium border-r border-slate-200 dark:border-slate-700">Total GST</th>
-                                            <th className="py-2 px-4 text-center font-medium border-r border-slate-200 dark:border-slate-700">CGST</th>
-                                            <th className="py-2 px-4 text-center font-medium border-r border-slate-200 dark:border-slate-700">SGST</th>
-                                            <th className="py-2 px-4 text-center font-medium border-r border-slate-200 dark:border-slate-700">IGST</th>
-                                            <th className="py-2 px-4 text-center font-medium">Grand Total</th>
+                                            {/* Job No */}
+                                            <td className="p-4 font-mono font-medium text-indigo-600 dark:text-indigo-400">
+                                                #{job.job_no}
+                                            </td>
+
+                                            {/* Date */}
+                                            <td className="p-4 text-slate-600 dark:text-slate-300 text-sm">
+                                                {new Date(job.created_at).toLocaleDateString()}
+                                            </td>
+
+                                            {/* Shipper */}
+                                            <td className="p-4">
+                                                <div className="font-medium text-slate-800 dark:text-slate-200 text-sm">{job.shipper_name || "—"}</div>
+                                                <div className="text-xs text-slate-500">{job.consignee_name}</div>
+                                            </td>
+
+                                            {/* Route */}
+                                            <td className="p-4 text-slate-600 dark:text-slate-300 text-sm">
+                                                {job.pol} → {job.pod}
+                                            </td>
+
+                                            {/* Job Status */}
+                                            <td className="p-4">
+                                                <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium capitalize
+                                                ${job.status === 'completed' ? 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400' :
+                                                        job.status === 'in-transit' ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' :
+                                                            'bg-slate-50 text-slate-600 dark:bg-slate-800/50 dark:text-slate-400'}`}>
+                                                    {job.status}
+                                                </span>
+                                            </td>
+
+                                            {/* Invoice Status */}
+                                            <td className="p-4">
+                                                {inv ? (
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 rounded text-xs font-medium">Generated</span>
+                                                        <span className="text-xs text-slate-500">{inv.invoice_no}</span>
+                                                        <button
+                                                            onClick={() => {
+                                                                setSelectedJob(job);
+                                                                if (inv) {
+                                                                    setInvoiceNo(inv.invoice_no);
+                                                                    setInvoiceDate(inv.invoice_date);
+                                                                    setTotals(totals);
+                                                                    setInvoiceItems(typeof inv.items === 'string' ? JSON.parse(inv.items) : inv.items);
+                                                                }
+                                                                setShowPreview(true);
+                                                            }}
+                                                            className="p-1 text-slate-400 hover:text-indigo-600"
+                                                            title="View PDF"
+                                                        >
+                                                            <Printer size={14} />
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-slate-400 text-sm italic">Pending</span>
+                                                )}
+                                            </td>
+
+                                            {/* Amount */}
+                                            <td className="p-4 text-right font-medium text-slate-900 dark:text-white">
+                                                {totals.grandTotal > 0 ? totals.grandTotal.toFixed(2) : "—"}
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr className="text-slate-800 dark:text-white font-medium">
-                                            <td className="py-3 px-4 text-center border-r border-slate-200 dark:border-slate-700">{totals.taxable.toFixed(2)}</td>
-                                            <td className="py-3 px-4 text-center border-r border-slate-200 dark:border-slate-700 text-slate-500">{totals.igst.toFixed(2)}</td>
-                                            <td className="py-3 px-4 text-center border-r border-slate-200 dark:border-slate-700 text-slate-500">{totals.cgst.toFixed(2)}</td>
-                                            <td className="py-3 px-4 text-center border-r border-slate-200 dark:border-slate-700 text-slate-500">{totals.sgst.toFixed(2)}</td>
-                                            <td className="py-3 px-4 text-center border-r border-slate-200 dark:border-slate-700 text-slate-500">{totals.igst.toFixed(2)}</td>
-                                            <td className="py-3 px-4 text-center font-bold text-indigo-600 dark:text-indigo-400">{totals.grandTotal.toFixed(2)}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-            )}
+                {/* Pagination Controls */}
+                {filteredOptions.length > 0 && (
+                    <div className="p-4 border-t border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row justify-between items-center gap-4 bg-slate-50 dark:bg-slate-800/20">
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
+                            <span>Rows per page:</span>
+                            <select
+                                value={rowsPerPage}
+                                onChange={(e) => {
+                                    setRowsPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                className="border border-slate-200 dark:border-slate-700 rounded-lg p-1 bg-white dark:bg-dark-card focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value={5}>5</option>
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                            </select>
+                            <span className="ml-2">
+                                Showing {indexOfFirstRow + 1}-{Math.min(indexOfLastRow, filteredOptions.length)} of {filteredOptions.length}
+                            </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                                disabled={currentPage === 1}
+                                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronLeft size={16} />
+                            </button>
+
+                            <div className="flex gap-1">
+                                {(() => {
+                                    const totalPages = Math.ceil(filteredOptions.length / rowsPerPage);
+                                    const pages = [];
+                                    let startPage = Math.max(1, currentPage - 2);
+                                    let endPage = Math.min(totalPages, startPage + 4);
+
+                                    if (endPage - startPage + 1 < Math.min(5, totalPages)) {
+                                        startPage = Math.max(1, endPage - Math.min(5, totalPages) + 1);
+                                    }
+
+                                    for (let p = startPage; p <= endPage; p++) {
+                                        pages.push(p);
+                                    }
+                                    return pages.map(pageNum => (
+                                        <button
+                                            key={pageNum}
+                                            onClick={() => setCurrentPage(pageNum)}
+                                            className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
+                                                ? "bg-indigo-600 text-white"
+                                                : "hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400"
+                                                }`}
+                                        >
+                                            {pageNum}
+                                        </button>
+                                    ));
+                                })()}
+                            </div>
+
+                            <button
+                                onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(filteredOptions.length / rowsPerPage)))}
+                                disabled={currentPage === Math.ceil(filteredOptions.length / rowsPerPage)}
+                                className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            >
+                                <ChevronRight size={16} />
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
             {showPreview && selectedJob && (
                 <InvoicePreview
                     data={{
@@ -454,6 +332,7 @@ const Invoice = () => {
             )}
         </DashboardLayout>
     );
+
 };
 
 export default Invoice;

@@ -14,6 +14,8 @@ import IGM from './pages/IGM';
 import KYCList from './pages/KYCList';
 import DOFC from './pages/DOFC.jsx'; // Combined DO/FC
 import Invoice from './pages/Invoice.jsx';
+import InvoiceGenerator from './pages/InvoiceGenerator.jsx';
+import Profile from './pages/Profile.jsx';
 
 // Placeholder for now
 const Settings = () => (
@@ -40,8 +42,10 @@ function App() {
             <Route path="/igm" element={<IGM />} />
             <Route path="/kyc" element={<KYCList />} />
             <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/do-fc" element={<DOFC />} />
             <Route path="/invoice" element={<Invoice />} />
+            <Route path="/invoice/edit/:jobNo" element={<InvoiceGenerator />} />
 
             {/* Users Management (formerly Admin) - Restricted to Admin */}
             <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>

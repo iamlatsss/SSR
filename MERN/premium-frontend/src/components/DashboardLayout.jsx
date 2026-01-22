@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import {
     LayoutDashboard,
     Users,
-    Settings,
     Bell,
     LogOut,
     Menu,
@@ -15,7 +14,12 @@ import {
     FileText,
     Briefcase,
     Anchor,
-    ShieldCheck
+    ShieldCheck,
+    UserCircle,
+    ChevronDown,
+    Bug,
+    Upload,
+    Image as ImageIcon
 } from 'lucide-react';
 
 const SidebarItem = ({ icon, text, to }) => {
@@ -51,6 +55,13 @@ const SidebarItem = ({ icon, text, to }) => {
 const DashboardLayout = ({ children, title = "Dashboard" }) => {
     const { logout, user } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+    // Feedback State
+    const [showFeedback, setShowFeedback] = useState(false);
+    const [feedbackForm, setFeedbackForm] = useState({ title: "", description: "" });
+    const [feedbackImages, setFeedbackImages] = useState([]);
+    const [submittingFeedback, setSubmittingFeedback] = useState(false);
 
     const [theme, setTheme] = useState(() => {
         if (typeof window !== 'undefined') {
@@ -113,14 +124,13 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                     {user?.role === 'Admin' && (
                         <SidebarItem icon={<Users size={20} />} text="Users" to="/users" />
                     )}
-                    <SidebarItem icon={<Settings size={20} />} text="Settings" to="/settings" />
                 </nav>
                 <div className="p-4 border-t border-slate-100 dark:border-slate-800">
                     <button
-                        onClick={logout}
-                        className="flex items-center gap-3 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors w-full px-4 py-2 text-sm font-medium">
-                        <LogOut size={18} />
-                        Logout
+                        onClick={() => setShowFeedback(true)}
+                        className="flex items-center gap-3 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors w-full px-4 py-2 text-sm font-medium">
+                        <Bug size={18} />
+                        Bugs & Feedback
                     </button>
                 </div>
             </aside>
@@ -145,13 +155,44 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                         <div className="relative">
                             <Bell className="w-5 h-5 text-slate-500 dark:text-slate-400 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" />
                         </div>
-                        <div className="flex items-center gap-3 pl-4 sm:pl-6 border-l border-slate-200 dark:border-slate-700">
+                        <div
+                            className="relative flex items-center gap-3 pl-4 sm:pl-6 border-l border-slate-200 dark:border-slate-700 cursor-pointer"
+                            onClick={() => setIsProfileOpen(!isProfileOpen)}
+                        >
                             <div className="text-right hidden sm:block">
                                 <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{user?.user_name || 'Guest'}</p>
                             </div>
                             <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold border-2 border-white dark:border-slate-700 shadow-sm">
                                 {userInitials}
                             </div>
+                            <ChevronDown size={14} className={`text-slate-400 transition-transform ${isProfileOpen ? 'rotate-180' : ''}`} />
+
+                            {/* Dropdown Menu */}
+                            {isProfileOpen && (
+                                <div className="absolute top-12 right-0 w-48 bg-white dark:bg-dark-card rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-1 overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-100">
+                                    <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 md:hidden">
+                                        <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.user_name || 'Guest'}</p>
+                                        <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                                    </div>
+                                    <Link
+                                        to="/profile"
+                                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        <UserCircle size={16} />
+                                        My Profile
+                                    </Link>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation(); // Prevent re-triggering parent click
+                                            logout();
+                                        }}
+                                        className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                    >
+                                        <LogOut size={16} />
+                                        Logout
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -159,6 +200,95 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                     {children}
                 </main>
             </div>
+            {/* Feedback Modal */}
+            {showFeedback && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setShowFeedback(false)}>
+                    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-lg" onClick={e => e.stopPropagation()}>
+                        <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800">
+                            <h3 className="text-xl font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                <Bug className="text-indigo-600 dark:text-indigo-400" size={24} />
+                                Report a Bug / Feedback
+                            </h3>
+                            <button onClick={() => setShowFeedback(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Title / Subject</label>
+                                <input
+                                    type="text"
+                                    value={feedbackForm.title}
+                                    onChange={e => setFeedbackForm({ ...feedbackForm, title: e.target.value })}
+                                    placeholder="Brief summary of the issue..."
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                                <textarea
+                                    value={feedbackForm.description}
+                                    onChange={e => setFeedbackForm({ ...feedbackForm, description: e.target.value })}
+                                    placeholder="Please describe the bug or feedback in detail..."
+                                    rows={4}
+                                    className="w-full px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-transparent dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none resize-none"
+                                />
+                            </div>
+
+                            {/* Image Upload */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Screenshots</label>
+                                <div className="flex flex-wrap gap-4">
+                                    {feedbackImages.map((img, idx) => (
+                                        <div key={idx} className="relative w-20 h-20 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden group">
+                                            <img src={URL.createObjectURL(img)} alt="preview" className="w-full h-full object-cover" />
+                                            <button
+                                                onClick={() => setFeedbackImages(prev => prev.filter((_, i) => i !== idx))}
+                                                className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-white"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    <label className="w-20 h-20 flex flex-col items-center justify-center border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-lg cursor-pointer hover:border-indigo-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors text-slate-400 hover:text-indigo-500">
+                                        <Upload size={20} />
+                                        <span className="text-[10px] mt-1">Upload</span>
+                                        <input
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                if (e.target.files?.length) {
+                                                    setFeedbackImages(prev => [...prev, ...Array.from(e.target.files)]);
+                                                }
+                                            }}
+                                        />
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => {
+                                    setSubmittingFeedback(true);
+                                    // Simulate API call
+                                    setTimeout(() => {
+                                        setSubmittingFeedback(false);
+                                        setShowFeedback(false);
+                                        setFeedbackForm({ title: '', description: '' });
+                                        setFeedbackImages([]);
+                                        alert("Feedback Submitted Successfully!");
+                                    }, 1500);
+                                }}
+                                disabled={submittingFeedback || !feedbackForm.title}
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2 mt-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {submittingFeedback ? 'Submitting...' : 'Submit Feedback'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

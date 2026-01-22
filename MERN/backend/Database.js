@@ -8,18 +8,21 @@ const pool = mysql.createPool({
   port: process.env.MYSQL_PORT ? parseInt(process.env.MYSQL_PORT) : 3306,
   user: process.env.MYSQL_USER || 'root',
   password: process.env.MYSQL_PASSWORD || '',
-  database: process.env.MYSQL_DATABASE || 'ssr'
+  database: process.env.MYSQL_DATABASE || 'ssr',
+  enableKeepAlive: true,
+  keepAliveInitialDelay: 0,
 }).promise();
 
 export const knexDB = knex({
   client: 'mysql2',
   connection: {
-    host: process.env.MYSQL_HOST,
-    user: process.env.MYSQL_USER,
-    password: process.env.MYSQL_PASSWORD,
-    database: process.env.MYSQL_DATABASE,
+    host: process.env.MYSQL_HOST || 'localhost',
+    user: process.env.MYSQL_USER || 'root',
+    password: process.env.MYSQL_PASSWORD || '',
+    database: process.env.MYSQL_DATABASE || 'ssr',
+    enableKeepAlive: true,
   },
-  pool: { min: 2, max: 10 },
+  pool: { min: 0, max: 10 },
 });
 
 
