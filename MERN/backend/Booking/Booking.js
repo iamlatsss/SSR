@@ -36,7 +36,12 @@ const ALLOWED_FIELDS = [
   "freight_amount",
   "freight_currency",
   "do_validity",
-  "container_number"
+  "container_number",
+  "invoice_no",
+  "invoice_date",
+  "invoice_items",
+  "invoice_totals",
+  "invoice_customer"
 ];
 
 // Booking Init
@@ -83,6 +88,7 @@ router.get("/init", authenticateJWT, async (req, res) => {
     res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
+
 
 // Helper to get or create customer/agent
 async function getOrCreateParty(name, type = 'Customer') {

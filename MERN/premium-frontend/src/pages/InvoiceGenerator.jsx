@@ -24,23 +24,6 @@ const INITIAL_ROW = {
     narration: ""
 };
 
-// Helper to extract tax info from string
-const parseTaxInfo = (name) => {
-    if (!name) return { type: null, pct: 0 };
-
-    // Match GST or IGST followed by optional spaces/hyphens and a number
-    // e.g. "GST 18%", "IGST - 18%", "GST-5%"
-    const match = name.match(/(IGST|GST)[\s-]*(\d+)/i);
-
-    if (match) {
-        return {
-            type: match[1].toUpperCase(), // 'GST' or 'IGST'
-            pct: parseFloat(match[2])
-        };
-    }
-    return { type: null, pct: 0 };
-};
-
 const InvoiceGenerator = () => {
     const { jobNo } = useParams();
     const navigate = useNavigate();
@@ -94,42 +77,30 @@ const InvoiceGenerator = () => {
             if (initRes.data.success) setCustomers(initRes.data.customers || []);
             if (chargesRes.data.success) setChargeOptions(chargesRes.data.charges || []);
 
-            // Check for existing invoice (Local Storage First, then Backend)
-            const localInvoice = localStorage.getItem(`invoice_${jobNo}`);
+            // Invoice Data from Job Object itself (New Logic)
+            if (job.invoice_no) {
+                setInvoiceNo(job.invoice_no);
+                setInvoiceDate(job.invoice_date ? new Date(job.invoice_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
 
-            if (localInvoice) {
-                const inv = JSON.parse(localInvoice);
-                setInvoiceNo(inv.invoice_no || inv.invoiceNo);
-                setInvoiceDate(inv.invoice_date || inv.invoiceDate);
-
-                // Re-hydrate items with tax info if missing
-                const loadedItems = (inv.items || []).map(item => {
-                    if (item.taxType) return item; // Already has info
-                    const { type, pct } = parseTaxInfo(item.chargeName);
-                    return { ...item, taxType: type, taxPercent: pct };
-                });
-                setInvoiceItems(loadedItems);
-            } else {
-                // Fallback to backend if nothing local
-                try {
-                    const invRes = await api.get(`/invoice/job/${jobNo}`);
-                    if (invRes.data.success && invRes.data.invoice) {
-                        const inv = invRes.data.invoice;
-                        setInvoiceNo(inv.invoice_no);
-                        setInvoiceDate(inv.invoice_date ? new Date(inv.invoice_date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]);
-
-                        let items = typeof inv.items === 'string' ? JSON.parse(inv.items) : inv.items;
-                        // Re-hydrate backend items too
-                        items = items.map(item => {
-                            if (item.taxType) return item;
-                            const { type, pct } = parseTaxInfo(item.chargeName);
-                            return { ...item, taxType: type, taxPercent: pct };
-                        });
-                        setInvoiceItems(items);
+                let items = job.invoice_items ? (typeof job.invoice_items === 'string' ? JSON.parse(job.invoice_items) : job.invoice_items) : [];
+                // Re-hydrate backend items too
+                items = items.map(item => {
+                        // Try to find the charge in the master list to get definitive tax info
+                    const foundCharge = (chargesRes.data.charges || []).find(c => c.name === item.chargeName);
+                    
+                    if (foundCharge) {
+                        return {
+                            ...item,
+                            isGST: foundCharge.gst || foundCharge.igst,
+                            taxType: foundCharge.gst ? 'GST' : (foundCharge.igst ? 'IGST' : null),
+                            taxPercent: foundCharge.percentage || 0
+                        };
                     }
-                } catch (err) {
-                    console.warn("Backend invoice fetch failed, ignoring:", err);
-                }
+                    return item;
+                });
+                if (items.length > 0) setInvoiceItems(items);
+            } else {
+                 setInvoiceNo(job.invoice_no || ""); // Might be null
             }
 
         } catch (error) {
@@ -155,26 +126,14 @@ const InvoiceGenerator = () => {
                 // If taxType is explicitly known
                 if (item.taxType === 'GST') {
                     // Split 50-50
-                    const rate = item.taxPercent || 18; // Default to 18 if 0
+                    const rate = item.taxPercent || 18; 
                     const halfRate = rate / 2;
                     cgst += baseAmount * (halfRate / 100);
                     sgst += baseAmount * (halfRate / 100);
-                } else if (item.taxType === 'IGST') {
-                    // Full amount
-                    const rate = item.taxPercent || 18; // Default to 18 if 0
-                    igst += baseAmount * (rate / 100);
                 } else {
-                    // Fallback: Checked manually but no tax info in name.
-                    // Default behavior: Assume IGST 18% as per previous observation, OR split if implied?
-                    // User complained "I chose charges with GST but... IGST calculated".
-                    // This implies if they manually check it, they might expect GST split?
-                    // But usually "Ocean Freight" is IGST 5% or 18% depending.
-                    // Let's stick to IGST 18% as safe default for unidentified charges, 
-                    // BUT for the specific "Shipping Line Charges GST" case, the parser SHOULD have caught it.
-                    // The re-hydration above fixes the "Shipping Line" case.
-                    // For "Ocean Freight" (no name match), it will fall here. 
-                    // Let's default to IGST 18 for now, but if the user wants GST they should rename.
-                    igst += baseAmount * 0.18;
+                    // Default to IGST if not explicitly GST
+                    const rate = item.taxPercent || 18; 
+                    igst += baseAmount * (rate / 100);
                 }
             }
         });
@@ -207,29 +166,25 @@ const InvoiceGenerator = () => {
         }
 
         try {
-            const invoiceData = {
-                invoiceNo,
-                invoice_no: invoiceNo, // compatibility
-                jobNo,
-                invoiceDate,
-                invoice_date: invoiceDate, // compatibility
-                customer: customerDetails,
-                items: invoiceItems,
-                totals,
-                updatedAt: new Date().toISOString()
+            const payload = {
+                invoice_no: invoiceNo,
+                invoice_date: invoiceDate,
+                invoice_customer: JSON.stringify(customerDetails),
+                invoice_items: JSON.stringify(invoiceItems),
+                invoice_totals: JSON.stringify(totals)
             };
 
-            // Save locally as requested
-            localStorage.setItem(`invoice_${jobNo}`, JSON.stringify(invoiceData));
-            toast.success("Invoice saved locally!");
-
-            // Navigate back to list as requested ("come out of the job")
-            setTimeout(() => {
-                navigate('/invoice');
-            }, 1000); // Small delay to let the toast be seen
-
-            // Optional: Still try to sync to backend if needed, but for now we rely on local
-            // await api.post("/invoice/save", ...); 
+            const res = await api.put(`/booking/update/${jobNo}`, payload);
+            
+            if (res.data.success) {
+                toast.success("Invoice saved successfully linked to Booking!");
+                localStorage.removeItem(`invoice_${jobNo}`); // Clear local draft if any
+                setTimeout(() => {
+                    navigate('/invoice');
+                }, 1000);
+            } else {
+                toast.error("Failed to save invoice.");
+            }
 
         } catch (error) {
             console.error("Error saving invoice:", error);
@@ -255,10 +210,17 @@ const InvoiceGenerator = () => {
 
             // Auto-detect tax info when charge name changes
             if (field === 'chargeName') {
-                const { type, pct } = parseTaxInfo(value);
-                updated.taxType = type;
-                updated.taxPercent = pct;
-                updated.isGST = !!type; // Auto-check if tax detected
+                const foundCharge = chargeOptions.find(c => c.name === value);
+                if (foundCharge) {
+                    updated.isGST = foundCharge.gst || foundCharge.igst;
+                    updated.taxType = foundCharge.gst ? 'GST' : (foundCharge.igst ? 'IGST' : null);
+                    updated.taxPercent = foundCharge.percentage || 0;
+                } else {
+                    // Custom value - no assumptions
+                    updated.isGST = false;
+                    updated.taxType = null;
+                    updated.taxPercent = 0;
+                }
             }
 
             // If user manually toggles isGST, we should try to re-parse or set defaults?
@@ -413,12 +375,10 @@ const InvoiceGenerator = () => {
                                                     const r = (item.taxPercent || 18) / 2;
                                                     c = base * (r / 100);
                                                     s = base * (r / 100);
-                                                } else if (item.taxType === 'IGST') {
+                                                } else {
+                                                    // IGST / Default
                                                     const r = item.taxPercent || 18;
                                                     i = base * (r / 100);
-                                                } else {
-                                                    // Fallback for unknown type but isGST checked
-                                                    i = base * 0.18;
                                                 }
                                             }
                                             return (

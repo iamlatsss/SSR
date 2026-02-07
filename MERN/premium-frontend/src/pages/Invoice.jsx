@@ -56,17 +56,13 @@ const Invoice = () => {
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [jobsResponse, invoiceResponse, customersResponse] = await Promise.all([
+            const [jobsResponse, customersResponse] = await Promise.all([
                 api.get("/booking/get"),
-                api.get("/invoice/all"),
                 api.get("/booking/init")
             ]);
 
             if (jobsResponse.data.success) {
                 setJobs(jobsResponse.data.bookings || []);
-            }
-            if (invoiceResponse.data.success) {
-                setInvoices(invoiceResponse.data.invoices || []);
             }
             if (customersResponse.data.success) {
                 setCustomers(customersResponse.data.customers || []);
@@ -157,9 +153,10 @@ const Invoice = () => {
                                         </td>
                                     </tr>
                                 ) : currentRows.map((job) => {
-                                    // Check if we have an existing invoice for this job
-                                    const inv = invoices.find(i => i.job_no === job.job_no);
-                                    const totals = inv?.totals ? (typeof inv.totals === 'string' ? JSON.parse(inv.totals) : inv.totals) : { grandTotal: 0 };
+                                    // Check if we have an existing invoice for this job (from Booking object directly)
+                                    const hasInvoice = !!job.invoice_no;
+                                    const invTotals = job.invoice_totals ? (typeof job.invoice_totals === 'string' ? JSON.parse(job.invoice_totals) : job.invoice_totals) : { grandTotal: 0 };
+                                    const invItems = job.invoice_items ? (typeof job.invoice_items === 'string' ? JSON.parse(job.invoice_items) : job.invoice_items) : [];
 
                                     return (
                                         <tr key={job.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
@@ -168,7 +165,7 @@ const Invoice = () => {
                                                 <button
                                                     onClick={() => handleCreateInvoice(job)}
                                                     className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
-                                                    title={inv ? "Edit Invoice" : "Create Invoice"}
+                                                    title={hasInvoice ? "Edit Invoice" : "Create Invoice"}
                                                 >
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
                                                 </button>
@@ -207,18 +204,18 @@ const Invoice = () => {
 
                                             {/* Invoice Status */}
                                             <td className="p-4">
-                                                {inv ? (
+                                                {hasInvoice ? (
                                                     <div className="flex items-center gap-2">
                                                         <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 rounded text-xs font-medium">Generated</span>
-                                                        <span className="text-xs text-slate-500">{inv.invoice_no}</span>
+                                                        <span className="text-xs text-slate-500">{job.invoice_no}</span>
                                                         <button
                                                             onClick={() => {
                                                                 setSelectedJob(job);
-                                                                if (inv) {
-                                                                    setInvoiceNo(inv.invoice_no);
-                                                                    setInvoiceDate(inv.invoice_date);
-                                                                    setTotals(totals);
-                                                                    setInvoiceItems(typeof inv.items === 'string' ? JSON.parse(inv.items) : inv.items);
+                                                                if (hasInvoice) {
+                                                                    setInvoiceNo(job.invoice_no);
+                                                                    setInvoiceDate(job.invoice_date);
+                                                                    setTotals(invTotals);
+                                                                    setInvoiceItems(invItems);
                                                                 }
                                                                 setShowPreview(true);
                                                             }}
@@ -235,7 +232,7 @@ const Invoice = () => {
 
                                             {/* Amount */}
                                             <td className="p-4 text-right font-medium text-slate-900 dark:text-white">
-                                                {totals.grandTotal > 0 ? totals.grandTotal.toFixed(2) : "—"}
+                                                {invTotals.grandTotal > 0 ? invTotals.grandTotal.toFixed(2) : "—"}
                                             </td>
                                         </tr>
                                     );
