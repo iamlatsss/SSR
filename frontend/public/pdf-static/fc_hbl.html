@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>HBL Cargo Arrival Notice cum Freight Certificate</title>
+
+<style>
+  body{font-family:Calibri,Arial,sans-serif;font-size:14px;background:#fff;margin:0}
+  .page{width:900px;margin:20px auto;border:2px solid #000;padding:20px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{border:1px solid #000;padding:6px;vertical-align:top}
+  th{background:#f2f2f2;text-align:left;width:22%}
+  .title{text-align:center;font-weight:bold;font-size:16px;text-decoration:underline;margin:10px 0}
+  .note{font-size:12px;margin-top:10px;line-height:1.4}
+</style>
+</head>
+
+<body>
+<div class="page">
+
+<!-- 🔗 CONNECT: Company Profile -->
+<img src="/images/SSR_nobg.png" height="60">
+<b>SSR LOGISTIC SOLUTIONS PVT. LTD.</b><br>
+Email: customerservice@ssrlogistic.net | Tel: 7700990630
+
+<div class="title">FREIGHT CERTIFICATE</div>
+
+<table>
+<tr>
+  <th>Shipper Name & Address</th>
+  <td>
+    <!-- 🔗 CONNECT: HBL Page → Shipper -->
+    {{ KYCList.shipper_name }}<br>{{ KYCList.shipper_address }}
+  </td>
+
+  <th>CFS Name & Address</th>
+  <td>
+    <!-- 🔗 CONNECT: Port / CFS Master -->
+    {{ IGM.cfs_name }}
+  </td>
+</tr>
+
+<tr>
+  <th>Consignee Name & Address</th>
+  <td>
+    <!-- 🔗 CONNECT: Customer Master -->
+    {{ KYCList.consignee_name }}<br>{{ KYCList.consignee_address }}
+  </td>
+
+  <th>Filing On</th>
+  <td><b>HBL</b></td>
+</tr>
+
+<tr>
+  <th>Vessel / Voyage</th>
+  <td>
+    <!-- 🔗 CONNECT: Vessel Schedule -->
+    {{ IGM.vessel_name }} / {{ IGM.vessel_voyage }}
+  </td>
+
+  <th>HBL No</th>
+  <td>
+    <!-- 🔗 CONNECT: HBL Page -->
+    {{ BookingList.hbl_no }}
+  </td>
+</tr>
+
+<tr>
+  <th>IGM No</th>
+  <td>
+    <!-- 🔗 CONNECT: Customs / IGM Page -->
+    {{ IGM.igm_no }}
+  </td>
+
+  <th>MBL No</th>
+  <td>
+    <!-- 🔗 CONNECT: MBL Page (read-only) -->
+    {{ BookingList.mbl_no }}
+  </td>
+</tr>
+
+<tr>
+  <th>ETA Expected</th>
+  <td>
+    <!-- 🔗 CONNECT: Vessel Schedule -->
+    {{ BookingList.eta }}
+  </td>
+
+  <th>FCL / LCL</th>
+  <td>
+    <!-- 🔗 CONNECT: Booking Page -->
+    {{ BookingList.mode }}
+  </td>
+</tr>
+
+<tr>
+  <th>Container Type</th>
+  <td>
+    <!-- 🔗 CONNECT: Container Module -->
+    {{ BookingList.container_type }}
+  </td>
+
+  <th>POL / POD</th>
+  <td>
+    <!-- 🔗 CONNECT: Port Master -->
+    {{ BookingList.pol }} → {{ BookingList.pod }}
+  </td>
+</tr>
+
+<tr>
+  <th>No of Containers</th>
+  <td>
+    <!-- 🔗 CONNECT: Container List -->
+    {{ BookingList.container_count }}
+  </td>
+
+  <th>Gross Weight</th>
+  <td>
+    <!-- 🔗 CONNECT: Cargo Details -->
+    {{ cargo.weight }}
+  </td>
+</tr>
+</table>
+
+<!-- 🔗 CONNECT: Charges Module -->
+<table style="margin-top:10px">
+<tr>
+  <th>S/N</th><th>Description</th><th>Currency</th><th>Amount</th>
+</tr>
+{% for charge in charges %}
+<tr>
+  <td>{{ loop.index }}</td>
+  <td>{{ charge.name }}</td>
+  <td>{{ charge.currency }}</td>
+  <td>{{ charge.amount }}</td>
+</tr>
+{% endfor %}
+</table>
+
+<div class="note">
+<b>NOTE:</b> Kindly contact us immediately upon arrival of containers for delivery details.  
+Original Bill of Lading (duly endorsed) is required for delivery.
+</div>
+
+<br>
+<b>For SSR Logistic Solutions Pvt. Ltd.</b><br>
+Prepared By: {{ user.name }}
+
+</div>
+</body>
+</html>

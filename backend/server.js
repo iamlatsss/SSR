@@ -1,91 +1,55 @@
-import express from "express";
-import nodemailer from "nodemailer";
-import path from "path";
-import { fileURLToPath } from "url";
-import dotenv from "dotenv";
+import express from 'express';
+import cors from 'cors'
+import cookieParser from 'cookie-parser';
+import './config.js';
 
-dotenv.config();
+import Auth from './AuthAPI/Auth.js';
+import Admin from './Admin/admin.js';
+import Booking from './Booking/Booking.js';
+import Mail from './Mail/Mail.js';
+import KYC from './KYC/KYC.js';
+import Ports from './Data/Ports.js';
+import Invoice from './Invoice/Invoice.js';
 
 const app = express();
-const PORT = 5000;
+const PORT = 5001;
+const public_ip = process.env.URI;
 
-// Fix __dirname for ES module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const allowedOrigins = [
+  'http://127.0.0.1:5173',
+  `http://${public_ip}:5173`,
+  'http://localhost:5174',
+  'http://127.0.0.1:5174',
+  // 'https://my-frontend-domain.com'
+];
 
-// Middleware
+app.use(cookieParser());
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use("/static", express.static(path.join(__dirname, "static"))); 
+app.use('/auth', Auth);
+app.use('/admin', Admin);
+app.use('/booking', Booking);
+app.use('/mail', Mail);
+app.use('/kyc', KYC);
+app.use('/ports', Ports);
+app.use('/invoice', Invoice);
 
-// Serve HTML frontend
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "quotation.html")); 
+
+app.get('/', (req, res) => {
+  res.send('Backend is running 🚀');
 });
 
-// Send quotation email
-app.post("/send-quotation", async (req, res) => {
-  const {
-    email,
-    pol,
-    pod,
-    containerSize,
-    rate,
-    Ocean_freight,
-    Shipping_line_charges,
-    DO_charges,
-    shipperDetails,
-    consigneeDetails,
-    terms,
-    validity
-  } = req.body;
-
-  try {
-    // Nodemailer transporter
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
-    });
-
-    // HTML email content (exact format)
-    const emailBody = `
-    <p>Dear Sir,</p>
-    <p>Thanking you, please find our best revised offer for your kind reference,</p>
-
-    <p><b>Quotation Details</b><br><br>
-
-    POL: ${pol || ''}<br>
-    POD: ${pod || ''}<br>
-    Container Size: ${containerSize || ''}<br>
-    Rate: ${rate || ''}<br>
-    Ocean Freight: ${Ocean_freight || ''}<br>
-    Shipping Line Charges: ${Shipping_line_charges || ''}<br>
-    DO Charges: ${DO_charges || ''}<br>
-    Shipper Details: ${shipperDetails || ''}<br>
-    Consignee Details: ${consigneeDetails || ''}<br>
-    Terms: ${terms || ''}<br>
-    Validity: ${validity || ''}</p>
-
-    <p>Hope the above is competitive and meets your requirements, awaiting your kind confirmation for further bookings,</p>
-    `;
-
-    const mailOptions = {
-      from: `"SSR Logistics" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: "Quotation Details",
-      html: emailBody  // ✅ using html ensures formatting is preserved
-    };
-
-    await transporter.sendMail(mailOptions);
-
-    res.json({ success: true, message: "Email sent successfully!" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, error: error.message });
-  }
+app.listen(PORT, () => {
+  console.log(`Backend server listening on port ${PORT}`);
 });
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
