@@ -14,13 +14,14 @@ import Invoice from './Invoice/Invoice.js';
 const app = express();
 const PORT = 5001;
 const public_ip = process.env.URI;
+const frontend_url = process.env.FRONTEND_URL;
 
 const allowedOrigins = [
   'http://127.0.0.1:5173',
   `http://${public_ip}:5173`,
   'http://localhost:5174',
   'http://127.0.0.1:5174',
-  // 'https://my-frontend-domain.com'
+  frontend_url,
 ];
 
 app.use(cookieParser());
