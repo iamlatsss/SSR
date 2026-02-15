@@ -1,126 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>MBL Cargo Arrival Notice cum Freight Certificate</title>
 
-<style>
-  body{font-family:Calibri,Arial;font-size:14px;background:#fff;margin:0}
-  .page{width:900px;margin:20px auto;border:2px solid #000;padding:20px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{border:1px solid #000;padding:6px}
-  th{background:#f2f2f2;text-align:left;width:22%}
-  .title{text-align:center;font-weight:bold;font-size:16px;text-decoration:underline;margin:10px 0}
-</style>
+<head>
+  <meta charset="UTF-8">
+  <title>MBL Cargo Arrival Notice cum Freight Certificate</title>
+
+  <style>
+    body {
+      font-family: Calibri, Arial;
+      font-size: 11px;
+      background: #fff;
+      margin: 0;
+    }
+
+    .page {
+      width: 794px;
+      margin: 20px auto;
+      border: 1px solid #000;
+      padding: 10px;
+      box-sizing: border-box;
+      background: white;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      border-bottom: 1px solid #000;
+      padding-bottom: 5px;
+      margin-bottom: 5px;
+    }
+
+    .logo-box {
+      width: 40%;
+      border-right: 1px solid #000;
+      padding-right: 10px;
+    }
+
+    .logo-box img {
+      max-width: 100%;
+      height: 60px;
+      object-fit: contain;
+    }
+
+    .company-info {
+      width: 60%;
+      padding-left: 10px;
+      font-size: 12px;
+    }
+
+    .company-title {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    /* Title */
+    .doc-title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+      border: 1px solid #000;
+      background: #f2f2f2;
+      padding: 4px;
+      margin-bottom: 0;
+      /* Connected to table */
+      border-bottom: none;
+    }
+
+    /* Main Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    th,
+    td {
+      border: 1px solid #000;
+      padding: 4px;
+      vertical-align: top;
+    }
+
+    th {
+      font-weight: bold;
+      background: #f9f9f9;
+      width: 18%;
+      text-align: left;
+    }
+
+    /* Data Specifics */
+    .section-header {
+      background: #e0e0e0;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .footer-note {
+      font-size: 10px;
+      margin-top: 10px;
+      line-height: 1.3;
+      border: 1px solid #000;
+      padding: 8px;
+    }
+
+    .sign-box {
+      margin-top: 15px;
+    }
+  </style>
 </head>
 
 <body>
-<div class="page">
+  <div class="page">
 
-<!-- 🔗 CONNECT: Company Profile -->
-<img src="/assets/logo.png" height="60">
-<b>SSR LOGISTIC SOLUTIONS PVT. LTD.</b><br>
+    <!-- HEADER -->
+    <div class="header">
+      <div class="logo-box">
+        <img src="/images/SSR_nobg.png" alt="Logo">
+      </div>
+      <div class="company-info">
+        <div class="company-title">SSR LOGISTIC SOLUTIONS Pvt. Ltd.</div>
+        <br>
+        E-mail ID: customerservice@ssrlogistic.net | Tel.No : 7700990630, 7700990630
+      </div>
+    </div>
 
-<div class="title">CARGO ARRIVAL NOTICE CUM FREIGHT CERTIFICATE</div>
+    <!-- TITLE -->
+    <div class="doc-title">CARGO ARRIVAL NOTICE CUM FREIGHT CERTIFICATE</div>
 
-<table>
+    <!-- DETAILS TABLE -->
+    <table>
+      <!-- Row 1 -->
+      <tr>
+        <th>SHIPPER NAME & ADDRESS</th>
+        <td width="40%">{{ mbl.shipper_name }}<br>{{ mbl.shipper_address }}</td>
+        <th>CFS NAME AND ADDRESS:</th>
+        <td>{{ igm.cfs_name }}<div style="margin-top:10px">Date: {{ other.date }}</div>
+        </td>
+      </tr>
 
-<tr>
-  <th>Shipper Name & Address</th>
-  <td>
-    <!-- 🔗 CONNECT: MBL Page -->
-    {{ mbl.shipper_name }}<br>{{ mbl.shipper_address }}
-  </td>
+      <!-- Row 2 -->
+      <tr>
+        <th>CONSIGNEE NAME & ADDRESS</th>
+        <td>{{ mbl.consignee_name }}<br>{{ mbl.consignee_address }}</td>
+        <th>FILING ON MBL</th>
+        <td><b>MBL</b></td>
+      </tr>
 
-  <th>Consignee Name</th>
-  <td>
-    <!-- 🔗 CONNECT: Company Master -->
-    SSR LOGISTIC SOLUTIONS PVT LTD
-  </td>
-</tr>
+      <!-- Row 3 -->
+      <tr>
+        <th>VESSEL/VOYAGE</th>
+        <td>{{ vessel.name }} / {{ vessel.voyage }}</td>
+        <th>HB/L No</th>
+        <td>{{ booking.hbl_no }}</td>
+      </tr>
 
-<tr>
-  <th>Filing On</th>
-  <td><b>MBL</b></td>
+      <!-- Row 4 -->
+      <tr>
+        <th>IGM NO</th>
+        <td>{{ igm.no }}</td>
+        <th>MBL No</th>
+        <td>{{ booking.mbl_no }}</td>
+      </tr>
 
-  <th>MBL No</th>
-  <td>
-    <!-- 🔗 CONNECT: MBL Page -->
-    {{ mbl.mbl_no }}
-  </td>
-</tr>
+      <!-- Row 5 -->
+      <tr>
+        <th>IGM DATE</th>
+        <td>{{ igm.date }}</td>
+        <th>B/L Date</th>
+        <td>{{ booking.bl_date }}</td>
+      </tr>
 
-<tr>
-  <th>Vessel / Voyage</th>
-  <td>
-    <!-- 🔗 CONNECT: Vessel Schedule -->
-    {{ vessel.name }} / {{ vessel.voyage }}
-  </td>
+      <!-- Row 6 -->
+      <tr>
+        <th>LINE NO</th>
+        <td>{{ igm.line_no }}</td>
+        <th>FCL/LCL</th>
+        <td>{{ booking.mode }}</td>
+      </tr>
 
-  <th>IGM No / Date</th>
-  <td>
-    <!-- 🔗 CONNECT: Customs Page -->
-    {{ igm.no }} / {{ igm.date }}
-  </td>
-</tr>
+      <!-- Row 7 -->
+      <tr>
+        <th>ETA EXPECTED</th>
+        <td colspan="3">{{ booking.eta }}</td>
+      </tr>
 
-<tr>
-  <th>Carrier Name</th>
-  <td>
-    <!-- 🔗 CONNECT: Shipping Line Master -->
-    {{ carrier.name }}
-  </td>
+      <!-- Row 8 -->
+      <tr>
+        <th>CONTR TYPE</th>
+        <td>{{ booking.container_size }}</td>
+        <th>POL</th>
+        <td>{{ booking.pol }}</td>
+      </tr>
 
-  <th>POD</th>
-  <td>
-    <!-- 🔗 CONNECT: Port Master -->
-    {{ port.pod }}
-  </td>
-</tr>
+      <!-- Row 9 -->
+      <tr>
+        <th>CARRIER NAME</th>
+        <td>{{ carrier.name }}</td>
+        <th>POD</th>
+        <td>{{ booking.pod }}</td>
+      </tr>
 
-<tr>
-  <th>No of Containers</th>
-  <td>
-    <!-- 🔗 CONNECT: Container Module -->
-    {{ container.count }}
-  </td>
+      <!-- Row 10 -->
+      <tr>
+        <th>NO CNTR/CBM</th>
+        <td>{{ booking.no_containers }}</td>
+        <th>EX-CHANGE RATE</th>
+        <td>{{ booking.exchange_rate }}</td>
+      </tr>
 
-  <th>Container Type</th>
-  <td>
-    <!-- 🔗 CONNECT: Container Module -->
-    {{ container.type }}
-  </td>
-</tr>
+      <!-- Row 11 -->
+      <tr>
+        <th>GROSS WEIGHT</th>
+        <td colspan="3">{{ cargo.weight }}</td>
+      </tr>
+    </table>
 
-<tr>
-  <th>Gross Weight</th>
-  <td colspan="3">
-    <!-- 🔗 CONNECT: Cargo Page -->
-    {{ cargo.weight }}
-  </td>
-</tr>
+    <!-- CHARGES TABLE -->
+    <table style="border-top: none;">
+      <tr>
+        <th style="width:5%">S/N</th>
+        <th style="width:35%">Service Charge Description</th>
+        <th style="width:10%">SAC</th>
+        <th style="width:10%">CUR</th>
+        <th style="width:20%">RATE PER CNTR/CBM</th>
+        <th style="width:20%">TOTAL AMT CNTR/CBM</th>
+      </tr>
+      {% for charge in line_charges %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ charge.name }}</td>
+        <td></td> <!-- SAC placeholder -->
+        <td>{{ charge.currency }}</td>
+        <td>{{ charge.amount }}</td>
+        <td>{{ charge.total }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <td colspan="5" style="text-align:right; font-weight:bold;">TOTAL AMOUNT</td>
+        <td>{{ charges.total_amount }}</td>
+      </tr>
+      <tr>
+        <td colspan="6"><b>RUPEES:</b> ZERO ONLY</td>
+      </tr>
+    </table>
 
-</table>
+    <!-- FOOTER NOTES -->
+    <div class="footer-note">
+      Kindly contact us immediately upon arrival of containers for delivery details. Original Bill Of Lading (duly
+      endorsed) will be required for delivery.<br>
+      Along with the D.D. or payment details pls provide to DO counter.<br><br>
+      LATE DO'S APPLICABLE FOR PENALTY AS PER SHIPPING LINE.<br><br>
+      NOTE: All the information in this message are General & Indicative and are Not valid for any legal purpose,<br>
+      This booking of shipment is subject to Exclusive Terms of the Bill of Lading.<br>
+      Incase of any doubts kindly contact concern sales / cs person for further clarification.
 
-<!-- 🔗 CONNECT: Charges Module (Shipping Line Charges Only) -->
-<table style="margin-top:10px">
-<tr>
-  <th>S/N</th><th>Service Charge</th><th>Currency</th><th>Amount</th>
-</tr>
-{% for charge in line_charges %}
-<tr>
-  <td>{{ loop.index }}</td>
-  <td>{{ charge.name }}</td>
-  <td>{{ charge.currency }}</td>
-  <td>{{ charge.amount }}</td>
-</tr>
-{% endfor %}
-</table>
+      <div class="sign-box">
+        Yours Faithfully,<br>
+        <b>For SSR LOGISTIC SOLUTIONS PVT. LTD.</b>
+        <br><br><br>
+        TULSIRAM GOHIR<br>
+        PREPARED BY
+      </div>
+    </div>
 
-<br>
-<b>For SSR Logistic Solutions Pvt. Ltd.</b><br>
-Prepared By: {{ user.name }}
-
-</div>
+  </div>
 </body>
+
 </html>

@@ -9,7 +9,7 @@ const Quotation = () => {
         email: "",
         pol: "",
         pod: "",
-        containerSize: "",
+        containersize: "",
         // Charges
         Ocean_freight: "",
         Ocean_freight_currency: "USD",
@@ -54,7 +54,7 @@ const Quotation = () => {
             "",
             `POL: ${formData.pol || ""}`,
             `POD: ${formData.pod || ""}`,
-            `Container Size: ${formData.containerSize || ""}`,
+            `Container Size: ${formData.containersize || ""}`,
             "",
             "CHARGES:",
             `Ocean Freight: ${formData.Ocean_freight || "0"} ${formData.Ocean_freight_currency}`,
@@ -127,7 +127,7 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333333; backgro
     <table class="details-table">
       <tr><td style="width: 150px; font-weight: bold;">POL:</td><td>${formData.pol || ""}</td></tr>
       <tr><td style="font-weight: bold;">POD:</td><td>${formData.pod || ""}</td></tr>
-      <tr><td style="font-weight: bold;">Container Size:</td><td>${formData.containerSize || ""}</td></tr>
+      <tr><td style="font-weight: bold;">Container Size:</td><td>${formData.containersize || ""}</td></tr>
       <tr><td style="font-weight: bold;">Validity:</td><td>${formatDate(formData.validity) || ""}</td></tr>
     </table>
 
@@ -215,7 +215,7 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333333; backgro
                         </h3>
                         <button
                             onClick={() => setFormData({
-                                email: "", pol: "", pod: "", containerSize: "",
+                                email: "", pol: "", pod: "", containersize: "",
                                 Ocean_freight: "", Ocean_freight_currency: "USD",
                                 Shipping_line_charges: "", Shipping_line_charges_currency: "INR",
                                 DO_charges: "", DO_charges_currency: "INR",
@@ -281,8 +281,8 @@ body { font-family: Arial, sans-serif; line-height: 1.6; color: #333333; backgro
                             <div>
                                 <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1">Container</label>
                                 <select
-                                    name="containerSize"
-                                    value={formData.containerSize}
+                                    name="containersize"
+                                    value={formData.containersize}
                                     onChange={handleChange}
                                     className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all appearance-none"
                                 >

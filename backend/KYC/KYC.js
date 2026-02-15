@@ -168,6 +168,9 @@ router.delete('/delete/:id', authenticateJWT, async (req, res) => {
     res.json({ message: 'Customer deleted' });
   } catch (err) {
     console.error(err);
+    if (err.errno === 1451) {
+      return res.status(409).json({ message: 'Cannot delete customer because they are linked to existing bookings or other records.' });
+    }
     res.status(500).json({ message: 'Failed to delete customer' });
   }
 });

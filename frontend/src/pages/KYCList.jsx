@@ -80,7 +80,7 @@ const KYCList = () => {
             toast.success("Customer deleted");
         } catch (err) {
             console.error(err);
-            toast.error("Failed to delete customer");
+            toast.error(err.response?.data?.message || "Failed to delete customer");
         }
     };
 

@@ -1,151 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>HBL Cargo Arrival Notice cum Freight Certificate</title>
 
-<style>
-  body{font-family:Calibri,Arial,sans-serif;font-size:14px;background:#fff;margin:0}
-  .page{width:900px;margin:20px auto;border:2px solid #000;padding:20px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th,td{border:1px solid #000;padding:6px;vertical-align:top}
-  th{background:#f2f2f2;text-align:left;width:22%}
-  .title{text-align:center;font-weight:bold;font-size:16px;text-decoration:underline;margin:10px 0}
-  .note{font-size:12px;margin-top:10px;line-height:1.4}
-</style>
+<head>
+  <meta charset="UTF-8">
+  <title>HBL Cargo Arrival Notice cum Freight Certificate</title>
+
+  <style>
+    body {
+      font-family: Calibri, Arial;
+      font-size: 11px;
+      background: #fff;
+      margin: 0;
+    }
+
+    .page {
+      width: 794px;
+      margin: 20px auto;
+      border: 1px solid #000;
+      padding: 10px;
+      box-sizing: border-box;
+      background: white;
+      overflow: hidden;
+    }
+
+    /* Header */
+    .header {
+      display: flex;
+      border-bottom: 1px solid #000;
+      padding-bottom: 5px;
+      margin-bottom: 5px;
+    }
+
+    .logo-box {
+      width: 40%;
+      border-right: 1px solid #000;
+      padding-right: 10px;
+    }
+
+    .logo-box img {
+      max-width: 100%;
+      height: 60px;
+      object-fit: contain;
+    }
+
+    .company-info {
+      width: 60%;
+      padding-left: 10px;
+      font-size: 12px;
+    }
+
+    .company-title {
+      font-weight: bold;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    /* Title */
+    .doc-title {
+      text-align: center;
+      font-weight: bold;
+      font-size: 14px;
+      border: 1px solid #000;
+      background: #f2f2f2;
+      padding: 4px;
+      margin-bottom: 0;
+      /* Connected to table */
+      border-bottom: none;
+    }
+
+    /* Main Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    th,
+    td {
+      border: 1px solid #000;
+      padding: 4px;
+      vertical-align: top;
+    }
+
+    th {
+      font-weight: bold;
+      background: #f9f9f9;
+      width: 18%;
+      text-align: left;
+    }
+
+    /* Data Specifics */
+    .section-header {
+      background: #e0e0e0;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .footer-note {
+      font-size: 10px;
+      margin-top: 10px;
+      line-height: 1.3;
+      border: 1px solid #000;
+      padding: 8px;
+    }
+
+    .sign-box {
+      margin-top: 15px;
+    }
+  </style>
 </head>
 
 <body>
-<div class="page">
+  <div class="page">
 
-<!-- 🔗 CONNECT: Company Profile -->
-<img src="/images/SSR_nobg.png" height="60">
-<b>SSR LOGISTIC SOLUTIONS PVT. LTD.</b><br>
-Email: customerservice@ssrlogistic.net | Tel: 7700990630
+    <!-- HEADER -->
+    <div class="header">
+      <div class="logo-box">
+        <img src="/images/SSR_nobg.png" alt="Logo">
+      </div>
+      <div class="company-info">
+        <div class="company-title">SSR LOGISTIC SOLUTIONS Pvt. Ltd.</div>
+        <br>
+        E-mail ID: customerservice@ssrlogistic.net | Tel.No : 7700990630, 7700990630
+      </div>
+    </div>
 
-<div class="title">FREIGHT CERTIFICATE</div>
+    <!-- TITLE -->
+    <div class="doc-title">CARGO ARRIVAL NOTICE CUM FREIGHT CERTIFICATE</div>
 
-<table>
-<tr>
-  <th>Shipper Name & Address</th>
-  <td>
-    <!-- 🔗 CONNECT: HBL Page → Shipper -->
-    {{ KYCList.shipper_name }}<br>{{ KYCList.shipper_address }}
-  </td>
+    <!-- DETAILS TABLE -->
+    <table>
+      <!-- Row 1 -->
+      <tr>
+        <th>SHIPPER NAME & ADDRESS</th>
+        <td width="40%">{{ KYCList.shipper_name }}<br>{{ KYCList.shipper_address }}</td>
+        <th>CFS NAME AND ADDRESS:</th>
+        <td>{{ IGM.cfs_name }}<div style="margin-top:10px">Date: {{ other.date }}</div>
+        </td>
+      </tr>
 
-  <th>CFS Name & Address</th>
-  <td>
-    <!-- 🔗 CONNECT: Port / CFS Master -->
-    {{ IGM.cfs_name }}
-  </td>
-</tr>
+      <!-- Row 2 -->
+      <tr>
+        <th>CONSIGNEE NAME & ADDRESS</th>
+        <td>{{ KYCList.consignee_name }}<br>{{ KYCList.consignee_address }}</td>
+        <th>FILING ON HBL</th>
+        <td><b>HBL</b></td>
+      </tr>
 
-<tr>
-  <th>Consignee Name & Address</th>
-  <td>
-    <!-- 🔗 CONNECT: Customer Master -->
-    {{ KYCList.consignee_name }}<br>{{ KYCList.consignee_address }}
-  </td>
+      <!-- Row 3 -->
+      <tr>
+        <th>VESSEL/VOYAGE</th>
+        <td>{{ IGM.vessel_name }} / {{ IGM.vessel_voyage }}</td>
+        <th>HB/L No</th>
+        <td>{{ BookingList.hbl_no }}</td>
+      </tr>
 
-  <th>Filing On</th>
-  <td><b>HBL</b></td>
-</tr>
+      <!-- Row 4 -->
+      <tr>
+        <th>IGM NO</th>
+        <td>{{ IGM.igm_no }}</td>
+        <th>MBL No</th>
+        <td>{{ BookingList.mbl_no }}</td>
+      </tr>
 
-<tr>
-  <th>Vessel / Voyage</th>
-  <td>
-    <!-- 🔗 CONNECT: Vessel Schedule -->
-    {{ IGM.vessel_name }} / {{ IGM.vessel_voyage }}
-  </td>
+      <!-- Row 5 -->
+      <tr>
+        <th>IGM DATE</th>
+        <td>{{ igm.date }}</td>
+        <th>B/L Date</th>
+        <td>{{ BookingList.bl_date }}</td>
+      </tr>
 
-  <th>HBL No</th>
-  <td>
-    <!-- 🔗 CONNECT: HBL Page -->
-    {{ BookingList.hbl_no }}
-  </td>
-</tr>
+      <!-- Row 6 -->
+      <tr>
+        <th>LINE NO</th>
+        <td>{{ igm.line_no }}</td>
+        <th>FCL/LCL</th>
+        <td>{{ BookingList.mode }}</td>
+      </tr>
 
-<tr>
-  <th>IGM No</th>
-  <td>
-    <!-- 🔗 CONNECT: Customs / IGM Page -->
-    {{ IGM.igm_no }}
-  </td>
+      <!-- Row 7 -->
+      <tr>
+        <th>ETA EXPECTED</th>
+        <td colspan="3">{{ BookingList.eta }}</td>
+      </tr>
 
-  <th>MBL No</th>
-  <td>
-    <!-- 🔗 CONNECT: MBL Page (read-only) -->
-    {{ BookingList.mbl_no }}
-  </td>
-</tr>
+      <!-- Row 8 -->
+      <tr>
+        <th>CONTR TYPE</th>
+        <td>{{ BookingList.container_type }}</td>
+        <th>POL</th>
+        <td>{{ BookingList.pol }}</td>
+      </tr>
 
-<tr>
-  <th>ETA Expected</th>
-  <td>
-    <!-- 🔗 CONNECT: Vessel Schedule -->
-    {{ BookingList.eta }}
-  </td>
+      <!-- Row 9 -->
+      <tr>
+        <th>CARRIER NAME</th>
+        <td>{{ carrier.name }}</td>
+        <th>POD</th>
+        <td>{{ BookingList.pod }}</td>
+      </tr>
 
-  <th>FCL / LCL</th>
-  <td>
-    <!-- 🔗 CONNECT: Booking Page -->
-    {{ BookingList.mode }}
-  </td>
-</tr>
+      <!-- Row 10 -->
+      <tr>
+        <th>NO CNTR/CBM</th>
+        <td>{{ BookingList.container_count }}</td>
+        <th>EX-CHANGE RATE</th>
+        <td>{{ BookingList.exchange_rate }}</td>
+      </tr>
 
-<tr>
-  <th>Container Type</th>
-  <td>
-    <!-- 🔗 CONNECT: Container Module -->
-    {{ BookingList.container_type }}
-  </td>
+      <!-- Row 11 -->
+      <tr>
+        <th>GROSS WEIGHT</th>
+        <td colspan="3">{{ cargo.weight }}</td>
+      </tr>
+    </table>
 
-  <th>POL / POD</th>
-  <td>
-    <!-- 🔗 CONNECT: Port Master -->
-    {{ BookingList.pol }} → {{ BookingList.pod }}
-  </td>
-</tr>
+    <!-- CHARGES TABLE -->
+    <table style="border-top: none;">
+      <tr>
+        <th style="width:5%">S/N</th>
+        <th style="width:35%">Service Charge Description</th>
+        <th style="width:10%">SAC</th>
+        <th style="width:10%">CUR</th>
+        <th style="width:20%">RATE PER CNTR/CBM</th>
+        <th style="width:20%">TOTAL AMT CNTR/CBM</th>
+      </tr>
+      {% for charge in charges %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td>{{ charge.name }}</td>
+        <td></td> <!-- SAC placeholder -->
+        <td>{{ charge.currency }}</td>
+        <td>{{ charge.amount }}</td>
+        <td>{{ charge.total }}</td>
+      </tr>
+      {% endfor %}
+      <tr>
+        <td colspan="5" style="text-align:right; font-weight:bold;">TOTAL AMOUNT</td>
+        <td>{{ charges.total_amount }}</td>
+      </tr>
+      <tr>
+        <td colspan="6"><b>RUPEES:</b> ZERO ONLY</td>
+      </tr>
+    </table>
 
-<tr>
-  <th>No of Containers</th>
-  <td>
-    <!-- 🔗 CONNECT: Container List -->
-    {{ BookingList.container_count }}
-  </td>
+    <!-- FOOTER NOTES -->
+    <div class="footer-note">
+      Kindly contact us immediately upon arrival of containers for delivery details. Original Bill Of Lading (duly
+      endorsed) will be required for delivery.<br>
+      Along with the D.D. or payment details pls provide to DO counter.<br><br>
+      LATE DO'S APPLICABLE FOR PENALTY AS PER SHIPPING LINE.<br><br>
+      NOTE: All the information in this message are General & Indicative and are Not valid for any legal purpose,<br>
+      This booking of shipment is subject to Exclusive Terms of the Bill of Lading.<br>
+      Incase of any doubts kindly contact concern sales / cs person for further clarification.
 
-  <th>Gross Weight</th>
-  <td>
-    <!-- 🔗 CONNECT: Cargo Details -->
-    {{ cargo.weight }}
-  </td>
-</tr>
-</table>
+      <div class="sign-box">
+        Yours Faithfully,<br>
+        <b>For SSR LOGISTIC SOLUTIONS PVT. LTD.</b>
+        <br><br><br>
+        TULSIRAM GOHIR<br>
+        PREPARED BY
+      </div>
+    </div>
 
-<!-- 🔗 CONNECT: Charges Module -->
-<table style="margin-top:10px">
-<tr>
-  <th>S/N</th><th>Description</th><th>Currency</th><th>Amount</th>
-</tr>
-{% for charge in charges %}
-<tr>
-  <td>{{ loop.index }}</td>
-  <td>{{ charge.name }}</td>
-  <td>{{ charge.currency }}</td>
-  <td>{{ charge.amount }}</td>
-</tr>
-{% endfor %}
-</table>
-
-<div class="note">
-<b>NOTE:</b> Kindly contact us immediately upon arrival of containers for delivery details.  
-Original Bill of Lading (duly endorsed) is required for delivery.
-</div>
-
-<br>
-<b>For SSR Logistic Solutions Pvt. Ltd.</b><br>
-Prepared By: {{ user.name }}
-
-</div>
+  </div>
 </body>
+
 </html>
