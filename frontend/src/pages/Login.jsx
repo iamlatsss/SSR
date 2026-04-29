@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { useAuth } from "../context/AuthContext";
@@ -17,13 +17,25 @@ const Login = () => {
 
     const handleLogin = async (e) => {
         e.preventDefault();
+
+        // Frontend validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            toast.error("Please enter a valid email format.");
+            return;
+        }
+        if (password.length < 8) {
+            toast.error("Password must be at least 8 characters long.");
+            return;
+        }
+
         setLoading(true);
         try {
             await login(email, password, rememberMe);
             toast.success("Login successful!");
             navigate("/");
         } catch (err) {
-            toast.error("Login failed. Please check your credentials.");
+            toast.error(err.message || "Login failed.");
         } finally {
             setLoading(false);
         }
@@ -97,9 +109,9 @@ const Login = () => {
                             </label>
                         </div>
                         <div className="text-sm">
-                            <a href="#" className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
+                            <Link to="/forgot-password" className="font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300">
                                 Forgot password?
-                            </a>
+                            </Link>
                         </div>
                     </div>
 

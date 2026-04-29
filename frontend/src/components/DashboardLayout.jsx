@@ -115,14 +115,16 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                 <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
                     <SidebarItem icon={<LayoutDashboard size={20} />} text="Dashboard" to="/" />
                     <SidebarItem icon={<FileText size={20} />} text="Quotation" to="/quotation" />
-                    <SidebarItem icon={<Briefcase size={20} />} text="Bookings" to="/bookings" />
-                    <SidebarItem icon={<FileText size={20} />} text="DO / FC" to="/do-fc" />
-                    <SidebarItem icon={<Anchor size={20} />} text="IGM" to="/igm" />
-                    <SidebarItem icon={<FileText size={20} />} text="Invoice" to="/invoice" />
-                    <SidebarItem icon={<ShieldCheck size={20} />} text="KYC" to="/kyc" />
-
-                    {user?.role === 'Admin' && (
-                        <SidebarItem icon={<Users size={20} />} text="Users" to="/users" />
+                    
+                    {user?.role?.toLowerCase() === 'admin' && (
+                        <>
+                            <SidebarItem icon={<Briefcase size={20} />} text="Bookings" to="/bookings" />
+                            <SidebarItem icon={<FileText size={20} />} text="DO / FC" to="/do-fc" />
+                            <SidebarItem icon={<Anchor size={20} />} text="IGM" to="/igm" />
+                            <SidebarItem icon={<FileText size={20} />} text="Invoice" to="/invoice" />
+                            <SidebarItem icon={<ShieldCheck size={20} />} text="KYC" to="/kyc" />
+                            <SidebarItem icon={<Users size={20} />} text="Users" to="/users" />
+                        </>
                     )}
                 </nav>
                 <div className="p-4 border-t border-slate-100 dark:border-slate-800">
@@ -174,13 +176,15 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                                         <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.user_name || 'Guest'}</p>
                                         <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                                     </div>
-                                    <Link
-                                        to="/profile"
-                                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                                    >
-                                        <UserCircle size={16} />
-                                        My Profile
-                                    </Link>
+                                    {user?.role?.toLowerCase() === 'admin' && (
+                                        <Link
+                                            to="/profile"
+                                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                        >
+                                            <UserCircle size={16} />
+                                            My Profile
+                                        </Link>
+                                    )}
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation(); // Prevent re-triggering parent click

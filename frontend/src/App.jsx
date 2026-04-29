@@ -6,6 +6,8 @@ import ProtectedRoute from './context/protection';
 import PublicRoute from './context/publicRoute';
 import Home from './pages/Home';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import Admin from './pages/Admin';
 import Quotation from './pages/Quotation';
 import BookingList from './pages/BookingList';
@@ -33,22 +35,24 @@ function App() {
       <Router>
         <Routes>
           <Route path="/login" element={<PublicRoute><Login /></PublicRoute>} />
+          <Route path="/forgot-password" element={<PublicRoute><ForgotPassword /></PublicRoute>} />
+          <Route path="/reset-password" element={<PublicRoute><ResetPassword /></PublicRoute>} />
 
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Home />} />
             <Route path="/quotation" element={<Quotation />} />
-            <Route path="/bookings" element={<BookingList />} />
-            <Route path="/booking-form" element={<BookingForm />} />
-            <Route path="/igm" element={<IGM />} />
-            <Route path="/kyc" element={<KYCList />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/do-fc" element={<DOFC />} />
-            <Route path="/invoice" element={<Invoice />} />
-            <Route path="/invoice/edit/:jobNo" element={<InvoiceGenerator />} />
 
-            {/* Users Management (formerly Admin) - Restricted to Admin */}
-            <Route element={<ProtectedRoute allowedRoles={['Admin']} />}>
+            {/* Restricted to Admin */}
+            <Route element={<ProtectedRoute allowedRoles={['Admin', 'admin']} />}>
+              <Route path="/bookings" element={<BookingList />} />
+              <Route path="/booking-form" element={<BookingForm />} />
+              <Route path="/igm" element={<IGM />} />
+              <Route path="/kyc" element={<KYCList />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/do-fc" element={<DOFC />} />
+              <Route path="/invoice" element={<Invoice />} />
+              <Route path="/invoice/edit/:jobNo" element={<InvoiceGenerator />} />
               <Route path="/users" element={<Admin />} />
             </Route>
           </Route>

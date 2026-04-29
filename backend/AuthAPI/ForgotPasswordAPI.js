@@ -1,7 +1,8 @@
-import express from 'express'
-import bcrypt from 'bcrypt'
-import rateLimit from 'express-rate-limit'
-import emailService from '../ForgotpasswordVerification/EmailService.js'
+import express from 'express';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
+import rateLimit from 'express-rate-limit';
+import emailService from '../Mail/EmailService.js';
 import * as db from '../Database.js';
 
 const router = express.Router();
@@ -13,160 +14,60 @@ const passwordResetLimiter = rateLimit({
   message: { error: 'Too many password reset attempts, please try again later.' },
 });
 
-const otpVerificationLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // limit each IP to 10 requests per windowMs
-  message: { error: 'Too many OTP verification attempts, please try again later.' },
-});
-
-// In-memory storage for OTP (use Redis in production)
-const otpStore = new Map();
-
-// Clean up expired OTPs
-setInterval(() => {
-  const now = Date.now();
-  for (const [email, data] of otpStore.entries()) {
-    if (now > data.expiresAt) {
-      otpStore.delete(email);
-    }
-  }
-}, 5 * 60 * 1000); // Clean up every 5 minutes
-
-//Step 0: Get Email from UserName
-router.post('/get-email', async (req, res) => {
-  try {
-    const { username } = req.body;
-    if (!username) {
-      return res.status(400).json({ error: 'Username is required' });
-    }
-
-    // Lookup user by username
-    const user = await db.r_fetchUserByName(username);
-    if (!user) {
-      // For security, don't reveal if user exists
-      return res.json({ success: true, email: 'admin@mano.co.in' });
-    }
-
-    res.json({ success: true, email: user.email });
-  } catch (error) {
-    console.error('Get email error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Step 1: Send OTP to email
-router.post('/send-otp', passwordResetLimiter, async (req, res) => {
+// Step 1: Request password reset link
+router.post('/request-reset', passwordResetLimiter, async (req, res) => {
   try {
     const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
 
-
-    // Check if user exists
-    const user = await db.r_fetchUserByEmail(email);
-    if (!user) {
+    const user_data = await db.getUserByEmail(email);
+    if (!user_data.ok) {
       // Don't reveal if user exists or not for security
       return res.json({ 
         success: true, 
-        message: 'If this email exists, you will receive a verification code.' 
+        message: 'If this email exists, you will receive a reset link shortly.' 
       });
     }
 
-    // Generate OTP
-    const otp = emailService.generateOTP();
-    const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const user = user_data.data;
 
-    // Store OTP
-    otpStore.set(email, {
-      otp: otp,
-      expiresAt: expiresAt,
-      attempts: 0,
-      userId: user.id,
+    // Generate a secure token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    
+    // Hash token before saving to database
+    const tokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+    
+    // Set expiration (15 minutes from now)
+    const expiresAt = new Date(Date.now() + 15 * 60000);
+
+    // Save hash and expiration to DB
+    await db.updateUserByEmail(email, {
+      reset_token: tokenHash,
+      reset_token_expires: expiresAt
     });
 
-    // Send OTP email
-    const emailResult = await emailService.sendOTP(email, otp);
-    
-    if (emailResult.success) {
-      res.json({
-        success: true,
-        message: 'Verification code sent to your email',
-        expiresIn: 600, // 10 minutes in seconds
-      });
-    } else {
-      res.status(500).json({ error: 'Failed to send verification code' });
-    }
-
-  } catch (error) {
-    console.error('Send OTP error:', error);
-    res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Step 2: Verify OTP
-router.post('/verify-otp', otpVerificationLimiter, async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    // Validate input
-    if (!email || !otp) {
-      return res.status(400).json({ error: 'Email and OTP are required' });
-    }
-
-    if (otp.length !== 6 || !/^\d{6}$/.test(otp)) {
-      return res.status(400).json({ error: 'Invalid OTP format' });
-    }
-
-    // Check if OTP exists
-    const otpData = otpStore.get(email);
-    if (!otpData) {
-      return res.status(400).json({ error: 'OTP not found or expired' });
-    }
-
-    // Check if OTP is expired
-    if (Date.now() > otpData.expiresAt) {
-      otpStore.delete(email);
-      return res.status(400).json({ error: 'OTP has expired' });
-    }
-
-    // Check attempts
-    if (otpData.attempts >= 3) {
-      otpStore.delete(email);
-      return res.status(400).json({ error: 'Too many invalid attempts. Please request a new OTP.' });
-    }
-
-    // Verify OTP
-    if (otpData.otp !== otp) {
-      otpData.attempts++;
-      otpStore.set(email, otpData);
-      return res.status(400).json({ 
-        error: 'Invalid verification code',
-        attemptsLeft: 3 - otpData.attempts 
-      });
-    }
-
-    // OTP is valid, mark as verified
-    otpData.verified = true;
-    otpData.verifiedAt = Date.now();
-    otpStore.set(email, otpData);
+    // Send email with the RAW token (not the hash)
+    await emailService.sendPasswordResetEmail(email, resetToken);
 
     res.json({
       success: true,
-      message: 'OTP verified successfully',
-      resetToken: emailService.generateResetToken(),
+      message: 'If this email exists, you will receive a reset link shortly.'
     });
 
   } catch (error) {
-    console.error('Verify OTP error:', error);
+    console.error('Request reset error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
-// Step 3: Reset password
+// Step 2: Reset password using the token
 router.post('/reset-password', async (req, res) => {
   try {
-    const { email, newPassword, confirmPassword } = req.body;
+    const { token, newPassword, confirmPassword } = req.body;
 
-    // Validate input
-    if (!email || !newPassword || !confirmPassword) {
+    if (!token || !newPassword || !confirmPassword) {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
@@ -178,41 +79,34 @@ router.post('/reset-password', async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters long' });
     }
 
-    // Check if OTP was verified
-    const otpData = otpStore.get(email);
-    if (!otpData || !otpData.verified) {
-      return res.status(400).json({ error: 'OTP verification required' });
+    // Hash the incoming token to match with DB
+    const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+    // Find user with this token and check expiration
+    const user_data = await db.getUserByToken(tokenHash);
+    
+    if (!user_data.ok) {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
     }
 
-    // Check if verification is still valid (within 30 minutes)
-    if (Date.now() > otpData.verifiedAt + 30 * 60 * 1000) {
-      otpStore.delete(email);
-      return res.status(400).json({ error: 'Verification expired. Please start over.' });
-    }
+    const user = user_data.data;
 
     // Hash new password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password in database
-    await db.updateUserPassword(email, hashedPassword);
-
-    // Clear OTP from store
-    otpStore.delete(email);
-
-    // Send confirmation email
-    await emailService.sendPasswordResetConfirmation(email);
-
-    // // Log security event
-    // await db.logSecurityEvent(otpData.userId, 'password_reset', {
-    //   timestamp: new Date().toISOString(),
-    //   ip: req.ip,
-    //   userAgent: req.get('User-Agent'),
-    // });
+    // Update password and clear token
+    await db.updateUserByEmail(user.email, {
+      password: hashedPassword,
+      reset_token: null,
+      reset_token_expires: null,
+      failed_login_attempts: 0, // Reset failed attempts
+      account_locked_until: null // Unlock account
+    });
 
     res.json({
       success: true,
-      message: 'Password reset successful',
+      message: 'Password reset successful. You can now login.',
     });
 
   } catch (error) {
@@ -220,6 +114,5 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
-
 
 export default router;

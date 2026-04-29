@@ -35,9 +35,12 @@ export const AuthProvider = ({ children }) => {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email, password, rememberMe }),
     });
-    if (!res.ok) throw new Error("Login failed");
-
+    
     const data = await res.json();
+
+    if (!res.ok) {
+        throw new Error(data.message || "Login failed");
+    }
     if (data.jwt_token) {
       localStorage.setItem("token", data.jwt_token);
     }

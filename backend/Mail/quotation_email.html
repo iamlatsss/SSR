@@ -59,75 +59,115 @@ body {
 }
 </style>
 </head>
+
 <body>
 
 <div class="container">
+
   <div class="header">
     <h1>Revised Quotation</h1>
   </div>
+
   <div class="content">
     <p>Dear Sir,</p>
-    <p>Thank you for your inquiry. We are pleased to provide our best revised offer for your kind reference:</p>
+
+    <p>
+      Thank you for your inquiry. We are pleased to provide our best revised offer for your kind reference:
+    </p>
 
     <h3>Quotation Details</h3>
+
     <table class="quotation-table">
       <tr>
         <td><strong>POL:</strong></td>
         <td>{{pol}}</td>
       </tr>
+
       <tr>
         <td><strong>POD:</strong></td>
         <td>{{pod}}</td>
       </tr>
+
       <tr>
         <td><strong>Container Size:</strong></td>
         <td>{{containerSize}}</td>
       </tr>
+
       <tr>
         <td><strong>Rate:</strong></td>
         <td>{{rate}}</td>
       </tr>
+
       <tr>
         <td><strong>Ocean Freight:</strong></td>
         <td>{{Ocean_freight}}</td>
       </tr>
+
       <tr>
         <td><strong>Shipping Line Charges:</strong></td>
         <td>{{Shipping_line_charges}}</td>
       </tr>
+
       <tr>
         <td><strong>DO Charges:</strong></td>
         <td>{{DO_charges}}</td>
       </tr>
+
       <tr>
         <td><strong>Shipper Details:</strong></td>
         <td>{{shipperDetails}}</td>
       </tr>
+
       <tr>
         <td><strong>Consignee Details:</strong></td>
         <td>{{consigneeDetails}}</td>
       </tr>
+
       <tr>
         <td><strong>Terms:</strong></td>
         <td>{{terms}}</td>
       </tr>
+
       <tr>
         <td><strong>Validity:</strong></td>
         <td>{{validity}}</td>
       </tr>
     </table>
 
-    <p style="margin-top: 25px;">
-      We trust that the above offer is competitive and meets your requirements. We look forward to your kind confirmation for further bookings.
+    <!-- CLICKABLE BLUE LINK INSERTED HERE -->
+
+    <p style="margin-top:25px;">
+      Please view your quotation using the secure link below:
     </p>
+
+    <p>
+      <a href="{{{link}}}" style="color:#007bff; text-decoration:underline; font-weight:bold; font-size: 16px;">
+        View Quotation
+      </a>
+    </p>
+
+    <!-- Fallback if the button is stripped by email clients -->
+    <p style="margin-top:10px; font-size: 12px; color: #777777; word-break: break-all;">
+      Or copy and paste this URL into your browser:<br>
+      <a href="{{{link}}}" style="color:#007bff; text-decoration:underline;">{{{link}}}</a>
+    </p>
+
+    <p style="margin-top:25px;">
+      We trust that the above offer is competitive and meets your requirements.
+      We look forward to your confirmation for further bookings.
+    </p>
+
   </div>
+
   <div class="signature">
     <p>Sincerely,</p>
     <p>The Team</p>
   </div>
+
   <div class="footer">
     <p>This is an automated email. Please do not reply.</p>
   </div>
+
 </div>
 
 </body>

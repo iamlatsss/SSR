@@ -28,40 +28,97 @@ export const knexDB = knex({
 
 // #region 🧑‍💼 USERS ─────────────────────────────────────────────
 
-export const ALLOWED_UPDATE_FIELDS = new Set(["role", "is_active", "password", "email", "user_name"]);
+(async function initUsersTable() {
+  try {
+    const newColumns = [
+      "ADD COLUMN failed_login_attempts INT DEFAULT 0",
+      "ADD COLUMN last_login_timestamp DATETIME",
+      "ADD COLUMN account_locked_until DATETIME",
+      "ADD COLUMN reset_token VARCHAR(255)",
+      "ADD COLUMN reset_token_expires DATETIME"
+    ];
+    for (const col of newColumns) {
+      try {
+        await pool.query(`ALTER TABLE Users ${col}`);
+      } catch (e) {
+        // Ignored if column already exists
+      }
+    }
+    // Add unique constraint to email if not exists
+    try {
+      await pool.query(`ALTER TABLE Users ADD UNIQUE (email)`);
+    } catch (e) {
+      // Ignored if constraint already exists
+    }
+    
+    // Migrate new_user to Viewer and modify ENUM
+    try {
+      await pool.query(`UPDATE Users SET role = 'Viewer' WHERE role = 'new_user'`);
+      await pool.query(`ALTER TABLE Users MODIFY COLUMN role ENUM('Admin', 'Accounts', 'Custom', 'Sales', 'Viewer') DEFAULT 'Viewer'`);
+    } catch (e) {
+      console.log("Ignored or failed updating ENUM role:", e.message);
+    }
+    
+    console.log("Users table initialized with security fields and updated roles");
+  } catch (err) {
+    console.error("Error updating Users table:", err);
+  }
+})();
+
+export const ALLOWED_UPDATE_FIELDS = new Set(["role", "is_active", "password", "email", "user_name", "failed_login_attempts", "last_login_timestamp", "account_locked_until", "reset_token", "reset_token_expires"]);
 
 export async function getUserByEmail(email) {
-  const query = 'SELECT user_name, user_id, password, email, role, is_active FROM Users WHERE email = ?';
-
   try {
-    const [[rows]] = await pool.query(query, [email]);
+    const rows = await knexDB('Users')
+      .select('user_name', 'user_id', 'password', 'email', 'role', 'is_active', 'failed_login_attempts', 'account_locked_until', 'last_login_timestamp')
+      .where({ email });
 
     if (rows.length === 0) {
       return { ok: false, message: 'User not found' };
     }
 
-    if (!rows.is_active) {
+    if (!rows[0].is_active) {
       return { ok: false, message: 'User is not active' };
     }
 
-    return { ok: true, data: rows };
-
+    return { ok: true, data: rows[0] };
   } catch (error) {
     console.error('Error fetching user by email:', error);
     return { ok: false, message: 'Database error' };
   }
 }
 
-export async function createUser(user_name, email, passwordHash, role = 'Viewer') {
-  const query = 'INSERT INTO Users (user_name, email, password, role) VALUES (?, ?, ?, ?)';
+export async function getUserByToken(token) {
   try {
-    const [result] = await pool.query(query, [user_name, email, passwordHash, role]);
+    const rows = await knexDB('Users')
+      .select('user_name', 'user_id', 'email')
+      .where({ reset_token: token })
+      .andWhere('reset_token_expires', '>', knexDB.fn.now());
 
-    if (!result.insertId) {
+    if (rows.length === 0) {
+      return { ok: false, message: 'Invalid or expired token' };
+    }
+    return { ok: true, data: rows[0] };
+  } catch (error) {
+    console.error('Error fetching user by token:', error);
+    return { ok: false, message: 'Database error' };
+  }
+}
+
+export async function createUser(user_name, email, passwordHash, role = 'Viewer') {
+  try {
+    const [insertId] = await knexDB('Users').insert({
+      user_name,
+      email,
+      password: passwordHash,
+      role
+    });
+
+    if (!insertId) {
       return { ok: false, message: 'Failed to create user' };
     }
 
-    return { ok: true, data: { userId: result.insertId } };
+    return { ok: true, data: { userId: insertId } };
 
   } catch (error) {
     console.error('Error creating user:', error);
@@ -75,11 +132,10 @@ export async function createUser(user_name, email, passwordHash, role = 'Viewer'
 }
 
 export async function getAllUsers() {
-  const usersQuery = 'SELECT user_name, user_id, email, role, is_active, created_at FROM Users';
   const roleQuery = `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'role';`;
 
   try {
-    const [usersRows] = await pool.query(usersQuery);
+    const usersRows = await knexDB('Users').select('user_name', 'user_id', 'email', 'role', 'is_active', 'created_at');
     const [[roleRows]] = await pool.query(roleQuery);
 
     const roles = roleRows.COLUMN_TYPE.match(/^enum\((.*)\)$/)[1]
@@ -94,23 +150,46 @@ export async function getAllUsers() {
 }
 
 export async function updateUserById(user_id, updates) {
-  const fields = [];
-  const values = [];
-
+  const updateData = {};
   for (const key in updates) {
     if (ALLOWED_UPDATE_FIELDS.has(key)) {
-      fields.push(`${key} = ?`);
-      values.push(updates[key]);
+      updateData[key] = updates[key];
     }
   }
-  if (fields.length === 0) return { ok: false, message: "No update fields provided" };
 
-  values.push(user_id);
-  const query = `UPDATE Users SET ${fields.join(", ")} WHERE user_id = ?`;
+  if (Object.keys(updateData).length === 0) return { ok: false, message: "No update fields provided" };
 
   try {
-    const [result] = await pool.query(query, values);
-    if (result.affectedRows === 0) {
+    const affectedRows = await knexDB('Users')
+      .where({ user_id })
+      .update(updateData);
+
+    if (affectedRows === 0) {
+      return { ok: false, message: "User not found" };
+    }
+    return { ok: true };
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return { ok: false, message: "Database error" };
+  }
+}
+
+export async function updateUserByEmail(email, updates) {
+  const updateData = {};
+  for (const key in updates) {
+    if (ALLOWED_UPDATE_FIELDS.has(key)) {
+      updateData[key] = updates[key];
+    }
+  }
+
+  if (Object.keys(updateData).length === 0) return { ok: false, message: "No update fields provided" };
+
+  try {
+    const affectedRows = await knexDB('Users')
+      .where({ email })
+      .update(updateData);
+
+    if (affectedRows === 0) {
       return { ok: false, message: "User not found" };
     }
     return { ok: true };
@@ -121,10 +200,12 @@ export async function updateUserById(user_id, updates) {
 }
 
 export async function deleteUserById(user_id) {
-  const query = 'DELETE FROM Users WHERE user_id = ?';
   try {
-    const [result] = await pool.query(query, [user_id]);
-    if (result.affectedRows === 0) {
+    const affectedRows = await knexDB('Users')
+      .where({ user_id })
+      .del();
+
+    if (affectedRows === 0) {
       return { ok: false, message: "User not found" };
     }
     return { ok: true };
@@ -271,3 +352,103 @@ export async function updateBookingById(jobNo, updates) {
 // const t = await getAllCustomer()
 // console.log(t)
 
+// #region 📄 QUOTATIONS ─────────────────────────────────────────────
+
+(async function initQuotationsTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS Quotations (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      client_name VARCHAR(255),
+      phone_number VARCHAR(50),
+      email VARCHAR(255),
+      pol VARCHAR(255),
+      pod VARCHAR(255),
+      container_size_type VARCHAR(255),
+      remarks TEXT,
+      pdf_link VARCHAR(1000),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  try {
+    await pool.query(query);
+    // Add remarks column if it doesn't exist
+    try {
+      await pool.query("ALTER TABLE Quotations ADD COLUMN remarks TEXT");
+    } catch (e) {
+      // Ignored if column already exists
+    }
+    // Add new dynamic fields
+    const newColumns = [
+      "ADD COLUMN address TEXT",
+      "ADD COLUMN commodity VARCHAR(255)",
+      "ADD COLUMN incoterms VARCHAR(255)",
+      "ADD COLUMN terms TEXT",
+      "ADD COLUMN charges JSON"
+    ];
+    for (const col of newColumns) {
+      try {
+        await pool.query(`ALTER TABLE Quotations ${col}`);
+      } catch (e) {}
+    }
+    console.log("Quotations table initialized");
+  } catch (err) {
+    console.error("Error creating Quotations table:", err);
+  }
+})();
+
+export async function saveQuotation(data) {
+  const query = `
+    INSERT INTO Quotations 
+    (client_name, phone_number, email, pol, pod, container_size_type, remarks, pdf_link, address, commodity, incoterms, terms, charges)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const values = [
+    data.client_name || null,
+    data.phone_number || null,
+    data.email || null,
+    data.pol || null,
+    data.pod || null,
+    data.container_size_type || null,
+    data.remarks || null,
+    data.pdf_link || null,
+    data.address || null,
+    data.commodity || null,
+    data.incoterms || null,
+    data.terms || null,
+    data.charges ? JSON.stringify(data.charges) : null
+  ];
+
+  try {
+    const [result] = await pool.query(query, values);
+    return { ok: true, insertId: result.insertId };
+  } catch (error) {
+    console.error("Error saving quotation:", error);
+    return { ok: false, message: "Database error", error: error.message };
+  }
+}
+
+export async function getAllSentQuotations() {
+  const query = "SELECT * FROM Quotations ORDER BY created_at DESC";
+  try {
+    const [rows] = await pool.query(query);
+    return { ok: true, data: rows };
+  } catch (error) {
+    console.error("Error fetching sent quotations:", error);
+    return { ok: false, message: "Database error", error: error.message };
+  }
+}
+
+export async function deleteQuotationsByIds(ids) {
+  if (!ids || ids.length === 0) return { ok: true, affected: 0 };
+  const placeholders = ids.map(() => '?').join(',');
+  const query = `DELETE FROM Quotations WHERE id IN (${placeholders})`;
+  try {
+    const [result] = await pool.query(query, ids);
+    return { ok: true, affected: result.affectedRows };
+  } catch (error) {
+    console.error("Error deleting quotations:", error);
+    return { ok: false, message: "Database error", error: error.message };
+  }
+}
+
+// #endregion

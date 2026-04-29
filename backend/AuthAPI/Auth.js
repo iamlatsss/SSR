@@ -5,7 +5,7 @@ import * as DB from "../Database.js";
 
 const tokenExpirePeriod = 7 * 24 * 60 * 60; // Time in seconds 
 const SALT_ROUNDS = 12;
-const USER_ROLES = new Set(['admin', 'accounts', 'custom', 'sales', 'viewer', 'new_user']);
+const USER_ROLES = new Set(['admin', 'accounts', 'custom', 'sales', 'viewer']);
 
 const router = express.Router();
 
@@ -46,16 +46,25 @@ export async function authenticateJWT(req, res, next) {
   }
 }
 
-export async function generateJWT(user_data) {
-  return jwt.sign(user_data, process.env.JWT_SECRET, { expiresIn: tokenExpirePeriod });
+export function requireAdmin(req, res, next) {
+  if (req.user && req.user.role && req.user.role.toLowerCase() === 'admin') {
+    next();
+  } else {
+    res.status(403).json({ message: "Forbidden: Admin access required" });
+  }
+}
+
+export async function generateJWT(user_data, rememberMe = false) {
+  const expiresIn = rememberMe ? 30 * 24 * 60 * 60 : tokenExpirePeriod;
+  return jwt.sign(user_data, process.env.JWT_SECRET, { expiresIn });
 }
 
 // Post call to Log out
 router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
-    secure: false, // true if HTTPS in production
-    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'Strict',
   });
   res.json({ message: 'Logged out' });
 });
@@ -63,38 +72,63 @@ router.post('/logout', (req, res) => {
 // Post call to Login
 router.post("/login", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password, rememberMe } = req.body;
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required." });
     }
 
     const user_data = await DB.getUserByEmail(email);
     if (!user_data.ok && user_data.message === "User not found") {
-      return res.status(401).json({ message: "Invalid username" });
+      return res.status(401).json({ message: "Invalid email or password" }); // Generic error
     }
 
-    const isMatch = await bcrypt.compare(password, user_data.data.password);
+    const user = user_data.data;
+
+    if (user.account_locked_until && new Date(user.account_locked_until) > new Date()) {
+      return res.status(403).json({ message: "Account temporarily locked due to multiple failed login attempts. Please try again later." });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Incorrect password" });
+      const failedAttempts = (user.failed_login_attempts || 0) + 1;
+      const updates = { failed_login_attempts: failedAttempts };
+      
+      if (failedAttempts >= 5) {
+        // Lock account for 10 minutes
+        const lockUntil = new Date(Date.now() + 10 * 60000);
+        updates.account_locked_until = lockUntil;
+      }
+      
+      await DB.updateUserById(user.user_id, updates);
+      return res.status(401).json({ message: "Invalid email or password" }); // Generic error
     }
 
     if (!user_data.ok && user_data.message === "User is not active") {
       return res.status(401).json({ message: "Account inactive. Contact support." });
     }
 
+    // Reset failed attempts and update last login
+    await DB.updateUserById(user.user_id, {
+      failed_login_attempts: 0,
+      account_locked_until: null,
+      last_login_timestamp: new Date()
+    });
+
     const response_data = {
-      user_name: user_data.data.user_name,
-      user_id: user_data.data.user_id,
-      email: user_data.data.email,
-      role: user_data.data.role
+      user_name: user.user_name,
+      user_id: user.user_id,
+      email: user.email,
+      role: user.role
     };
-    const token = await generateJWT(response_data);
+    
+    const token = await generateJWT(response_data, rememberMe);
+    const maxAge = rememberMe ? 30 * 24 * 60 * 60 * 1000 : tokenExpirePeriod * 1000;
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: false,
-      sameSite: 'Lax',
-      maxAge: tokenExpirePeriod * 1000
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'Strict',
+      maxAge: maxAge
     });
 
     res.status(200).json({
@@ -115,8 +149,8 @@ router.post('/addUser', async (req, res) => {
     const { user_name, email, password } = req.body;
     let role = req.body.role;
 
-    if (!USER_ROLES.has(role)) {
-      role = 'new_user';
+    if (!role || !USER_ROLES.has(role.toLowerCase())) {
+      role = 'Viewer';
     }
 
     if (!email || !password) {

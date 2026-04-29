@@ -3,13 +3,16 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser';
 import './config.js';
 
-import Auth from './AuthAPI/Auth.js';
+import Auth, { authenticateJWT, requireAdmin } from './AuthAPI/Auth.js';
+import ForgotPasswordAPI from './AuthAPI/ForgotPasswordAPI.js';
 import Admin from './Admin/admin.js';
 import Booking from './Booking/Booking.js';
 import Mail from './Mail/Mail.js';
 import KYC from './KYC/KYC.js';
 import Ports from './Data/Ports.js';
 import Invoice from './Invoice/Invoice.js';
+import Quotation from './Quotation/Quotation.js';
+import S3Routes from './S3/S3Routes.js';
 
 const app = express();
 const PORT = 5001;
@@ -38,13 +41,15 @@ app.use(cors({
 
 app.use(express.json());
 app.use('/auth', Auth);
-app.use('/admin', Admin);
-app.use('/booking', Booking);
+app.use('/forgot-password', ForgotPasswordAPI);
+app.use('/admin', authenticateJWT, requireAdmin, Admin);
+app.use('/booking', authenticateJWT, requireAdmin, Booking);
 app.use('/mail', Mail);
-app.use('/kyc', KYC);
+app.use('/kyc', authenticateJWT, requireAdmin, KYC);
 app.use('/ports', Ports);
-app.use('/invoice', Invoice);
-
+app.use('/invoice', authenticateJWT, requireAdmin, Invoice);
+app.use('/quotation', Quotation);
+app.use('/s3', authenticateJWT, requireAdmin, S3Routes);
 
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');
