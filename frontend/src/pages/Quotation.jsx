@@ -550,7 +550,7 @@ const Quotation = () => {
                         </div>
                     ))}
 
-                    <div className="flex justify-center pt-2">
+                    {/* <div className="flex justify-center pt-2">
                         <button 
                             type="button" 
                             onClick={handleAddQuotation}
@@ -558,7 +558,7 @@ const Quotation = () => {
                         >
                             <Plus size={16} /> Add Another Quotation
                         </button>
-                    </div>
+                    </div> */}
                 </div>
             ) : (
                 /* SENT QUOTATIONS SECTION */
