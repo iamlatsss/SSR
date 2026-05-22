@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import api from '../services/api';
 import { ChevronDown, Check, Search } from 'lucide-react';
 
-const PortSelect = ({ label, value, onChange, name, placeholder = "Type to search port...", className = "" }) => {
+const PortSelect = ({ label, value, onChange, name, placeholder = "Type to search port...", className = "", labelClassName = "", inputClassName = "" }) => {
     const [ports, setPorts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isOpen, setIsOpen] = useState(false);
@@ -116,7 +116,7 @@ const PortSelect = ({ label, value, onChange, name, placeholder = "Type to searc
 
     return (
         <div className="relative" ref={wrapperRef}>
-            {label && <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{label}</label>}
+            {label && <label className={labelClassName || "block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1"}>{label}</label>}
 
             <div className="relative">
                 <input
@@ -130,7 +130,7 @@ const PortSelect = ({ label, value, onChange, name, placeholder = "Type to searc
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
                     autoComplete="off"
-                    className={`w-full pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all placeholder-slate-400 ${className}`}
+                    className={inputClassName || `w-full pl-3 pr-10 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all placeholder-slate-400 ${className}`}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
                     {loading ? (

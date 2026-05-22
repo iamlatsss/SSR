@@ -119,9 +119,12 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                     {user?.role?.toLowerCase() === 'admin' && (
                         <>
                             <SidebarItem icon={<Briefcase size={20} />} text="Bookings" to="/bookings" />
+                            <SidebarItem icon={<Anchor size={20} />} text="SI MasterBL" to="/si-masterbl" />
+                            <SidebarItem icon={<Anchor size={20} />} text="SI HouseBL" to="/si-housebl" />
                             <SidebarItem icon={<FileText size={20} />} text="DO / FC" to="/do-fc" />
                             <SidebarItem icon={<Anchor size={20} />} text="IGM" to="/igm" />
                             <SidebarItem icon={<FileText size={20} />} text="Invoice" to="/invoice" />
+                            <SidebarItem icon={<FileText size={20} />} text="Proforma Invoice" to="/proforma-invoice" />
                             <SidebarItem icon={<ShieldCheck size={20} />} text="KYC" to="/kyc" />
                             <SidebarItem icon={<Users size={20} />} text="Users" to="/users" />
                         </>

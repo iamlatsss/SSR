@@ -203,31 +203,86 @@ router.post("/insert", authenticateJWT, async (req, res) => {
 });
 
 
-// View Booking by JobNo
+// View Booking by JobNo (Polymorphic)
 router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
+  const jobNo = parseInt(req.params.JobNo, 10);
   try {
-    const booking = await knexDB('Booking')
-      .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
-      .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
-      .leftJoin('Customers as CHA', 'Booking.cha', 'CHA.customer_id')
-      .leftJoin('Customers as CFS', 'Booking.cfs', 'CFS.customer_id')
-      .select(
-        'Booking.*',
-        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.shipper'))) as shipper_name"),
-        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.consignee'))) as consignee_name"),
-        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name"),
-        'CHA.name as cha_name',
-        'CFS.name as cfs_name'
-      )
-      .where({ 'Booking.job_no': req.params.JobNo })
-      .first();
+    if (jobNo >= 9000) {
+      // HouseBL
+      const booking = await knexDB('HouseBL')
+        .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
+        .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+        .leftJoin('MasterBL as M', 'HouseBL.mbl_no', 'M.mbl_no')
+        .leftJoin('Customers as A', 'M.agent', 'A.customer_id')
+        .select(
+          'HouseBL.*',
+          knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
+          knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.consignee'))) as consignee_name"),
+          'M.pol as pol',
+          'M.pod as pod',
+          'M.final_pod as final_pod',
+          'M.eta as eta',
+          'M.etd as etd',
+          'M.shipping_line_name as shipping_line_name',
+          'M.cargo_type as cargo_type',
+          'M.container_size as container_size',
+          'M.container_count as container_count',
+          'M.agent as agent',
+          knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(M.manual_party_details, '$.agent'))) as agent_name")
+        )
+        .where({ 'HouseBL.job_no': jobNo })
+        .first();
 
-    if (!booking) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
+      if (!booking) {
+        return res.status(404).json({ success: false, message: "HouseBL not found" });
+      }
+      booking.job_type = 'HouseBL';
+      return res.json({ success: true, booking });
+    } else if (jobNo >= 8000) {
+      // MasterBL
+      const booking = await knexDB('MasterBL')
+        .leftJoin('Customers as S', 'MasterBL.shipper', 'S.customer_id')
+        .leftJoin('Customers as C', 'MasterBL.consignee', 'C.customer_id')
+        .leftJoin('Customers as A', 'MasterBL.agent', 'A.customer_id')
+        .select(
+          'MasterBL.*',
+          knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
+          knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.consignee'))) as consignee_name"),
+          knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.agent'))) as agent_name")
+        )
+        .where({ 'MasterBL.job_no': jobNo })
+        .first();
+
+      if (!booking) {
+        return res.status(404).json({ success: false, message: "MasterBL not found" });
+      }
+      booking.job_type = 'MasterBL';
+      return res.json({ success: true, booking });
+    } else {
+      // Standard Booking
+      const booking = await knexDB('Booking')
+        .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
+        .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
+        .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
+        .leftJoin('Customers as CHA', 'Booking.cha', 'CHA.customer_id')
+        .leftJoin('Customers as CFS', 'Booking.cfs', 'CFS.customer_id')
+        .select(
+          'Booking.*',
+          knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.shipper'))) as shipper_name"),
+          knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.consignee'))) as consignee_name"),
+          knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name"),
+          'CHA.name as cha_name',
+          'CFS.name as cfs_name'
+        )
+        .where({ 'Booking.job_no': jobNo })
+        .first();
+
+      if (!booking) {
+        return res.status(404).json({ success: false, message: "Booking not found" });
+      }
+      booking.job_type = 'Booking';
+      return res.json({ success: true, booking });
     }
-
-    res.json({ success: true, booking });
   } catch (error) {
     console.error("Error fetching booking:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -235,9 +290,10 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
 });
 
 
-// View All Booking 
+// View All Booking (Unified)
 router.get("/get", authenticateJWT, async (req, res) => {
   try {
+    // 1. Get standard bookings
     const bookings = await knexDB('Booking')
       .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
       .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
@@ -251,10 +307,58 @@ router.get("/get", authenticateJWT, async (req, res) => {
         knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.agent'))) as agent_name"),
         'CHA.name as cha_name',
         'CFS.name as cfs_name'
-      )
-      .orderBy('Booking.created_at', 'desc');
+      );
+    bookings.forEach(b => { b.job_type = 'Booking'; });
 
-    res.json({ success: true, bookings });
+    // 2. Get MasterBLs
+    const masterBLs = await knexDB('MasterBL')
+      .leftJoin('Customers as S', 'MasterBL.shipper', 'S.customer_id')
+      .leftJoin('Customers as C', 'MasterBL.consignee', 'C.customer_id')
+      .leftJoin('Customers as A', 'MasterBL.agent', 'A.customer_id')
+      .select(
+        'MasterBL.*',
+        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
+        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.consignee'))) as consignee_name"),
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.agent'))) as agent_name")
+      );
+    masterBLs.forEach(m => {
+      m.job_type = 'MasterBL';
+      m.cha_name = null;
+      m.cfs_name = null;
+    });
+
+    // 3. Get HouseBLs
+    const houseBLs = await knexDB('HouseBL')
+      .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
+      .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+      .leftJoin('MasterBL as M', 'HouseBL.mbl_no', 'M.mbl_no')
+      .leftJoin('Customers as A', 'M.agent', 'A.customer_id')
+      .select(
+        'HouseBL.*',
+        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
+        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.consignee'))) as consignee_name"),
+        'M.pol as pol',
+        'M.pod as pod',
+        'M.final_pod as final_pod',
+        'M.eta as eta',
+        'M.etd as etd',
+        'M.shipping_line_name as shipping_line_name',
+        'M.cargo_type as cargo_type',
+        'M.container_size as container_size',
+        'M.container_count as container_count',
+        'M.agent as agent',
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(M.manual_party_details, '$.agent'))) as agent_name")
+      );
+    houseBLs.forEach(h => {
+      h.job_type = 'HouseBL';
+      h.cha_name = null;
+      h.cfs_name = null;
+    });
+
+    const allJobs = [...bookings, ...masterBLs, ...houseBLs];
+    allJobs.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    res.json({ success: true, bookings: allJobs });
   } catch (error) {
     console.error("Error fetching booking:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -262,60 +366,197 @@ router.get("/get", authenticateJWT, async (req, res) => {
 });
 
 
-// Update a booking by JobNo
+// Update a booking by JobNo (Polymorphic)
 router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
-  const updateData = {};
+  const jobNo = parseInt(req.params.jobNo, 10);
+  
+  if (jobNo >= 9000) {
+    // Route to HouseBL update
+    const updateData = {};
+    const HOUSEBL_ALLOWED = [
+      "date_of_nomination", "hbl_no", "mbl_no", "shipper", "consignee", "status",
+      "shipper_invoice_no", "net_weight", "gross_weight", "hbl_telex_received",
+      "no_of_palette", "marks_and_numbers", "manual_party_details",
+      "freight_amount", "freight_currency", "invoice_no", "invoice_date",
+      "invoice_items", "invoice_totals", "invoice_customer"
+    ];
 
-  // Filter request body for allowed fields
-  for (const key of ALLOWED_FIELDS) {
-    if (req.body[key] !== undefined && !['shipper', 'consignee', 'agent', 'manual_party_details'].includes(key)) {
-      updateData[key] = req.body[key];
+    for (const key of HOUSEBL_ALLOWED) {
+      if (req.body[key] !== undefined && !['shipper', 'consignee', 'manual_party_details'].includes(key)) {
+        updateData[key] = req.body[key];
+      }
     }
-  }
 
-  try {
-    // If we are updating hybrid fields, we need to be careful not to overwrite existing manual details if NOT provided
-    // BUT usually update comes with full form data. 
-    // Let's assume we construct manual_details from what's passed + what might be missing?
-    // Given the complexity, let's assume the frontend sends the current state of these fields.
-    // We will fetch existing manual details if we want to merge, but simpler is to re-construct if fields are present.
-
-    // However, we can't easily merge without fetching first.
-    // Optimization: If shipper/consignee/agent are NOT in req.body, don't touch them.
-    // If they ARE in req.body, re-process them.
-
-    if (req.body.shipper !== undefined || req.body.consignee !== undefined || req.body.agent !== undefined) {
-      // We essentially need to rebuild the hybrid state for these 3 fields.
-      // We'll fetch current first to respect existing manual details of UNTOUCHED fields?
-      // Or just rely on what is passed. 
-      // Strategy: Process the passed fields. If `manual_party_details` is needed, we need to fetch current first to merge?
-      // NO, let's standardise: The caller should send all 3 if they rely on manual details, or we fetch.
-      // Let's fetch to be safe to merge.
-
-      const current = await knexDB('Booking').select('manual_party_details').where({ job_no: req.params.jobNo }).first();
-      let currentManual = {};
-      if (current && current.manual_party_details) {
-        try { currentManual = typeof current.manual_party_details === 'string' ? JSON.parse(current.manual_party_details) : current.manual_party_details; } catch (e) { }
+    try {
+      if (req.body.shipper !== undefined || req.body.consignee !== undefined) {
+        const current = await knexDB('HouseBL').select('manual_party_details').where({ job_no: jobNo }).first();
+        let currentManual = {};
+        if (current && current.manual_party_details) {
+          try {
+            currentManual = typeof current.manual_party_details === 'string'
+              ? JSON.parse(current.manual_party_details)
+              : current.manual_party_details;
+          } catch (e) {}
+        }
+        const mockBody = { ...req.body, manual_party_details: currentManual };
+        
+        const hybridFields = ['shipper', 'consignee'];
+        hybridFields.forEach(field => {
+          const val = mockBody[field];
+          if (val !== undefined) {
+            if (val && !isNaN(val) && Number.isInteger(Number(val))) {
+              updateData[field] = val;
+              delete currentManual[field];
+            } else if (val && typeof val === 'string' && val.trim() !== '') {
+              updateData[field] = null;
+              currentManual[field] = val.trim();
+            } else if (val === '') {
+              updateData[field] = null;
+              delete currentManual[field];
+            }
+          }
+        });
+        updateData.manual_party_details = JSON.stringify(currentManual);
       }
 
-      // Mock a body that includes current manual details so our helper can merge/overwrite
-      const mockBody = { ...req.body, manual_party_details: currentManual };
-      processHybridFields(mockBody, updateData);
+      const currentJob = await knexDB('HouseBL').where({ job_no: jobNo }).first();
+      if (currentJob) {
+        let finalStatus = updateData.status || currentJob.status;
+        if (updateData.invoice_no) {
+          finalStatus = 'Invoice Generated';
+        } else if (updateData.freight_amount && parseFloat(updateData.freight_amount) > 0 && finalStatus === 'Draft') {
+          finalStatus = 'Sell Rate Updated';
+        }
+        updateData.status = finalStatus;
+      }
+
+      const affectedRows = await knexDB('HouseBL').where({ job_no: jobNo }).update(updateData);
+      if (affectedRows === 0) {
+        return res.status(404).json({ success: false, message: "HouseBL job not found" });
+      }
+      return res.json({ success: true, message: "HouseBL updated successfully" });
+    } catch (err) {
+      console.error("Error updating HouseBL via booking API:", err);
+      return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+    
+  } else if (jobNo >= 8000) {
+    // Route to MasterBL update
+    const updateData = {};
+    const MASTERBL_ALLOWED = [
+      "date_of_nomination", "mbl_no", "shipper", "consignee", "pol", "pod", "final_pod",
+      "container_size", "container_count", "agent", "status", "eta", "etd",
+      "shipper_invoice_no", "net_weight", "gross_weight", "cargo_type", "shipping_line_name",
+      "mbl_telex_received", "no_of_palette", "marks_and_numbers", "manual_party_details",
+      "freight_amount", "freight_currency", "invoice_no", "invoice_date",
+      "invoice_items", "invoice_totals", "invoice_customer"
+    ];
+
+    for (const key of MASTERBL_ALLOWED) {
+      if (req.body[key] !== undefined && !['shipper', 'consignee', 'agent', 'manual_party_details'].includes(key)) {
+        updateData[key] = req.body[key];
+      }
     }
 
+    try {
+      if (req.body.shipper !== undefined || req.body.consignee !== undefined || req.body.agent !== undefined) {
+        const current = await knexDB('MasterBL').select('manual_party_details').where({ job_no: jobNo }).first();
+        let currentManual = {};
+        if (current && current.manual_party_details) {
+          try {
+            currentManual = typeof current.manual_party_details === 'string'
+              ? JSON.parse(current.manual_party_details)
+              : current.manual_party_details;
+          } catch (e) {}
+        }
+        const mockBody = { ...req.body, manual_party_details: currentManual };
+        
+        const hybridFields = ['shipper', 'consignee', 'agent'];
+        hybridFields.forEach(field => {
+          const val = mockBody[field];
+          if (val !== undefined) {
+            if (val && !isNaN(val) && Number.isInteger(Number(val))) {
+              updateData[field] = val;
+              delete currentManual[field];
+            } else if (val && typeof val === 'string' && val.trim() !== '') {
+              updateData[field] = null;
+              currentManual[field] = val.trim();
+            } else if (val === '') {
+              updateData[field] = null;
+              delete currentManual[field];
+            }
+          }
+        });
+        updateData.manual_party_details = JSON.stringify(currentManual);
+      }
 
-    if (Object.keys(updateData).length === 0) {
-      return res.status(400).json({ success: false, message: "No valid fields to update" });
+      const currentJob = await knexDB('MasterBL').where({ job_no: jobNo }).first();
+      if (currentJob) {
+        let finalStatus = updateData.status || currentJob.status;
+        if (updateData.invoice_no) {
+          finalStatus = 'Invoice Generated';
+        } else if (updateData.freight_amount && parseFloat(updateData.freight_amount) > 0 && finalStatus === 'Draft') {
+          finalStatus = 'Sell Rate Updated';
+        }
+        updateData.status = finalStatus;
+      }
+
+      const affectedRows = await knexDB('MasterBL').where({ job_no: jobNo }).update(updateData);
+      if (affectedRows === 0) {
+        return res.status(404).json({ success: false, message: "MasterBL job not found" });
+      }
+      return res.json({ success: true, message: "MasterBL updated successfully" });
+    } catch (err) {
+      console.error("Error updating MasterBL via booking API:", err);
+      return res.status(500).json({ success: false, message: "Internal server error" });
+    }
+    
+  } else {
+    // Standard Booking update
+    const updateData = {};
+
+    for (const key of ALLOWED_FIELDS) {
+      if (req.body[key] !== undefined && !['shipper', 'consignee', 'agent', 'manual_party_details'].includes(key)) {
+        updateData[key] = req.body[key];
+      }
     }
 
-    const affectedRows = await knexDB('Booking').where({ job_no: req.params.jobNo }).update(updateData);
-    if (affectedRows === 0) {
-      return res.status(404).json({ success: false, message: "Booking not found" });
+    try {
+      if (req.body.shipper !== undefined || req.body.consignee !== undefined || req.body.agent !== undefined) {
+        const current = await knexDB('Booking').select('manual_party_details').where({ job_no: jobNo }).first();
+        let currentManual = {};
+        if (current && current.manual_party_details) {
+          try { currentManual = typeof current.manual_party_details === 'string' ? JSON.parse(current.manual_party_details) : current.manual_party_details; } catch (e) { }
+        }
+
+        const mockBody = { ...req.body, manual_party_details: currentManual };
+        processHybridFields(mockBody, updateData);
+      }
+
+      const currentJob = await knexDB('Booking').where({ job_no: jobNo }).first();
+      if (currentJob) {
+        let finalStatus = updateData.status || currentJob.status;
+        if (updateData.invoice_no) {
+          finalStatus = 'Invoice Generated';
+        } else if (updateData.freight_amount && parseFloat(updateData.freight_amount) > 0 && finalStatus === 'draft') {
+          finalStatus = 'Sell Rate Updated';
+        }
+        updateData.status = finalStatus;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ success: false, message: "No valid fields to update" });
+      }
+
+      const affectedRows = await knexDB('Booking').where({ job_no: jobNo }).update(updateData);
+      if (affectedRows === 0) {
+        return res.status(404).json({ success: false, message: "Booking not found" });
+      }
+      res.json({ success: true, message: "Booking updated successfully" });
+    } catch (error) {
+      console.error("Error updating booking:", error);
+      res.status(500).json({ success: false, message: "Internal server error" });
     }
-    res.json({ success: true, message: "Booking updated successfully" });
-  } catch (error) {
-    console.error("Error updating booking:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
   }
 });
 

@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Proforma Invoice - SSR Logistic Solutions</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    :root {
+      --border: #000;
+      --muted: #444;
+      --accent: #f5f5f5;
+      --font: "Calibri", "Helvetica", Arial, sans-serif;
+    }
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #fff;
+      font-family: var(--font);
+      color: #000;
+      -webkit-print-color-adjust: exact;
+    }
+    .page {
+      max-width: 900px;
+      margin: 10px auto;
+      padding: 20px;
+      border: 1px solid var(--border);
+      box-sizing: border-box;
+      position: relative;
+    }
+    .meta {
+      text-align: right;
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 8px;
+    }
+    header img {
+      height: 65px;
+      width: auto;
+    }
+    header .org {
+      flex: 1;
+      text-align: center;
+      line-height: 1.2;
+    }
+    header .org h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+    }
+    header .org .sub {
+      font-size: 11px;
+      margin-top: 4px;
+      color: #333;
+    }
+    h2.title {
+      text-align: center;
+      margin: 5px 0 10px;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: underline;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    table.main {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+      margin-bottom: 10px;
+    }
+    table.main th, table.main td {
+      border: 1px solid var(--border);
+      padding: 5px 6px;
+      vertical-align: top;
+      text-align: left;
+    }
+    table.main th {
+      background: var(--accent);
+      font-weight: 700;
+      width: 20%;
+    }
+    table.main td {
+      width: 30%;
+    }
+    .charges {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 11px;
+    }
+    .charges th, .charges td {
+      border: 1px solid var(--border);
+      padding: 5px 6px;
+      text-align: left;
+    }
+    .charges th {
+      background: var(--accent);
+      font-weight: 700;
+      text-align: center;
+    }
+    .charges td.num {
+      text-align: right;
+    }
+    .charges td.center {
+      text-align: center;
+    }
+    .totals {
+      margin-top: 10px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.4;
+      border: 1px solid var(--border);
+      padding: 8px;
+      background: #fafafa;
+    }
+    .terms {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      padding: 8px;
+      font-size: 10.5px;
+      line-height: 1.35;
+    }
+    .bank {
+      margin-top: 8px;
+      font-size: 11px;
+      line-height: 1.3;
+    }
+    .sign {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 15px;
+      font-size: 11px;
+    }
+    .source {
+      margin-top: 8px;
+      font-size: 9px;
+      color: var(--muted);
+      text-align: right;
+    }
+    @media print {
+      body {
+        background: #fff;
+      }
+      .page {
+        border: none;
+        margin: 0;
+        padding: 0;
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="meta">SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</div>
+    <header>
+      <img src="https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg" alt="SSR Logo">
+      <div class="org">
+        <h1>SSR LOGISTIC SOLUTIONS PVT. LTD.</h1>
+        <div class="sub">
+          Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi,<br>
+          Navi Mumbai - 400703, India • Tel.No : 7700990630 • Website: www.ssrlogistic.net
+        </div>
+      </div>
+    </header>
+
+    <h2 class="title">PROFORMA INVOICE ({{PRINT_TYPE_LABEL}})</h2>
+
+    <table class="main">
+      <tr>
+        <th>Party Name</th>
+        <td><strong>{{PARTY_NAME}}</strong><br>{{PARTY_ADDRESS}}<br>GSTIN: {{PARTY_GSTIN}}<br>State Code: {{PARTY_STATE}}</td>
+        <th>Proforma No.</th>
+        <td><strong>{{PROFORMA_NO}}</strong></td>
+      </tr>
+      <tr>
+        <th>Proforma Date</th>
+        <td>{{PROFORMA_DATE}}</td>
+        <th>Ref No. / Job No.</th>
+        <td>{{REF_NO}} / #{{JOB_NO}}</td>
+      </tr>
+      <tr>
+        <th>HBL No.</th>
+        <td>{{HBL_NO}}</td>
+        <th>MBL No.</th>
+        <td>{{MBL_NO}}</td>
+      </tr>
+      <tr>
+        <th>Vessel / Voyage</th>
+        <td>{{VESSEL_VOYAGE}}</td>
+        <th>POL</th>
+        <td>{{POL}}</td>
+      </tr>
+      <tr>
+        <th>FPD</th>
+        <td>{{FPD}}</td>
+        <th>IGM No.</th>
+        <td>{{IGM_NO}}</td>
+      </tr>
+      <tr>
+        <th>Line No. / Date</th>
+        <td>{{LINE_NO}}</td>
+        <th>Sub Line No.</th>
+        <td>{{SUB_LINE_NO}}</td>
+      </tr>
+      <tr>
+        <th>ETD Date</th>
+        <td>{{ETD_DATE}}</td>
+        <th>No. of Cntrs / Type</th>
+        <td>{{CNTRS_TYPE}}</td>
+      </tr>
+      <tr>
+        <th>Consignee</th>
+        <td>{{CONSIGNEE}}</td>
+        <th>Shipper</th>
+        <td>{{SHIPPER}}</td>
+      </tr>
+      <tr>
+        <th>Cargo Type</th>
+        <td>{{CARGO_TYPE}}</td>
+        <th>Shipping Line</th>
+        <td>{{SHIPPER_LINE}}</td>
+      </tr>
+      <tr>
+        <th>Cargo Weight (KGS)</th>
+        <td>{{CARGO_WEIGHT}}</td>
+        <th>Volume (CBM)</th>
+        <td>{{CBM}}</td>
+      </tr>
+      <tr>
+        <th>POD</th>
+        <td>{{POD}}</td>
+        <th>No. of Pkgs</th>
+        <td>{{NO_OF_PKGS}}</td>
+      </tr>
+      <tr>
+        <th>ETA Date</th>
+        <td>{{ETA_DATE}}</td>
+        <th>Ex Rate (USD/INR)</th>
+        <td>{{EX_RATE}}</td>
+      </tr>
+      <tr>
+        <th>Container No.</th>
+        <td colspan="3">{{CONTAINER_NO}}</td>
+      </tr>
+    </table>
+
+    <!-- Dynamic charges grid with the correct header based on print_type -->
+    <table class="charges" aria-label="Charges Table">
+      {{CHARGES_THEAD}}
+      <tbody>
+        {{CHARGES_ROWS}}
+        {{SUBTOTAL_ROW}}
+      </tbody>
+    </table>
+
+    <div class="totals">
+      {{TAX_ROWS}}
+      <strong>{{GRAND_TOTAL_LABEL}}: {{GRAND_TOTAL_VAL}}</strong><br>
+      <span style="font-size: 11px; text-transform: uppercase;">Amount in Words: {{GRAND_TOTAL_WORDS}}</span>
+    </div>
+
+    <div class="terms">
+      <strong>Terms &amp; Conditions:</strong><br>
+      1) Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.<br>
+      2) Interest would be charged @ 24% p.a. on delayed payment.<br>
+      3) In case of any objection / reservation in the billed Invoice / Debit Note, the same must be lodged within 5 days from the issue date and a written receipt taken from our Accounts Manager.<br>
+      4) Payment to be made at Mumbai by A/c payee Cheque / NEFT / RTGS only and receipt for the same must be insisted.<br>
+      5) Any dispute subject to Mumbai Jurisdiction only.
+    </div>
+
+    <div class="bank">
+      <strong>Our Bank Details Are:</strong><br>
+      Bank Name : KOTAK MAHINDRA BANK LTD<br>
+      Account Number : 1050002555<br>
+      IFSC Code: KKBK0001370<br>
+      Branch: Vashi, Navi Mumbai
+    </div>
+
+    <div class="sign">
+      <div>
+        PAN No: AAECS9908F<br>
+        GSTIN: 27AAECS9908F1Z0
+      </div>
+      <div style="text-align:right">
+        <strong>FOR SSR LOGISTIC SOLUTIONS PVT. LTD.</strong><br><br><br>
+        Accounts Department<br>
+        E &amp; O.E.<br>
+        <em>System generated Proforma Invoice. Does not require Signature</em>
+      </div>
+    </div>
+
+    <div class="source">Generated via SSR Logistics Platform on {{GENERATED_AT}}</div>
+  </div>
+</body>
+</html>

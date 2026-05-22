@@ -18,6 +18,9 @@ import DOFC from './pages/DOFC.jsx'; // Combined DO/FC
 import Invoice from './pages/Invoice.jsx';
 import InvoiceGenerator from './pages/InvoiceGenerator.jsx';
 import Profile from './pages/Profile.jsx';
+import { SIMasterBLList, SIMasterBLForm } from './pages/SIMasterBL';
+import { SIHouseBLList, SIHouseBLForm } from './pages/SIHouseBL';
+import ProformaInvoice from './pages/ProformaInvoice';
 
 // Placeholder for now
 const Settings = () => (
@@ -46,6 +49,10 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['Admin', 'admin']} />}>
               <Route path="/bookings" element={<BookingList />} />
               <Route path="/booking-form" element={<BookingForm />} />
+              <Route path="/si-masterbl" element={<SIMasterBLList />} />
+              <Route path="/si-masterbl-form" element={<SIMasterBLForm />} />
+              <Route path="/si-housebl" element={<SIHouseBLList />} />
+              <Route path="/si-housebl-form" element={<SIHouseBLForm />} />
               <Route path="/igm" element={<IGM />} />
               <Route path="/kyc" element={<KYCList />} />
               <Route path="/settings" element={<Settings />} />
@@ -53,6 +60,7 @@ function App() {
               <Route path="/do-fc" element={<DOFC />} />
               <Route path="/invoice" element={<Invoice />} />
               <Route path="/invoice/edit/:jobNo" element={<InvoiceGenerator />} />
+              <Route path="/proforma-invoice" element={<ProformaInvoice />} />
               <Route path="/users" element={<Admin />} />
             </Route>
           </Route>

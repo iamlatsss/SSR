@@ -452,3 +452,133 @@ export async function deleteQuotationsByIds(ids) {
 }
 
 // #endregion
+
+
+
+
+
+
+// #region 📦 MASTER BL & HOUSE BL ─────────────────────────────────────────────
+
+(async function initMasterBLTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS MasterBL (
+      job_no INT AUTO_INCREMENT PRIMARY KEY,
+      mbl_no VARCHAR(100) UNIQUE NOT NULL,
+      date_of_nomination DATE,
+      shipper INT,
+      consignee INT,
+      pol VARCHAR(255),
+      pod VARCHAR(255),
+      final_pod VARCHAR(255),
+      container_size VARCHAR(100),
+      container_count INT,
+      agent INT,
+      status VARCHAR(50) DEFAULT 'Draft',
+      eta DATE,
+      etd DATE,
+      shipper_invoice_no VARCHAR(100),
+      net_weight DECIMAL(10, 2),
+      gross_weight DECIMAL(10, 2),
+      cargo_type VARCHAR(100),
+      shipping_line_name VARCHAR(255),
+      mbl_telex_received VARCHAR(10) DEFAULT 'No',
+      no_of_palette INT,
+      marks_and_numbers TEXT,
+      freight_amount DECIMAL(10, 2),
+      freight_currency VARCHAR(10) DEFAULT 'USD',
+      manual_party_details JSON,
+      invoice_no VARCHAR(100),
+      invoice_date DATE,
+      invoice_items JSON,
+      invoice_totals JSON,
+      invoice_customer JSON,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) AUTO_INCREMENT = 8000
+  `;
+  try {
+    await pool.query(query);
+    console.log("MasterBL table initialized");
+    try {
+      await pool.query("ALTER TABLE MasterBL ADD COLUMN additional_details JSON");
+    } catch (e) {
+      // Column already exists, safe to ignore
+    }
+  } catch (err) {
+    console.error("Error creating MasterBL table:", err);
+  }
+})();
+
+(async function initHouseBLTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS HouseBL (
+      job_no INT AUTO_INCREMENT PRIMARY KEY,
+      hbl_no VARCHAR(100) UNIQUE NOT NULL,
+      mbl_no VARCHAR(100),
+      date_of_nomination DATE,
+      shipper INT,
+      consignee INT,
+      status VARCHAR(50) DEFAULT 'Draft',
+      shipper_invoice_no VARCHAR(100),
+      net_weight DECIMAL(10, 2),
+      gross_weight DECIMAL(10, 2),
+      hbl_telex_received VARCHAR(10) DEFAULT 'No',
+      no_of_palette INT,
+      marks_and_numbers TEXT,
+      freight_amount DECIMAL(10, 2),
+      freight_currency VARCHAR(10) DEFAULT 'USD',
+      manual_party_details JSON,
+      invoice_no VARCHAR(100),
+      invoice_date DATE,
+      invoice_items JSON,
+      invoice_totals JSON,
+      invoice_customer JSON,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) AUTO_INCREMENT = 9000
+  `;
+  try {
+    await pool.query(query);
+    console.log("HouseBL table initialized");
+    try {
+      await pool.query("ALTER TABLE HouseBL ADD COLUMN additional_details JSON");
+    } catch (e) {
+      // Column already exists, safe to ignore
+    }
+  } catch (err) {
+    console.error("Error creating HouseBL table:", err);
+  }
+})();
+
+(async function initProformaInvoicesTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS ProformaInvoices (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      proforma_no VARCHAR(100) UNIQUE,
+      job_no INT NOT NULL,
+      mbl_hbl_type VARCHAR(10) NOT NULL,
+      mbl_hbl_no VARCHAR(100) NOT NULL,
+      client_id INT,
+      client_name VARCHAR(255),
+      client_address TEXT,
+      client_gstin VARCHAR(100),
+      client_state VARCHAR(100),
+      print_type VARCHAR(50) DEFAULT 'Invoice',
+      proforma_date DATE,
+      items JSON,
+      totals JSON,
+      pdf_link VARCHAR(1000),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) AUTO_INCREMENT = 5300
+  `;
+  try {
+    await pool.query(query);
+    console.log("ProformaInvoices table initialized");
+  } catch (err) {
+    console.error("Error creating ProformaInvoices table:", err);
+  }
+})();
+
+// #endregion
+
