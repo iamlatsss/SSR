@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import PortSelect from "../components/PortSelect";
+import SearchableDropdown from "../components/SearchableDropdown";
 import { Copy, Mail, RefreshCw, MessageSquare, History, FilePlus2, FileText, Download, Plus, Trash2 } from "lucide-react";
 import { toast } from "react-toastify";
 import api from "../services/api";
@@ -39,10 +40,60 @@ const defaultQuotation = {
     pod: "",
     containersize: "",
     validity: "",
+    transit_time: "",
     remarks: defaultRemarks,
     terms: defaultTerms,
     charges: []
 };
+
+const commodityOptions = [
+    "General Cargo",
+    "Garments",
+    "Chemicals (Hazardous)",
+    "Chemicals (Non-Hazardous)",
+    "Foodstuffs",
+    "Machinery",
+    "Electronics",
+    "Scrap",
+    "Personal Effects"
+];
+
+const incotermOptions = [
+    "EXW (Ex Works)",
+    "FCA (Free Carrier)",
+    "FAS (Free Alongside Ship)",
+    "FOB (Free on Board)",
+    "CFR (Cost and Freight)",
+    "CIF (Cost, Insurance and Freight)",
+    "CPT (Carriage Paid To)",
+    "CIP (Carriage and Insurance Paid To)",
+    "DAP (Delivered at Place)",
+    "DPU (Delivered at Place Unloaded)",
+    "DDP (Delivered Duty Paid)"
+];
+
+const fallbackCharges = [
+    "OCEAN FREIGHT",
+    "THC (TERMINAL HANDLING CHARGES)",
+    "TOLL CHARGES",
+    "MUC (MANDATORY USAGE CHARGES)",
+    "SEAL FEE",
+    "BL FEES(OBL)",
+    "DOCUMENTATION CHARGES",
+    "VGM CHARGES",
+    "CUSTOMS CLEARANCE CHARGES",
+    "HAULAGE CHARGES",
+    "CFS CHARGES",
+    "DO CHARGES",
+    "AIR FREIGHT CHARGES",
+    "CONSOLIDATION CHARGES",
+    "DETENTION CHARGES",
+    "PORT CONGESTION CHARGE",
+    "PORT STORAGE",
+    "SCANNING CHARGES",
+    "SHIPPING LINE CHARGES",
+    "WEIGHTMENT CHARGES"
+];
 
 // Searchable autocomplete combobox for charge names (follows PortSelect pattern)
 const ChargeNameInput = ({ value, onChange, suggestions }) => {
@@ -73,7 +124,7 @@ const ChargeNameInput = ({ value, onChange, suggestions }) => {
 
     const uniqueSuggestions = useMemo(() => [...new Set(suggestions)], [suggestions]);
     const filtered = useMemo(() => {
-        if (!value) return uniqueSuggestions.slice(0, 50);
+        if (!value || !value.trim()) return [];
         const lower = value.toLowerCase();
         return uniqueSuggestions.filter(s => s.toLowerCase().includes(lower)).slice(0, 50);
     }, [uniqueSuggestions, value]);
@@ -86,7 +137,7 @@ const ChargeNameInput = ({ value, onChange, suggestions }) => {
 
     const handleKeyDown = (e) => {
         if (!isOpen) {
-            if (e.key === 'ArrowDown' || e.key === 'Enter') setIsOpen(true);
+            if ((e.key === 'ArrowDown' || e.key === 'Enter') && value && value.trim()) setIsOpen(true);
             return;
         }
         if (e.key === 'ArrowDown') {
@@ -111,10 +162,10 @@ const ChargeNameInput = ({ value, onChange, suggestions }) => {
                 value={value || ""}
                 placeholder="Type or select charge..."
                 autoComplete="off"
-                onFocus={() => setIsOpen(true)}
+                onFocus={() => { if (value && value.trim()) setIsOpen(true); }}
                 onChange={(e) => { onChange(e.target.value); setIsOpen(true); setActiveIndex(-1); }}
                 onKeyDown={handleKeyDown}
-                className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-md text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="w-full px-1.5 py-0.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
             />
             {isOpen && filtered.length > 0 && (
                 <div ref={listRef} className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto custom-scrollbar">
@@ -141,7 +192,7 @@ const Quotation = () => {
     const [activeTab, setActiveTab] = useState("create"); // "create" or "sent"
     const [sentQuotations, setSentQuotations] = useState([]);
     const [isUploading, setIsUploading] = useState(false);
-    const [availableCharges, setAvailableCharges] = useState([]);
+    const [availableCharges, setAvailableCharges] = useState(fallbackCharges.map(name => ({ name })));
 
     // We now maintain an array of quotations
     const [quotationItems, setQuotationItems] = useState([{ ...defaultQuotation }]);
@@ -160,16 +211,20 @@ const Quotation = () => {
 
     const fetchCharges = async () => {
         try {
-            const res = await api.get("/invoice/charges");
-            if (res.data.success) {
-                setAvailableCharges(res.data.charges);
+            const res = await api.get("/quotation/charges");
+            if (res.data.success && Array.isArray(res.data.charges)) {
+                // Parse and clean the API charges
+                const cleanedApi = res.data.charges.map(c => cleanChargeName(c.name)).filter(Boolean);
+                // Combine and deduplicate
+                const combined = [...new Set([...cleanedApi, ...fallbackCharges])];
+                setAvailableCharges(combined.map(name => ({ name })));
             } else {
-                console.warn("Failed to load charges from API");
-                setAvailableCharges([]);
+                console.warn("Failed to load charges from API, using fallback list");
+                setAvailableCharges(fallbackCharges.map(name => ({ name })));
             }
         } catch (error) {
-            console.warn("Failed to fetch charges API:", error);
-            setAvailableCharges([]);
+            console.warn("Failed to fetch charges API, using fallback list:", error);
+            setAvailableCharges(fallbackCharges.map(name => ({ name })));
         }
     };
 
@@ -195,7 +250,7 @@ const Quotation = () => {
         setQuotationItems((prev) =>
             prev.map((item, i) => {
                 if (i !== qIndex) return item;
-                return { ...item, charges: [...item.charges, { chargeName: "", amount: "", currency: "USD" }] };
+                return { ...item, charges: [...item.charges, { chargeName: "", basis: "Per Container", quantity: "1.00", currency: "USD", amount: "", tax: "5" }] };
             })
         );
     };
@@ -403,16 +458,30 @@ const Quotation = () => {
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider">Commodity</label>
-                                        <input type="text" value={formData.commodity} onChange={(e) => handleQuotationChange(qIndex, 'commodity', e.target.value)} placeholder="e.g. General Cargo" className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all" />
+                                        <SearchableDropdown
+                                            options={commodityOptions}
+                                            value={formData.commodity}
+                                            onChange={(val) => handleQuotationChange(qIndex, 'commodity', val)}
+                                            placeholder="Select or type..."
+                                            allowCustom={true}
+                                            className="!rounded-lg !py-1.5"
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider">Incoterms</label>
-                                        <input type="text" value={formData.incoterms} onChange={(e) => handleQuotationChange(qIndex, 'incoterms', e.target.value)} placeholder="e.g. CIF" className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all" />
+                                        <SearchableDropdown
+                                            options={incotermOptions}
+                                            value={formData.incoterms}
+                                            onChange={(val) => handleQuotationChange(qIndex, 'incoterms', val)}
+                                            placeholder="Select or type..."
+                                            allowCustom={true}
+                                            className="!rounded-lg !py-1.5"
+                                        />
                                     </div>
                                 </div>
 
                                 {/* Row 2: Route & Cargo */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3">
                                     <div>
                                         <PortSelect label="POL" name="pol" value={formData.pol} onChange={(e) => handleQuotationChange(qIndex, 'pol', e.target.value)} placeholder="Loading Port" className="py-1.5 text-sm" />
                                     </div>
@@ -427,6 +496,10 @@ const Quotation = () => {
                                                 <option key={size} value={size}>{size}</option>
                                             ))}
                                         </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider">Transit Time</label>
+                                        <input type="text" value={formData.transit_time} onChange={(e) => handleQuotationChange(qIndex, 'transit_time', e.target.value)} placeholder="e.g. 14 Days" className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider">Validity</label>
@@ -445,59 +518,106 @@ const Quotation = () => {
                                         </button>
                                     </div>
 
-                                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl overflow-visible">
-                                        <table className="w-full text-left text-sm">
-                                            <thead className="bg-slate-50 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700">
+                                    <div className="border border-slate-200 dark:border-slate-700 rounded-xl relative">
+                                        <table className="w-full text-left text-xs border-collapse table-fixed">
+                                            <thead className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-xs uppercase tracking-wider font-bold text-slate-700 dark:text-slate-300 sticky top-0 z-10">
                                                 <tr>
-                                                    <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-400 w-1/2">Charge Name</th>
-                                                    <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-400">Amount</th>
-                                                    <th className="px-3 py-2 font-semibold text-slate-600 dark:text-slate-400 w-24">Currency</th>
-                                                    <th className="px-3 py-2 text-center w-12"></th>
+                                                    <th className="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700 text-left w-[35%]">Charge Head</th>
+                                                    <th className="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700 text-left w-[110px]">Basis</th>
+                                                    <th className="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700 text-center w-[65px]">Quantity</th>
+                                                    <th className="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700 text-center w-[70px]">Currency</th>
+                                                    <th className="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700 text-center w-[90px]">Rate</th>
+                                                    <th className="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700 text-center w-[55px]">Tax(%)</th>
+                                                    <th className="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700 text-center w-[110px]">Subtotal</th>
+                                                    <th className="px-2 py-1.5 text-center w-[40px]"></th>
                                                 </tr>
                                             </thead>
-                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/50 bg-white dark:bg-dark-card">
+                                            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 bg-white dark:bg-dark-card">
                                                 {formData.charges.length === 0 ? (
                                                     <tr>
-                                                        <td colSpan="4" className="px-3 py-4 text-center text-xs text-slate-400">No charges added. Click "+ Add Charge"</td>
+                                                        <td colSpan="8" className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic">No charges added. Click "+ Add Charge"</td>
                                                     </tr>
-                                                ) : formData.charges.map((charge, cIndex) => (
-                                                    <tr key={cIndex}>
-                                                        <td className="p-2">
-                                                            <ChargeNameInput
-                                                                value={charge.chargeName}
-                                                                onChange={(val) => handleChargeChange(qIndex, cIndex, 'chargeName', val)}
-                                                                suggestions={availableCharges.map(c => cleanChargeName(c.name)).filter(Boolean)}
-                                                            />
-                                                        </td>
-                                                        <td className="p-2">
-                                                            <input
-                                                                type="text"
-                                                                placeholder="0.00"
-                                                                value={charge.amount}
-                                                                onChange={(e) => handleChargeChange(qIndex, cIndex, 'amount', e.target.value)}
-                                                                className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-md text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                                            />
-                                                        </td>
-                                                        <td className="p-2">
-                                                            <select
-                                                                value={charge.currency}
-                                                                onChange={(e) => handleChargeChange(qIndex, cIndex, 'currency', e.target.value)}
-                                                                className="w-full px-2 py-1.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-md text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                                                            >
-                                                                <option value="USD">USD</option>
-                                                                <option value="INR">INR</option>
-                                                                <option value="EUR">EUR</option>
-                                                                <option value="GBP">GBP</option>
-                                                                <option value="AED">AED</option>
-                                                            </select>
-                                                        </td>
-                                                        <td className="p-2 text-center">
-                                                            <button type="button" onClick={() => handleRemoveCharge(qIndex, cIndex)} className="text-slate-400 hover:text-red-500 transition-colors p-1">
-                                                                <Trash2 size={14} />
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
+                                                ) : formData.charges.map((charge, cIndex) => {
+                                                    const qty = parseFloat(charge.quantity !== undefined ? charge.quantity : 1) || 0;
+                                                    const rate = parseFloat(charge.amount) || 0;
+                                                    const tax = parseFloat(charge.tax !== undefined ? charge.tax : 5) || 0;
+                                                    const subtotal = qty * rate * (1 + tax / 100);
+
+                                                    return (
+                                                        <tr key={cIndex} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
+                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-left align-middle relative">
+                                                                <SearchableDropdown
+                                                                    options={availableCharges.map(c => cleanChargeName(c.name)).filter(Boolean)}
+                                                                    value={charge.chargeName}
+                                                                    onChange={(val) => handleChargeChange(qIndex, cIndex, 'chargeName', val)}
+                                                                    placeholder="Type or select..."
+                                                                    allowCustom={true}
+                                                                    showOnlyWhenTyping={true}
+                                                                    variant="grid"
+                                                                    className="!py-0.5 !px-1.5 !rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs w-full text-left"
+                                                                    dropdownClassName="!z-[9999]"
+                                                                />
+                                                            </td>
+                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-left align-middle">
+                                                                <input
+                                                                    type="text"
+                                                                    value={charge.basis || "Per Container"}
+                                                                    readOnly
+                                                                    className="w-full px-1.5 py-0.5 text-xs bg-slate-100 dark:bg-slate-800/30 border border-slate-200 dark:border-slate-700 rounded text-slate-500 dark:text-slate-400 cursor-not-allowed focus:outline-none"
+                                                                />
+                                                            </td>
+                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-center align-middle">
+                                                                <input
+                                                                    type="number"
+                                                                    step="0.01"
+                                                                    placeholder="1.00"
+                                                                    value={charge.quantity !== undefined ? charge.quantity : "1.00"}
+                                                                    onChange={(e) => handleChargeChange(qIndex, cIndex, 'quantity', e.target.value)}
+                                                                    className="w-full px-1.5 py-0.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded text-slate-900 dark:text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                                                />
+                                                            </td>
+                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-center align-middle">
+                                                                <select
+                                                                    value={charge.currency || "USD"}
+                                                                    onChange={(e) => handleChargeChange(qIndex, cIndex, 'currency', e.target.value)}
+                                                                    className="w-full px-1 py-0.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded text-slate-900 dark:text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                                                >
+                                                                    <option value="USD">USD</option>
+                                                                    <option value="INR">INR</option>
+                                                                    <option value="EUR">EUR</option>
+                                                                    <option value="GBP">GBP</option>
+                                                                    <option value="AED">AED</option>
+                                                                </select>
+                                                            </td>
+                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-center align-middle">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="0.00"
+                                                                    value={charge.amount}
+                                                                    onChange={(e) => handleChargeChange(qIndex, cIndex, 'amount', e.target.value)}
+                                                                    className="w-full px-1.5 py-0.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded text-slate-900 dark:text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                                                />
+                                                            </td>
+                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-center align-middle">
+                                                                <input
+                                                                    type="number"
+                                                                    placeholder="5"
+                                                                    value={charge.tax !== undefined ? charge.tax : "5"}
+                                                                    onChange={(e) => handleChargeChange(qIndex, cIndex, 'tax', e.target.value)}
+                                                                    className="w-full px-1.5 py-0.5 text-xs bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded text-slate-900 dark:text-white text-center focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                                                                />
+                                                            </td>
+                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-center align-middle text-xs font-extrabold text-indigo-600 dark:text-indigo-400 whitespace-nowrap">
+                                                                {(charge.currency || "USD") + " " + subtotal.toFixed(2)}
+                                                            </td>
+                                                            <td className="p-1 text-center align-middle">
+                                                                <button type="button" onClick={() => handleRemoveCharge(qIndex, cIndex)} className="text-slate-400 hover:text-red-500 transition-colors p-1">
+                                                                    <Trash2 size={12} />
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    );
+                                                })}
                                             </tbody>
                                         </table>
                                     </div>

@@ -9,7 +9,18 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+import { CHARGES } from '../Invoice/Invoice.js';
+
 const router = express.Router();
+
+router.get('/charges', (req, res) => {
+    try {
+        res.json({ success: true, charges: CHARGES });
+    } catch (error) {
+        console.error("Failed to fetch charges:", error);
+        res.status(500).json({ success: false, message: "Failed to fetch charges" });
+    }
+});
 
 router.post('/generate-and-save', async (req, res) => {
     try {
@@ -35,6 +46,7 @@ router.post('/generate-and-save', async (req, res) => {
             '{{CONTAINER}}': data.containersize || '-',
             '{{COMMODITY}}': data.commodity || '-',
             '{{INCOTERMS}}': data.incoterms || '-',
+            '{{TRANSIT_TIME}}': data.transit_time || '-',
             '{{REMARKS}}': data.remarks || '',
             '{{TERMS}}': data.terms || 'Standard Terms Apply'
         };
@@ -43,13 +55,20 @@ router.post('/generate-and-save', async (req, res) => {
         if (data.charges && Array.isArray(data.charges)) {
             data.charges.forEach((charge, index) => {
                 const currencyStr = charge.currency || 'USD';
-                const badgeClass = currencyStr.toUpperCase() === 'USD' ? 'badge badge-usd' : 'badge badge-inr';
+                const basisStr = charge.basis || 'Per Container';
+                const qty = parseFloat(charge.quantity !== undefined ? charge.quantity : 1).toFixed(2);
+                const rate = parseFloat(charge.amount || 0).toFixed(2);
+                const tax = parseFloat(charge.tax !== undefined ? charge.tax : 5);
+                const subtotal = (qty * rate * (1 + tax / 100)).toFixed(2);
                 chargesHtml += `
           <tr>
-            <td>${index + 1}</td>
-            <td>${charge.chargeName || '-'}</td>
-            <td class="num">${charge.amount || '0'}</td>
-            <td class="cur"><span class="${badgeClass}">${currencyStr}</span></td>
+            <td style="text-align: left; padding: 4px 6px; border-right: 1px solid var(--border); vertical-align: middle;">${charge.chargeName || '-'}</td>
+            <td style="text-align: left; padding: 4px 6px; border-right: 1px solid var(--border); vertical-align: middle;">${basisStr}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid var(--border); font-weight: bold; color: var(--blue-dk); vertical-align: middle;">${qty}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid var(--border); vertical-align: middle;">${currencyStr}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid var(--border); font-weight: bold; color: var(--blue-dk); vertical-align: middle;">${rate}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid var(--border); vertical-align: middle;">${tax}%</td>
+            <td style="text-align: center; padding: 4px 6px; font-weight: bold; color: var(--blue-dk); vertical-align: middle;">${currencyStr} ${subtotal}</td>
           </tr>`;
             });
         }
