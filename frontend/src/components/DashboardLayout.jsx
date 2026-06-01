@@ -56,6 +56,12 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
     const { logout, user } = useAuth();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return sessionStorage.getItem('sidebarCollapsed') === 'true';
+        }
+        return false;
+    });
 
     // Feedback State
     const [showFeedback, setShowFeedback] = useState(false);
@@ -97,8 +103,9 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                 />
             )}
             <aside className={`
-        fixed inset-y-0 left-0 z-30 w-64 bg-white dark:bg-dark-bg border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:flex md:flex-col shadow-xl md:shadow-sm
+        fixed inset-y-0 left-0 z-30 bg-white dark:bg-dark-bg border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out shadow-xl md:shadow-sm
         ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+        ${isSidebarCollapsed ? 'md:hidden md:w-0 md:border-r-0' : 'md:translate-x-0 md:static md:flex md:flex-col md:w-64'}
       `}>
                 <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800">
                     <div className="flex items-center gap-3 font-bold text-xl text-indigo-600 dark:text-indigo-400">
@@ -123,7 +130,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                             <SidebarItem icon={<Anchor size={20} />} text="SI HouseBL" to="/si-housebl" />
                             <SidebarItem icon={<FileText size={20} />} text="DO / FC" to="/do-fc" />
                             <SidebarItem icon={<Anchor size={20} />} text="IGM" to="/igm" />
-                            <SidebarItem icon={<FileText size={20} />} text="Invoice" to="/invoice" />
+                            <SidebarItem icon={<FileText size={20} />} text="Tax Invoice" to="/invoice" />
                             <SidebarItem icon={<FileText size={20} />} text="Proforma Invoice" to="/proforma-invoice" />
                             <SidebarItem icon={<ShieldCheck size={20} />} text="KYC" to="/kyc" />
                             <SidebarItem icon={<Users size={20} />} text="Users" to="/users" />
@@ -143,8 +150,17 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                 <header className="h-16 bg-white dark:bg-dark-bg border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-10 z-10 shadow-sm shrink-0 transition-colors duration-300">
                     <div className="flex items-center gap-4">
                         <button
-                            className="md:hidden p-2 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300"
-                            onClick={() => setIsMobileMenuOpen(true)}
+                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300 cursor-pointer flex items-center justify-center"
+                            onClick={() => {
+                                if (window.innerWidth < 768) {
+                                    setIsMobileMenuOpen(!isMobileMenuOpen);
+                                } else {
+                                    const newVal = !isSidebarCollapsed;
+                                    setIsSidebarCollapsed(newVal);
+                                    sessionStorage.setItem('sidebarCollapsed', String(newVal));
+                                }
+                            }}
+                            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
                         >
                             <Menu size={20} />
                         </button>

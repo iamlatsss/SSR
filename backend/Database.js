@@ -384,7 +384,8 @@ export async function updateBookingById(jobNo, updates) {
       "ADD COLUMN commodity VARCHAR(255)",
       "ADD COLUMN incoterms VARCHAR(255)",
       "ADD COLUMN terms TEXT",
-      "ADD COLUMN charges JSON"
+      "ADD COLUMN charges JSON",
+      "ADD COLUMN transit_time VARCHAR(255)"
     ];
     for (const col of newColumns) {
       try {
@@ -400,8 +401,8 @@ export async function updateBookingById(jobNo, updates) {
 export async function saveQuotation(data) {
   const query = `
     INSERT INTO Quotations 
-    (client_name, phone_number, email, pol, pod, container_size_type, remarks, pdf_link, address, commodity, incoterms, terms, charges)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (client_name, phone_number, email, pol, pod, container_size_type, remarks, pdf_link, address, commodity, incoterms, terms, charges, transit_time)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const values = [
     data.client_name || null,
@@ -416,7 +417,8 @@ export async function saveQuotation(data) {
     data.commodity || null,
     data.incoterms || null,
     data.terms || null,
-    data.charges ? JSON.stringify(data.charges) : null
+    data.charges ? JSON.stringify(data.charges) : null,
+    data.transit_time || null
   ];
 
   try {
@@ -512,34 +514,50 @@ export async function deleteQuotationsByIds(ids) {
 })();
 
 (async function initHouseBLTable() {
-  const query = `
-    CREATE TABLE IF NOT EXISTS HouseBL (
-      job_no INT AUTO_INCREMENT PRIMARY KEY,
-      hbl_no VARCHAR(100) UNIQUE NOT NULL,
-      mbl_no VARCHAR(100),
-      date_of_nomination DATE,
-      shipper INT,
-      consignee INT,
-      status VARCHAR(50) DEFAULT 'Draft',
-      shipper_invoice_no VARCHAR(100),
-      net_weight DECIMAL(10, 2),
-      gross_weight DECIMAL(10, 2),
-      hbl_telex_received VARCHAR(10) DEFAULT 'No',
-      no_of_palette INT,
-      marks_and_numbers TEXT,
-      freight_amount DECIMAL(10, 2),
-      freight_currency VARCHAR(10) DEFAULT 'USD',
-      manual_party_details JSON,
-      invoice_no VARCHAR(100),
-      invoice_date DATE,
-      invoice_items JSON,
-      invoice_totals JSON,
-      invoice_customer JSON,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) AUTO_INCREMENT = 9000
-  `;
   try {
+    const dbName = process.env.MYSQL_DATABASE || 'ssr';
+    
+    // Check if 'id' column exists in HouseBL table
+    const [hasIdCol] = await knexDB.raw(
+      `SELECT COLUMN_NAME 
+       FROM information_schema.COLUMNS 
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'HouseBL' AND COLUMN_NAME = 'id'`,
+      [dbName]
+    );
+
+    if (hasIdCol.length === 0) {
+      console.log("Migrating HouseBL table: dropping and recreating with new id-based primary key and editable job_no");
+      await pool.query("DROP TABLE IF EXISTS HouseBL");
+    }
+
+    const query = `
+      CREATE TABLE IF NOT EXISTS HouseBL (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        job_no INT NOT NULL,
+        hbl_no VARCHAR(100) UNIQUE NOT NULL,
+        mbl_no VARCHAR(100),
+        date_of_nomination DATE,
+        shipper INT,
+        consignee INT,
+        status VARCHAR(50) DEFAULT 'Draft',
+        shipper_invoice_no VARCHAR(100),
+        net_weight DECIMAL(10, 2),
+        gross_weight DECIMAL(10, 2),
+        hbl_telex_received VARCHAR(10) DEFAULT 'No',
+        no_of_palette INT,
+        marks_and_numbers TEXT,
+        freight_amount DECIMAL(10, 2),
+        freight_currency VARCHAR(10) DEFAULT 'USD',
+        manual_party_details JSON,
+        invoice_no VARCHAR(100),
+        invoice_date DATE,
+        invoice_items JSON,
+        invoice_totals JSON,
+        invoice_customer JSON,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `;
     await pool.query(query);
     console.log("HouseBL table initialized");
     try {
@@ -578,6 +596,65 @@ export async function deleteQuotationsByIds(ids) {
     console.log("ProformaInvoices table initialized");
   } catch (err) {
     console.error("Error creating ProformaInvoices table:", err);
+  }
+})();
+
+(async function initInvoicesTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS Invoices (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      invoice_no VARCHAR(100) UNIQUE,
+      job_no INT NOT NULL,
+      mbl_hbl_type VARCHAR(10),
+      mbl_hbl_no VARCHAR(100),
+      client_id INT,
+      client_name VARCHAR(255),
+      client_address TEXT,
+      client_gstin VARCHAR(100),
+      client_state VARCHAR(100),
+      print_type VARCHAR(50) DEFAULT 'Invoice',
+      invoice_date DATE,
+      items JSON,
+      totals JSON,
+      pdf_link VARCHAR(1000),
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    ) AUTO_INCREMENT = 9300
+  `;
+  try {
+    await pool.query(query);
+    console.log("Invoices table initialized");
+    
+    // Dynamically alter existing Invoices table to ensure all new columns exist
+    const dbName = process.env.MYSQL_DATABASE || 'ssr';
+    const columnsToAdd = [
+      { name: 'mbl_hbl_type', type: 'VARCHAR(10)' },
+      { name: 'mbl_hbl_no', type: 'VARCHAR(100)' },
+      { name: 'client_id', type: 'INT' },
+      { name: 'client_name', type: 'VARCHAR(255)' },
+      { name: 'client_address', type: 'TEXT' },
+      { name: 'client_gstin', type: 'VARCHAR(100)' },
+      { name: 'client_state', type: 'VARCHAR(100)' },
+      { name: 'print_type', type: "VARCHAR(50) DEFAULT 'Invoice'" },
+      { name: 'pdf_link', type: 'VARCHAR(1000)' }
+    ];
+    for (const col of columnsToAdd) {
+      try {
+        await pool.query(`ALTER TABLE Invoices ADD COLUMN ${col.name} ${col.type}`);
+      } catch (e) {
+        // Column already exists, safe to ignore
+      }
+    }
+    
+    // Safely drop the incorrect FK constraint referencing Bookings/Booking table 
+    // since job_no is a polymorphic relation across Booking, MasterBL, and HouseBL.
+    try {
+      await pool.query("ALTER TABLE Invoices DROP FOREIGN KEY FK_Invoices_Booking");
+      console.log("Successfully dropped FK_Invoices_Booking constraint from Invoices table");
+    } catch (e) {
+      // Ignore if constraint does not exist
+    }
+  } catch (err) {
+    console.error("Error creating/updating Invoices table:", err);
   }
 })();
 

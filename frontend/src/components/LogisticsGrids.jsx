@@ -1,8 +1,9 @@
 import React from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Lock } from "lucide-react";
+import SearchableDropdown from "./SearchableDropdown";
 
 const CHARGE_TYPES = ["Ocean Freight", "Terminal Handling Charges (THC)", "CFS Charges", "DO Charges", "Inland Haulage", "Customs Clearance", "Documentation Charges", "Surveyor Charges", "Storage/Demurrage", "Other Charges"];
-const UNITS = ["Per Container", "Per B/L", "CBM", "Metric Ton", "Flat", "Per Package"];
+const UNITS = ["--- None ---", "20", "20 DC", "20 F/R", "20 OT", "40", "40 F/R", "40 HQ", "40 OT", "CBM", "FLAT", "MAX WT/CBM", "PERCENT", "Wt"];
 const CURRENCIES = ["USD", "INR", "EUR", "AED"];
 const GST_PERCENTAGES = ["0%", "5%", "12%", "18%"];
 const CONTAINER_GRID_TYPES = ["20 GP", "40 GP", "40 HC", "20 RF", "40 RF", "20 OT", "40 OT", "20 FR", "40 FR"];
@@ -11,12 +12,26 @@ const PACKAGE_TYPES = ["Pallet", "Carton", "Box", "Crate", "Drum", "Roll", "Bag"
 /* =========================================================================
    1. RATE GRID COMPONENT (Used for both Buy Rates and Sell Rates)
    ========================================================================= */
-export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true }) {
+export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true, consignee = "", chargeOptions = [] }) {
   const partyLabel = isBuy ? "Vendor" : "Client";
+  const finalCharges = chargeOptions && chargeOptions.length > 0 ? chargeOptions.map(c => c.name) : CHARGE_TYPES;
+
+  const [activeRowIdx, setActiveRowIdx] = React.useState(0);
 
   const handleRowChange = (index, field, value) => {
     const updated = [...rows];
     updated[index][field] = value;
+
+    if (field === "charge") {
+      const selectedCharge = chargeOptions.find(c => c.name === value);
+      if (selectedCharge) {
+        if (selectedCharge.percentage !== undefined && selectedCharge.percentage !== null) {
+          updated[index].gst = `${selectedCharge.percentage}%`;
+        } else {
+          updated[index].gst = "0%";
+        }
+      }
+    }
 
     // Automatic Calculations
     if (field === "quantity" || field === "rate") {
@@ -37,8 +52,76 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
     onChange(updated);
   };
 
+  // Helper to parse city/state from custom addresses
+  const parseCityState = (addressText) => {
+    if (!addressText) return { city: "—", state: "—" };
+    const parts = addressText.split(',').map(p => p.trim()).filter(Boolean);
+    if (parts.length === 0) return { city: "—", state: "—" };
+    
+    const states = [
+      "Maharashtra", "Karnataka", "Tamil Nadu", "Delhi", "Gujarat", "West Bengal", 
+      "Telangana", "Andhra Pradesh", "Uttar Pradesh", "Haryana", "Punjab", "Kerala",
+      "Rajasthan", "Madhya Pradesh", "Bihar", "Odisha", "Assam"
+    ];
+    
+    let foundState = "—";
+    let foundCity = "—";
+    
+    for (const s of states) {
+      const idx = parts.findIndex(p => p.toLowerCase().includes(s.toLowerCase()));
+      if (idx !== -1) {
+        foundState = s;
+        if (idx > 0 && parts[idx - 1]) {
+          foundCity = parts[idx - 1].replace(/\d+/g, '').trim() || "—";
+        }
+        break;
+      }
+    }
+    
+    if (foundState === "—" && parts.length >= 2) {
+      foundState = parts[parts.length - 1] || "—";
+      foundCity = parts[parts.length - 2] || "—";
+    }
+    
+    return { city: foundCity, state: foundState };
+  };
+
+  // GST summary panel values computation
+  const activeRow = rows[activeRowIdx] || rows[0] || null;
+  const activeClient = activeRow ? customers.find(c => String(c.customer_id) === String(activeRow.party) || c.name === activeRow.party) : null;
+  const activeGSTIN = activeClient?.gstin || "—";
+  const activeAddress = activeRow?.address || "—";
+  const { city, state } = parseCityState(activeAddress);
+  const activeGstRateStr = activeRow?.gst || "0%";
+  const activeGstRate = parseFloat(activeGstRateStr) || 0;
+  const activeAmtFc = activeRow ? (parseFloat(activeRow.amt_fc) || 0) : 0; // INR Amount
+  
+  // Splits
+  const isMaharashtra = activeGSTIN.startsWith("27") || activeAddress.toLowerCase().includes("maharashtra");
+  const taxAmount = activeAmtFc * (activeGstRate / 100);
+  
+  let cgstRate = "0%";
+  let sgstRate = "0%";
+  let igstRate = "0%";
+  let cgstAmt = 0;
+  let sgstAmt = 0;
+  let igstAmt = 0;
+  
+  if (activeGstRate > 0) {
+    if (isMaharashtra) {
+      cgstRate = `${activeGstRate / 2}%`;
+      sgstRate = `${activeGstRate / 2}%`;
+      cgstAmt = taxAmount / 2;
+      sgstAmt = taxAmount / 2;
+    } else {
+      igstRate = `${activeGstRate}%`;
+      igstAmt = taxAmount;
+    }
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* 1. Header & Actions */}
       <div className="flex justify-between items-center">
         <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
           {isBuy ? "Buy Rates / Expenses" : "Sell Rates / Revenue"}
@@ -46,13 +129,23 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
         <button
           type="button"
           onClick={() => {
+            const defaultCharge = finalCharges[0] || "Ocean Freight";
+            const selectedCharge = chargeOptions.find(c => c.name === defaultCharge);
+            let defaultGst = "0%";
+            if (selectedCharge) {
+              if (selectedCharge.percentage !== undefined && selectedCharge.percentage !== null) {
+                defaultGst = `${selectedCharge.percentage}%`;
+              }
+            }
+
             const newRow = {
+              doc_type: "INV",
               drcr: "DR",
-              party: "",
+              party: !isBuy && consignee ? consignee : "",
               address: "",
-              charge: "Ocean Freight",
-              gst: "18%",
-              unit: "Per Container",
+              charge: defaultCharge,
+              gst: defaultGst,
+              unit: "--- None ---",
               quantity: "1",
               rate: "0",
               currency: "USD",
@@ -63,6 +156,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
               group: ""
             };
             onAddRow(newRow);
+            setActiveRowIdx(rows.length); // Focus newly created row
           }}
           className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg text-xs font-semibold transition-colors"
         >
@@ -70,173 +164,243 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
         </button>
       </div>
 
-      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-dark-card shadow-sm">
-        <table className="w-full text-left border-collapse table-auto text-xs min-w-[1300px]">
+      {/* 2. GST Summary Panel */}
+      {activeRow && (
+        <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl p-4 shadow-sm space-y-3">
+          <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-750 pb-2">
+            <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
+              GST Information (Active Row #{activeRowIdx + 1}: {activeRow.charge || "No Charge Selected"})
+            </h5>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 italic">
+              Auto-populated from selected KYC client address details
+            </span>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4 text-xs">
+            <div className="flex flex-col bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-semibold mb-0.5">City</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 truncate" title={city}>{city}</span>
+            </div>
+            <div className="flex flex-col bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-semibold mb-0.5">State</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200 truncate" title={state}>{state}</span>
+            </div>
+            <div className="flex flex-col bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-semibold mb-0.5">GST No.</span>
+              <span className="font-mono font-bold text-indigo-600 dark:text-indigo-400 truncate" title={activeGSTIN}>{activeGSTIN}</span>
+            </div>
+            <div className="flex flex-col bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-semibold mb-0.5">GST Rate</span>
+              <span className="font-bold text-teal-600 dark:text-teal-400">{activeGstRateStr}</span>
+            </div>
+            <div className="flex flex-col bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-semibold mb-0.5">CGST</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {cgstRate} <span className="text-[10px] text-slate-500 font-normal">(₹{cgstAmt.toFixed(2)})</span>
+              </span>
+            </div>
+            <div className="flex flex-col bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-semibold mb-0.5">SGST</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {sgstRate} <span className="text-[10px] text-slate-500 font-normal">(₹{sgstAmt.toFixed(2)})</span>
+              </span>
+            </div>
+            <div className="flex flex-col bg-white dark:bg-slate-900 p-2.5 rounded-lg border border-slate-100 dark:border-slate-800">
+              <span className="text-[10px] text-slate-400 font-semibold mb-0.5">IGST</span>
+              <span className="font-semibold text-slate-800 dark:text-slate-200">
+                {igstRate} <span className="text-[10px] text-slate-500 font-normal">(₹{igstAmt.toFixed(2)})</span>
+              </span>
+            </div>
+            <div className="flex flex-col bg-indigo-50/50 dark:bg-indigo-950/20 p-2.5 rounded-lg border border-indigo-100/50 dark:border-indigo-900/30">
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold mb-0.5">GST Amount</span>
+              <span className="font-extrabold text-indigo-700 dark:text-indigo-300">₹{taxAmount.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 3. ERP Fixed Layout Table Grid */}
+      <div className="overflow-x-auto xl:overflow-x-visible border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-dark-card shadow-sm">
+        <table className="w-full text-left border-collapse table-fixed text-xs min-w-[1250px] xl:min-w-full border border-slate-200 dark:border-slate-700/80">
           <thead>
-            <tr className="bg-slate-50 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-700/80 text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider">
-              <th className="p-3 w-16">DR/CR</th>
-              <th className="p-3 w-48">{partyLabel}</th>
-              <th className="p-3 w-36">Address</th>
-              <th className="p-3 w-48">Charge</th>
-              <th className="p-3 w-20">GST</th>
-              <th className="p-3 w-32">Unit</th>
-              <th className="p-3 w-16">Qty</th>
-              <th className="p-3 w-24">Rate</th>
-              <th className="p-3 w-20">Curr</th>
-              <th className="p-3 w-20">Ex Rate</th>
-              <th className="p-3 w-24">Amt (FC)</th>
-              <th className="p-3 w-24">Amt (INR)</th>
-              <th className="p-3 w-40">Narration</th>
-              <th className="p-3 w-28">Group</th>
-              <th className="p-3 text-center w-12">Action</th>
+            <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold uppercase tracking-wider">
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px]">DRCR</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[150px]">{partyLabel}</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[170px]">Address</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[230px]">Charge</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px] text-center">GST</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[90px]">Unit</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[60px] text-right">Qty</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px] text-right">Rate</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[70px]">Cur.</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[70px] text-right">Ex Rate</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[80px] text-right">Amount</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[85px] text-right">AMT_FC</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 text-center w-[45px]">Act</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
+          <tbody className="divide-y divide-slate-200 dark:divide-slate-700/60">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan="15" className="p-8 text-center text-slate-500 dark:text-slate-400 italic">
+                <td colSpan="13" className="p-8 text-center text-slate-500 dark:text-slate-400 italic border border-slate-200 dark:border-slate-700/80">
                   No rate rows added yet. Click "Add Rate Row" to start.
                 </td>
               </tr>
             ) : (
               rows.map((row, idx) => (
-                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors">
-                  <td className="p-2">
+                <tr 
+                  key={idx} 
+                  onClick={() => setActiveRowIdx(idx)}
+                  className={`hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${activeRowIdx === idx ? 'bg-indigo-50/10 dark:bg-indigo-950/10' : ''}`}
+                >
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
                     <select
-                      value={row.drcr || "DR"}
-                      onChange={(e) => handleRowChange(idx, "drcr", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
+                      value={row.doc_type || row.drcr || "INV"}
+                      disabled={!!row.locked}
+                      onChange={(e) => {
+                        handleRowChange(idx, "doc_type", e.target.value);
+                        handleRowChange(idx, "drcr", e.target.value);
+                      }}
+                      className={`w-full h-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"}`}
                     >
+                      <option value="INV">INV</option>
                       <option value="DR">DR</option>
-                      <option value="CR">CR</option>
                     </select>
                   </td>
-                  <td className="p-2">
-                    <select
-                      value={row.party || ""}
-                      onChange={(e) => handleRowChange(idx, "party", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
-                    >
-                      <option value="">Select {partyLabel}</option>
-                      {customers.map((c) => (
-                        <option key={c.customer_id} value={c.customer_id}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="text"
-                      value={row.address || ""}
-                      placeholder="Address"
-                      onChange={(e) => handleRowChange(idx, "address", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                    <SearchableDropdown
+                      options={customers.map((c) => ({ value: c.customer_id, label: c.name }))}
+                      value={row.party}
+                      onChange={(val) => handleRowChange(idx, "party", val)}
+                      placeholder={`Select ${partyLabel}`}
+                      allowCustom={true}
+                      variant="grid"
+                      disabled={!!row.locked}
                     />
                   </td>
-                  <td className="p-2">
-                    <select
-                      value={row.charge || "Ocean Freight"}
-                      onChange={(e) => handleRowChange(idx, "charge", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
-                    >
-                      {CHARGE_TYPES.map(ch => (
-                        <option key={ch} value={ch}>{ch}</option>
-                      ))}
-                    </select>
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                    {(() => {
+                      const clientData = customers.find(c => String(c.customer_id) === String(row.party) || c.name === row.party);
+                      const addrs = [];
+                      if (clientData) {
+                        if (clientData.address && clientData.address.trim()) addrs.push(clientData.address.trim());
+                        if (clientData.office_address && clientData.office_address.trim()) addrs.push(clientData.office_address.trim());
+                        if (clientData.branch_office && clientData.branch_office.trim()) addrs.push(clientData.branch_office.trim());
+                      }
+                      const unique = [...new Set(addrs)].map(addr => ({ value: addr, label: addr }));
+                      if (row.address && !unique.some(opt => opt.value === row.address)) {
+                        unique.push({ value: row.address, label: row.address });
+                      }
+                      return (
+                        <SearchableDropdown
+                          options={unique}
+                          value={row.address}
+                          onChange={(val) => handleRowChange(idx, "address", val)}
+                          placeholder="Address"
+                          allowCustom={true}
+                          variant="grid"
+                          disabled={!!row.locked}
+                        />
+                      );
+                    })()}
                   </td>
-                  <td className="p-2">
-                    <select
-                      value={row.gst || "18%"}
-                      onChange={(e) => handleRowChange(idx, "gst", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
-                    >
-                      {GST_PERCENTAGES.map(g => (
-                        <option key={g} value={g}>{g}</option>
-                      ))}
-                    </select>
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                    <SearchableDropdown
+                      options={finalCharges.map(ch => ({ value: ch, label: ch }))}
+                      value={row.charge}
+                      onChange={(val) => handleRowChange(idx, "charge", val)}
+                      showOnlyWhenTyping={true}
+                      variant="grid"
+                      disabled={!!row.locked}
+                    />
                   </td>
-                  <td className="p-2">
-                    <select
-                      value={row.unit || "Per Container"}
-                      onChange={(e) => handleRowChange(idx, "unit", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
-                    >
-                      {UNITS.map(u => (
-                        <option key={u} value={u}>{u}</option>
-                      ))}
-                    </select>
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-2 font-medium text-slate-700 dark:text-slate-350 text-center bg-slate-50/10 dark:bg-slate-800/10 text-xs">
+                    {row.gst || "0%"}
                   </td>
-                  <td className="p-2">
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                    <SearchableDropdown
+                      options={UNITS.map(u => ({ value: u, label: u }))}
+                      value={row.unit}
+                      onChange={(val) => handleRowChange(idx, "unit", val)}
+                      variant="grid"
+                      disabled={!!row.locked}
+                    />
+                  </td>
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
                     <input
                       type="number"
                       value={row.quantity || "1"}
                       onChange={(e) => handleRowChange(idx, "quantity", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white text-right"
+                      disabled={!!row.locked}
+                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
-                  <td className="p-2">
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
                     <input
                       type="number"
                       value={row.rate || "0"}
                       onChange={(e) => handleRowChange(idx, "rate", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white text-right font-medium"
+                      disabled={!!row.locked}
+                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
-                  <td className="p-2">
-                    <select
-                      value={row.currency || "USD"}
-                      onChange={(e) => handleRowChange(idx, "currency", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
-                    >
-                      {CURRENCIES.map(curr => (
-                        <option key={curr} value={curr}>{curr}</option>
-                      ))}
-                    </select>
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                    <SearchableDropdown
+                      options={CURRENCIES.map(curr => ({ value: curr, label: curr }))}
+                      value={row.currency}
+                      onChange={(val) => handleRowChange(idx, "currency", val)}
+                      variant="grid"
+                      disabled={!!row.locked}
+                    />
                   </td>
-                  <td className="p-2">
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
                     <input
                       type="number"
                       value={row.ex_rate || "1"}
                       onChange={(e) => handleRowChange(idx, "ex_rate", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white text-right"
+                      disabled={!!row.locked}
+                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
-                  <td className="p-2 text-right font-semibold text-slate-800 dark:text-slate-200 p-3 bg-slate-50/50 dark:bg-slate-850">
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right font-medium text-slate-750 dark:text-slate-350 bg-slate-50/10 dark:bg-slate-850/10 text-xs">
                     {row.amount || "0.00"}
                   </td>
-                  <td className="p-2 text-right font-bold text-indigo-600 dark:text-indigo-400 p-3 bg-slate-50 dark:bg-slate-800">
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right font-bold text-indigo-600 dark:text-indigo-400 bg-slate-50/10 dark:bg-slate-800/10 text-xs">
                     {row.amt_fc || "0.00"}
                   </td>
-                  <td className="p-2">
-                    <input
-                      type="text"
-                      value={row.narration || ""}
-                      placeholder="Remarks / Narration"
-                      onChange={(e) => handleRowChange(idx, "narration", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
-                    />
-                  </td>
-                  <td className="p-2">
-                    <input
-                      type="text"
-                      value={row.group || ""}
-                      placeholder="Group"
-                      onChange={(e) => handleRowChange(idx, "group", e.target.value)}
-                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded p-1 text-slate-900 dark:text-white"
-                    />
-                  </td>
-                  <td className="p-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => onDeleteRow(idx)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 p-1.5 rounded transition-colors"
-                    >
-                      <Trash2 size={15} />
-                    </button>
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-1 text-center">
+                    {row.locked ? (
+                      <span className="text-slate-400 dark:text-slate-500 p-1 flex items-center justify-center mx-auto" title="Locked (Tax Invoice Generated)">
+                        <Lock size={14} className="text-slate-400 dark:text-slate-500" />
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onDeleteRow(idx)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/20 p-1 rounded transition-colors flex items-center justify-center mx-auto"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))
+            )}
+            
+            {/* 4. Column Totals Row */}
+            {rows.length > 0 && (
+              <tr className="bg-slate-100 dark:bg-slate-800/40 text-slate-800 dark:text-white font-bold border-t border-slate-200 dark:border-slate-700/80">
+                <td colSpan="10" className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                  Totals:
+                </td>
+                <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-slate-900 dark:text-white font-bold bg-slate-100/30 dark:bg-slate-800/30 text-xs">
+                  {rows.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/10 dark:bg-indigo-900/10 text-xs">
+                  {rows.reduce((acc, r) => acc + (parseFloat(r.amt_fc) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </td>
+                <td className="border border-slate-200 dark:border-slate-700/80 p-1"></td>
+              </tr>
             )}
           </tbody>
         </table>

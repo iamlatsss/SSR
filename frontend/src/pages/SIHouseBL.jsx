@@ -3,11 +3,30 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import api from "../services/api";
 import {
-  Search, Filter, Plus, Edit2, Eye, CheckCircle, FileText, ChevronLeft, ChevronRight, Save, Anchor, XCircle
+  Search, Filter, Plus, Edit2, Eye, CheckCircle, FileText, ChevronLeft, ChevronRight, Save, Anchor, XCircle, Star, Files
 } from "lucide-react";
 import { toast } from "react-toastify";
 import PartySelect from "../components/PartySelect";
 import { RateGrid, ContainerGrid, VehicleGrid } from "../components/LogisticsGrids";
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "—";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "—";
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  } catch (e) {
+    return "—";
+  }
+};
+
+const copyToClipboard = (text, label) => {
+  navigator.clipboard.writeText(text);
+  toast.success(`${label} copied to clipboard`);
+};
 
 const CONTAINER_SIZES = [
   "20 Dry Standard", "40 Dry Standard", "40 Dry High", "45 Dry High",
@@ -23,9 +42,7 @@ const BL_TYPES = ["Original BL", "Seaway Bill", "Telex Release", "Express Releas
 const FREIGHT_STATUS_LIST = ["Prepaid", "Collect", "Third Party Pay"];
 const PACKAGE_TYPES_LIST = ["Pallet", "Carton", "Box", "Crate", "Drum", "Roll", "Bag", "Loose"];
 
-const RequiredStar = () => (
-  <span className="text-red-500 font-bold mr-0.5 select-none">*</span>
-);
+const RequiredStar = () => null; // Removed asterisk indicator completely
 
 
 /* =========================================================================
@@ -37,7 +54,6 @@ export function SIHouseBLList() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
-  const [nextJobNo, setNextJobNo] = useState(9000);
   const [selectedJob, setSelectedJob] = useState(null);
   const [showViewModal, setShowViewModal] = useState(false);
 
@@ -60,11 +76,6 @@ export function SIHouseBLList() {
       if (res.data.success) {
         setJobs(res.data.jobs || []);
       }
-
-      const resInit = await api.get("/housebl/init");
-      if (resInit.data.success) {
-        setNextJobNo(resInit.data.nextJobNo);
-      }
     } catch (error) {
       console.error("Error loading HouseBL jobs:", error);
       toast.error("Failed to load HouseBL jobs");
@@ -73,24 +84,24 @@ export function SIHouseBLList() {
     }
   };
 
-  const handleEditJob = (jobNo) => {
-    navigate(`/si-housebl-form?jobNo=${jobNo}`);
+  const handleEditJob = (id) => {
+    navigate(`/si-housebl-form?id=${id}`);
   };
 
   const handleCreateJob = () => {
     navigate('/si-housebl-form');
   };
 
-  const handleStatusChange = async (jobNo, newStatus) => {
+  const handleStatusChange = async (id, newStatus) => {
     const previousJobs = [...jobs];
     const updatedJobs = jobs.map((job) =>
-      job.job_no == jobNo ? { ...job, status: newStatus } : job
+      job.id == id ? { ...job, status: newStatus } : job
     );
     setJobs(updatedJobs);
 
     try {
-      await api.put(`/housebl/update/${jobNo}`, { status: newStatus });
-      toast.success(`HBL Job #${jobNo} status updated`);
+      await api.put(`/housebl/update/${id}`, { status: newStatus });
+      toast.success("HBL status updated");
     } catch (error) {
       console.error("Status update failed:", error);
       toast.error("Failed to update status");
@@ -109,7 +120,7 @@ export function SIHouseBLList() {
       (job.mbl_no || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (job.shipper_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
       (job.consignee_name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      job.job_no.toString().includes(searchTerm);
+      (job.job_no || "").toString().includes(searchTerm);
 
     const matchesStatus =
       filterStatus === "all" || job.status === filterStatus;
@@ -122,23 +133,6 @@ export function SIHouseBLList() {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentJobs = filteredJobs.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Draft":
-        return "text-slate-600 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
-      case "Sell Rate Updated":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30";
-      case "Invoice Generated":
-        return "text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/30";
-      case "Ready to Close":
-        return "text-orange-600 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/30";
-      case "Closed":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/30";
-      default:
-        return "text-slate-600 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
-    }
-  };
 
   if (loading) {
     return (
@@ -218,61 +212,222 @@ export function SIHouseBLList() {
           onClick={handleCreateJob}
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors font-medium text-sm shadow-sm hover:shadow-md ml-auto whitespace-nowrap"
         >
-          <Plus size={18} /> New HBL Job (#{nextJobNo})
+          <Plus size={18} /> New HBL Job
         </button>
       </div>
 
       {/* Table */}
       <div className="bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse border border-slate-200 dark:border-slate-700">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
-                <th className="p-4">Job No</th>
-                <th className="p-4">HBL Number</th>
-                <th className="p-4">Parent MBL No</th>
-                <th className="p-4">Shipper</th>
-                <th className="p-4">Route </th>
-                <th className="p-4 text-right">Actions</th>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold select-none whitespace-nowrap">
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Action</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700"></th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">History</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">Job_No</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Job_Date</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Consignee</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">HBL No</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">MBL_No</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">POL/POD Port</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Container_No</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Agent</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Line</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">ETD/ETA Date</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Manifest</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">CFS Name</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Sales</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">Status</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">Date_Added</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {currentJobs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-500">
+                  <td colSpan="20" className="p-8 text-center text-slate-500">
                     {searchTerm ? "No HBL jobs match your search." : "No HBL jobs found."}
                   </td>
                 </tr>
               ) : (
-                currentJobs.map((job) => (
-                  <tr key={job.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="p-4 font-mono font-medium text-indigo-600 dark:text-indigo-400">#{job.job_no}</td>
-                    <td className="p-4 font-medium text-slate-800 dark:text-slate-200 text-sm">{job.hbl_no}</td>
-                    <td className="p-4 text-slate-600 dark:text-slate-300 text-sm font-mono">{job.mbl_no || "—"}</td>
-                    <td className="p-4">
-                      <div className="font-medium text-slate-800 dark:text-slate-200 text-sm">{job.shipper_name || "—"}</div>
-                    </td>
-                    <td className="p-4 text-slate-600 dark:text-slate-300 text-sm">
-                      {job.pol ? job.pol.split(',')[0] : "—"} → {job.pod ? job.pod.split(',')[0] : "—"}
-                    </td>
-                    <td className="p-4 text-right flex justify-end gap-2">
-                      <button
-                        onClick={() => handleViewJob(job)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
-                        title="View"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleEditJob(job.job_no)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                currentJobs.map((job) => {
+                  let addDetails = {};
+                  if (job.additional_details) {
+                    try {
+                      addDetails = typeof job.additional_details === 'string'
+                        ? JSON.parse(job.additional_details)
+                        : job.additional_details;
+                    } catch (e) {}
+                  }
+
+                  const containersList = addDetails.containers || [];
+                  const containerNos = containersList
+                    .map(c => c.container_no)
+                    .filter(Boolean)
+                    .join(", ") || "X";
+
+                  const cfsVal = addDetails.cfs || "—";
+                  const salesVal = addDetails.sales || "Sentil Kumar";
+                  const manifestVal = addDetails.manifest_filing || "HBL";
+
+                  // Support fallback to database fields if not inside additional_details
+                  const polVal = addDetails.pol || job.pol || "—";
+                  const podVal = addDetails.pod || job.pod || "—";
+                  const agentVal = addDetails.agent_name || job.agent_name || "—";
+                  const carrierVal = addDetails.shipping_line_name || job.shipping_line_name || "—";
+                  const etdVal = addDetails.etd || job.etd;
+                  const etaVal = addDetails.eta || job.eta;
+
+                  return (
+                    <tr key={job.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors text-xs text-slate-800 dark:text-slate-200">
+                      {/* Action */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
+                        <button
+                          onClick={() => handleEditJob(job.id)}
+                          className="p-1.5 bg-[#1d82f5] text-white rounded hover:bg-blue-600 transition-colors flex items-center justify-center mx-auto"
+                          title="Edit Job"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                      </td>
+                      
+                      {/* Star */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
+                        <button
+                          className="text-[#1d82f5] hover:text-blue-700 p-1 rounded flex items-center justify-center mx-auto"
+                          title="Favorite/Nominated"
+                        >
+                          <Star size={15} />
+                        </button>
+                      </td>
+
+                      {/* History */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
+                        <button
+                          onClick={() => handleViewJob(job)}
+                          className="p-1.5 bg-[#5bc0de] text-white rounded hover:bg-cyan-600 transition-colors flex items-center justify-center mx-auto"
+                          title="View Details"
+                        >
+                          <Eye size={13} />
+                        </button>
+                      </td>
+
+                      {/* Job No */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-mono font-medium text-slate-700 dark:text-slate-300">
+                        <div className="flex items-center gap-1.5">
+                          <span>{job.job_no}</span>
+                          <button
+                            onClick={() => copyToClipboard(job.job_no.toString(), "Job Number")}
+                            className="text-[#1d82f5] hover:text-blue-700 transition-colors"
+                            title="Copy Job Number"
+                          >
+                            <Files size={12} className="inline w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Job Date */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 whitespace-nowrap">
+                        {formatDate(job.date_of_nomination)}
+                      </td>
+
+                      {/* Consignee */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-medium">
+                        {job.consignee_name || "—"}
+                      </td>
+
+                      {/* HBL No */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <span>{job.hbl_no || "—"}</span>
+                          {job.hbl_no && (
+                            <button
+                              onClick={() => copyToClipboard(job.hbl_no, "HBL Number")}
+                              className="text-[#1d82f5] hover:text-blue-700 transition-colors"
+                              title="Copy HBL Number"
+                            >
+                              <Files size={12} className="inline w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* MBL No */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <span>{job.mbl_no || "—"}</span>
+                          {job.mbl_no && (
+                            <button
+                              onClick={() => copyToClipboard(job.mbl_no, "MBL Number")}
+                              className="text-[#1d82f5] hover:text-blue-700 transition-colors"
+                              title="Copy MBL Number"
+                            >
+                              <Files size={12} className="inline w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* POL/POD Port */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-[11px] leading-tight">
+                        <div className="font-semibold text-sky-600 dark:text-sky-400">
+                          {polVal ? polVal.split(',')[0] : "—"}
+                        </div>
+                        <div className="font-semibold text-red-500 dark:text-red-400 uppercase mt-0.5">
+                          {podVal ? podVal.split(',')[0] : "—"}
+                        </div>
+                      </td>
+
+                      {/* Container No */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-mono">
+                        {containerNos}
+                      </td>
+
+                      {/* Agent */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-[11px] leading-tight">
+                        {agentVal}
+                      </td>
+
+                      {/* Line */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-[11px] leading-tight">
+                        {carrierVal}
+                      </td>
+
+                      {/* ETD/ETA Date */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-red-600 dark:text-red-400 font-semibold whitespace-nowrap text-center">
+                        <div>{etdVal ? formatDate(etdVal) : "—"}</div>
+                        {etaVal && <div className="mt-0.5 text-red-500/80">{formatDate(etaVal)}</div>}
+                      </td>
+
+                      {/* Manifest */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-semibold">
+                        {manifestVal}
+                      </td>
+
+                      {/* CFS Name */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-[11px] leading-tight">
+                        {cfsVal}
+                      </td>
+
+                      {/* Sales */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-medium">
+                        {salesVal.split(" ")[0]}
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
+                        <span className="inline-block bg-[#5c4084] text-white text-[9px] font-bold px-2.5 py-1 rounded uppercase select-none tracking-wider whitespace-nowrap shadow-sm">
+                          {(job.status || "DRAFT").toUpperCase().replace(/\s+/g, "_")}
+                        </span>
+                      </td>
+
+                      {/* Date Added */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 whitespace-nowrap">
+                        {formatDate(job.created_at)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -366,7 +521,7 @@ export function SIHouseBLList() {
                 </div>
               </div>
 
-              {/* SECTION: ROUTING (MBL SYNCED) */}
+              {/* SECTION: ROUTING */}
               <div>
                 <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Shipment Routing & Shipping Line </h4>
                 <div className="space-y-4 text-xs font-semibold text-slate-600 dark:text-slate-300">
@@ -405,7 +560,7 @@ export function SIHouseBLList() {
                     <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200 font-mono">{selectedJob.hbl_no}</span>
                   </div>
                   <div className="grid grid-cols-3 gap-2">
-                    <span className="text-slate-500">Container Size (MBL):</span>
+                    <span className="text-slate-500">Container Size:</span>
                     <span className="col-span-2 font-medium text-slate-800 dark:text-slate-200">
                       {selectedJob.container_count} x {selectedJob.container_size}
                     </span>
@@ -455,7 +610,7 @@ export function SIHouseBLList() {
               <button
                 onClick={() => {
                   setShowViewModal(false);
-                  handleEditJob(selectedJob.job_no);
+                  handleEditJob(selectedJob.id);
                 }}
                 className="flex items-center gap-2 px-4 py-2 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-colors font-medium text-sm"
               >
@@ -478,16 +633,18 @@ export function SIHouseBLList() {
 export function SIHouseBLForm() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const jobNoParam = searchParams.get("jobNo");
+  const idParam = searchParams.get("id");
 
-  const [jobNo, setJobNo] = useState(null);
   const [customers, setCustomers] = useState([]);
   const [masterBLs, setMasterBLs] = useState([]);
+  const [chargeOptions, setChargeOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Main");
 
   // Form State containing both main columns and HBL-specific JSON details
   const [form, setForm] = useState({
+    id: null,
+    job_no: "",
     hbl_no: "",
     mbl_no: "",
     date_of_nomination: new Date().toISOString().slice(0, 10),
@@ -502,6 +659,35 @@ export function SIHouseBLForm() {
     marks_and_numbers: "",
     freight_amount: "",
     freight_currency: "USD",
+
+    // Sync details (now fully editable)
+    pol: "",
+    pod: "",
+    final_pod: "",
+    eta: "",
+    etd: "",
+    voyage: "",
+    services: "",
+    agent: "",
+    agent_name: "",
+    mbl_date: "",
+    shipment_type: "",
+    inco_terms: "",
+    shipping_line_name: "",
+    por: "",
+    cfs: "",
+    item_no: "",
+    sub_no: "",
+    igm_no: "",
+    igm_date: "",
+    carrier: "",
+    line: "",
+    container_size: "",
+    container_count: "",
+    cargo_type: "",
+    branch_code: "Mumbai",
+    execution_branch: "Mumbai",
+    gst_state_from: "Maharashtra",
 
     // HBL-specific Main
     client: "",
@@ -537,58 +723,29 @@ export function SIHouseBLForm() {
     vehicles: [],
   });
 
-  // Synced state representing MasterBL inherited details (disabled/read-only in HBL)
-  const [mblData, setMblData] = useState({
-    pol: "",
-    pod: "",
-    final_pod: "",
-    eta: "",
-    etd: "",
-    voyage: "",
-    services: "",
-    agent: "",
-    agent_name: "",
-    mbl_date: "",
-    shipment_type: "",
-    inco_terms: "",
-    shipping_line_name: "",
-    por: "",
-    cfs: "",
-    item_no: "",
-    sub_no: "",
-    igm_no: "",
-    igm_date: "",
-    manifest_filing: "",
-    cfs_filing: "",
-    branch_code: "Mumbai",
-    execution_branch: "Mumbai",
-    gst_state_from: "Maharashtra",
-    carrier: "",
-    line: "",
-    container_size: "",
-    container_count: "",
-    cargo_type: "",
-  });
-
   useEffect(() => {
     initForm();
-  }, [jobNoParam]);
+  }, [idParam]);
 
   const initForm = async () => {
     try {
       setLoading(true);
+      try {
+        const chargesRes = await api.get("/invoice/charges");
+        if (chargesRes.data.success) {
+          setChargeOptions(chargesRes.data.charges || []);
+        }
+      } catch (err) {
+        console.error("Error loading charges:", err);
+      }
       const initRes = await api.get("/housebl/init");
       if (initRes.data.success) {
         setCustomers(initRes.data.customers || []);
         setMasterBLs(initRes.data.masterBLs || []);
-        if (!jobNoParam) {
-          setJobNo(initRes.data.nextJobNo);
-        }
       }
 
-      if (jobNoParam) {
-        setJobNo(jobNoParam);
-        const res = await api.get(`/housebl/get/${jobNoParam}`);
+      if (idParam) {
+        const res = await api.get(`/housebl/get/${idParam}`);
         if (res.data.success) {
           const b = res.data.job;
 
@@ -614,6 +771,8 @@ export function SIHouseBLForm() {
           const hasManualConsignee = !b.consignee && manualDetails.consignee;
 
           setForm({
+            id: b.id,
+            job_no: b.job_no || "",
             hbl_no: b.hbl_no || "",
             mbl_no: b.mbl_no || "",
             date_of_nomination: b.date_of_nomination ? b.date_of_nomination.slice(0, 10) : "",
@@ -629,9 +788,37 @@ export function SIHouseBLForm() {
             freight_amount: b.freight_amount || "",
             freight_currency: b.freight_currency || "USD",
 
+            pol: addDetails.pol || b.pol || "",
+            pod: addDetails.pod || b.pod || "",
+            final_pod: addDetails.final_pod || b.final_pod || "",
+            eta: addDetails.eta ? addDetails.eta.slice(0, 10) : (b.eta ? b.eta.slice(0, 10) : ""),
+            etd: addDetails.etd ? addDetails.etd.slice(0, 10) : (b.etd ? b.etd.slice(0, 10) : ""),
+            voyage: addDetails.voyage || "",
+            services: addDetails.services || "",
+            agent: addDetails.agent || b.agent || "",
+            agent_name: addDetails.agent_name || b.agent_name || "",
+            mbl_date: addDetails.mbl_date ? addDetails.mbl_date.slice(0, 10) : "",
+            shipment_type: addDetails.shipment_type || "",
+            inco_terms: addDetails.inco_terms || "",
+            shipping_line_name: addDetails.shipping_line_name || b.shipping_line_name || "",
+            por: addDetails.por || "",
+            cfs: addDetails.cfs || "",
+            item_no: addDetails.item_no || "",
+            sub_no: addDetails.sub_no || "",
+            igm_no: addDetails.igm_no || "",
+            igm_date: addDetails.igm_date ? addDetails.igm_date.slice(0, 10) : "",
+            carrier: addDetails.carrier || "",
+            line: addDetails.line || "",
+            container_size: addDetails.container_size || b.container_size || "",
+            container_count: addDetails.container_count || b.container_count || "",
+            cargo_type: addDetails.cargo_type || b.cargo_type || "",
+            branch_code: addDetails.branch_code || "Mumbai",
+            execution_branch: addDetails.execution_branch || "Mumbai",
+            gst_state_from: addDetails.gst_state_from || "Maharashtra",
+
             client: addDetails.client || "",
-            sales: "Sentil Kumar",
-            cs: "Sentil Kumar",
+            sales: addDetails.sales || "Sentil Kumar",
+            cs: addDetails.cs || "Sentil Kumar",
             freight_status: addDetails.freight_status || "",
             bl_type: addDetails.bl_type || "",
             reference_no: addDetails.reference_no || "",
@@ -657,10 +844,6 @@ export function SIHouseBLForm() {
             sell_rates: addDetails.sell_rates || [],
             vehicles: addDetails.vehicles || [],
           });
-
-          if (b.mbl_no) {
-            handleMblSelection(b.mbl_no);
-          }
         }
       }
     } catch (error) {
@@ -679,15 +862,16 @@ export function SIHouseBLForm() {
   const handleMblSelection = async (mblNo) => {
     setForm(prev => ({ ...prev, mbl_no: mblNo }));
     if (!mblNo || mblNo.trim() === "") {
-      setMblData({
+      setForm(prev => ({
+        ...prev,
+        job_no: "",
         pol: "", pod: "", final_pod: "", eta: "", etd: "",
         shipping_line_name: "", cargo_type: "", container_size: "", container_count: "",
         agent: "", agent_name: "", enquiry_no: "", mbl_date: "", services: "",
-        shipment_type: "", inco_terms: "", sales: "", cs: "", voyage: "", por: "",
+        shipment_type: "", inco_terms: "", voyage: "", por: "",
         cfs: "", item_no: "", sub_no: "", igm_no: "", igm_date: "",
-        manifest_filing: "", cfs_filing: "", branch_code: "", execution_branch: "",
-        gst_state_from: "", carrier: "", line: ""
-      });
+        carrier: "", line: ""
+      }));
       return;
     }
 
@@ -704,7 +888,9 @@ export function SIHouseBLForm() {
           } catch (e) { }
         }
 
-        setMblData({
+        setForm(prev => ({
+          ...prev,
+          job_no: m.job_no, // Inherit Job Number from selected MBL
           pol: m.pol || "",
           pod: m.pod || "",
           final_pod: m.final_pod || "",
@@ -722,8 +908,6 @@ export function SIHouseBLForm() {
           services: mAddDetails.services || "",
           shipment_type: mAddDetails.shipment_type || "",
           inco_terms: mAddDetails.inco_terms || "",
-          sales: "Sentil Kumar",
-          cs: "Sentil Kumar",
           voyage: mAddDetails.voyage || "",
           por: mAddDetails.por || "",
           cfs: mAddDetails.cfs || "",
@@ -733,20 +917,13 @@ export function SIHouseBLForm() {
           igm_date: mAddDetails.igm_date ? mAddDetails.igm_date.slice(0, 10) : "",
           manifest_filing: mAddDetails.manifest_filing || "",
           cfs_filing: mAddDetails.cfs_filing || "",
-          branch_code: "Mumbai",
-          execution_branch: "Mumbai",
-          gst_state_from: "Maharashtra",
           carrier: mAddDetails.carrier || "",
           line: mAddDetails.line || "",
-        });
-
-        setForm(prev => ({
-          ...prev,
           containers: (prev.containers && prev.containers.length > 0) ? prev.containers : (mAddDetails.containers || []),
           description: prev.description ? prev.description : (mAddDetails.description || m.marks_and_numbers || "")
         }));
 
-        toast.info(`Synced successfully with MasterBL: ${mblNo}`);
+        toast.info(`Synced and populated details from MasterBL: ${mblNo}`);
       }
     } catch (error) {
       console.error("Error syncing with MBL:", error);
@@ -775,33 +952,44 @@ export function SIHouseBLForm() {
       }
 
       const additionalDetailsObj = {
-        enquiry_no: mblData.enquiry_no,
-        mbl_date: mblData.mbl_date,
-        services: mblData.services,
-        shipment_type: mblData.shipment_type,
-        inco_terms: mblData.inco_terms,
+        pol: form.pol,
+        pod: form.pod,
+        final_pod: form.final_pod,
+        eta: form.eta,
+        etd: form.etd,
+        voyage: form.voyage,
+        services: form.services,
+        agent: form.agent,
+        agent_name: form.agent_name,
+        mbl_date: form.mbl_date,
+        shipment_type: form.shipment_type,
+        inco_terms: form.inco_terms,
+        shipping_line_name: form.shipping_line_name,
+        por: form.por,
+        cfs: form.cfs,
+        item_no: form.item_no,
+        sub_no: form.sub_no,
+        igm_no: form.igm_no,
+        igm_date: form.igm_date,
+        carrier: form.carrier,
+        line: form.line,
+        container_size: form.container_size,
+        container_count: form.container_count,
+        cargo_type: form.cargo_type,
+        branch_code: form.branch_code,
+        execution_branch: form.execution_branch,
+        gst_state_from: form.gst_state_from,
+
+        enquiry_no: form.enquiry_no,
         client: form.client,
-        sales: form.sales || mblData.sales,
-        cs: form.cs || mblData.cs,
+        sales: form.sales,
+        cs: form.cs,
         freight_status: form.freight_status,
         bl_type: form.bl_type,
-        voyage: mblData.voyage,
-        por: mblData.por,
-        cfs: mblData.cfs,
-        item_no: mblData.item_no,
-        sub_no: mblData.sub_no,
-        igm_no: mblData.igm_no,
-        igm_date: mblData.igm_date,
         reference_no: form.reference_no,
         boe_no: form.boe_no,
         manifest_filing: form.manifest_filing,
         cfs_filing: form.cfs_filing,
-        branch_code: mblData.branch_code,
-        execution_branch: mblData.execution_branch,
-        gst_state_from: mblData.gst_state_from,
-
-        carrier: mblData.carrier,
-        line: mblData.line,
         notify: form.notify,
         transporter: form.transporter,
         cha_name: form.cha_name,
@@ -813,9 +1001,9 @@ export function SIHouseBLForm() {
         no_of_pallets: form.no_of_pallets || form.no_of_palette,
         volume: form.volume,
 
-        inv_container_type: mblData.container_size,
-        inv_no_of_units: mblData.container_count,
-        inv_csize: mblData.container_size,
+        inv_container_type: form.container_size,
+        inv_no_of_units: form.container_count,
+        inv_csize: form.container_size,
         containers: form.containers,
 
         description: form.description,
@@ -834,8 +1022,8 @@ export function SIHouseBLForm() {
         additional_details: JSON.stringify(additionalDetailsObj),
       };
 
-      if (jobNoParam) {
-        await api.put(`/housebl/update/${jobNoParam}`, payload);
+      if (idParam) {
+        await api.put(`/housebl/update/${idParam}`, payload);
         toast.success("SI HouseBL job updated successfully");
       } else {
         await api.post("/housebl/insert", payload);
@@ -853,7 +1041,6 @@ export function SIHouseBLForm() {
   ];
   const labelStyle = "block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1 select-none";
   const inputStyle = "w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 transition-all";
-  const disabledInputStyle = "w-full px-2 py-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded text-xs text-slate-700 dark:text-slate-300 cursor-not-allowed select-none transition-all";
 
   if (loading) {
     return (
@@ -866,14 +1053,16 @@ export function SIHouseBLForm() {
   }
 
   return (
-    <DashboardLayout title={jobNoParam ? "Edit SI HouseBL" : "New SI HouseBL"}>
-      {/* Title Header exactly like the screenshot */}
+    <DashboardLayout title={idParam ? "Edit SI HouseBL" : "New SI HouseBL"}>
+      {/* Title Header */}
       <div className="flex items-center justify-between pb-2 mb-4 border-b border-slate-200 dark:border-slate-700/80">
         <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
           <Edit2 size={16} className="text-slate-500" />
           <h2 className="text-sm font-semibold select-none">
-            {jobNoParam ? "Edit Sea House BL Job" : "New Sea House BL Job"}
-            <span className="font-mono text-xs text-slate-400 ml-2">(Job #{jobNo})</span>
+            {idParam ? "Edit Sea House BL Job" : "New Sea House BL Job"}
+            {form.job_no && (
+              <span className="font-mono text-xs text-slate-400 ml-2">(Job #{form.job_no})</span>
+            )}
           </h2>
         </div>
         <button
@@ -907,7 +1096,7 @@ export function SIHouseBLForm() {
           })}
         </div>
 
-        {/* Dynamic Full-Width Form Panel with integrated bottom/side roundings */}
+        {/* Dynamic Full-Width Form Panel */}
         <div className="bg-white dark:bg-dark-card p-6 border border-slate-200 dark:border-slate-700/80 rounded-b rounded-r shadow-sm">
 
           {/* TAB 1: MAIN */}
@@ -916,11 +1105,11 @@ export function SIHouseBLForm() {
               <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Main Shipment Route & Invoicing Info</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className={labelStyle}><RequiredStar />HBL No</label>
+                  <label className={labelStyle}>HBL No</label>
                   <input type="text" name="hbl_no" value={form.hbl_no} onChange={handleInputChange} placeholder="Enter HBL No" className={inputStyle + " font-mono font-semibold"} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />MBL_No</label>
+                  <label className={labelStyle}>MBL_No</label>
                   <select name="mbl_no" value={form.mbl_no} onChange={(e) => handleMblSelection(e.target.value)} className={inputStyle + " font-mono font-semibold"}>
                     <option value="">Select Parent MBL No</option>
                     {masterBLs.map(mbl => <option key={mbl.mbl_no} value={mbl.mbl_no}>{mbl.mbl_no}</option>)}
@@ -932,23 +1121,29 @@ export function SIHouseBLForm() {
                 </div>
                 <div>
                   <label className={labelStyle}>Enquiry No</label>
-                  <input type="text" value={mblData.enquiry_no || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="enquiry_no" value={form.enquiry_no} onChange={handleInputChange} placeholder="Enquiry No" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>MBL Date</label>
-                  <input type="text" value={mblData.mbl_date || "—"} disabled className={disabledInputStyle} />
+                  <input type="date" name="mbl_date" value={form.mbl_date} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Services</label>
-                  <input type="text" value={mblData.services || "—"} disabled className={disabledInputStyle} />
+                  <select name="services" value={form.services} onChange={handleInputChange} className={inputStyle}>
+                    <option value="">Select Service</option>
+                    {SERVICES_LIST.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Shipment Type</label>
-                  <input type="text" value={mblData.shipment_type || "—"} disabled className={disabledInputStyle} />
+                  <label className={labelStyle}>Shipment Type</label>
+                  <input type="text" name="shipment_type" value={form.shipment_type} onChange={handleInputChange} placeholder="e.g. FCL / LCL" className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />INCO Terms</label>
-                  <input type="text" value={mblData.inco_terms || "—"} disabled className={disabledInputStyle} />
+                  <label className={labelStyle}>INCO Terms</label>
+                  <select name="inco_terms" value={form.inco_terms} onChange={handleInputChange} className={inputStyle}>
+                    <option value="">Select INCO Term</option>
+                    {INCO_TERMS_LIST.map(v => <option key={v} value={v}>{v}</option>)}
+                  </select>
                 </div>
                 <div>
                   <PartySelect
@@ -958,23 +1153,21 @@ export function SIHouseBLForm() {
                     onChange={handleInputChange}
                     customers={customers}
                     isHybrid={true}
-                    required={true}
-                    RequiredStar={RequiredStar}
                     placeholder="Search client..."
                     labelClassName={labelStyle}
                     inputClassName={inputStyle}
                   />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Sales</label>
-                  <input type="text" value={form.sales || "Sentil Kumar"} disabled className={disabledInputStyle} />
+                  <label className={labelStyle}>Sales</label>
+                  <input type="text" name="sales" value={form.sales} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>CS</label>
-                  <input type="text" value={form.cs || "Sentil Kumar"} disabled className={disabledInputStyle} />
+                  <input type="text" name="cs" value={form.cs} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Freight Status</label>
+                  <label className={labelStyle}>Freight Status</label>
                   <select name="freight_status" value={form.freight_status} onChange={handleInputChange} className={inputStyle}>
                     <option value="">Select Freight Status</option>
                     {FREIGHT_STATUS_LIST.map(v => <option key={v} value={v}>{v}</option>)}
@@ -989,55 +1182,55 @@ export function SIHouseBLForm() {
                 </div>
                 <div>
                   <label className={labelStyle}>Vessel</label>
-                  <input type="text" value={mblData.shipping_line_name || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="shipping_line_name" value={form.shipping_line_name} onChange={handleInputChange} placeholder="Vessel Name" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Voyage</label>
-                  <input type="text" value={mblData.voyage || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="voyage" value={form.voyage} onChange={handleInputChange} placeholder="Voyage No" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>P.O.R.</label>
-                  <input type="text" value={mblData.por || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="por" value={form.por} onChange={handleInputChange} placeholder="Place of Receipt" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>P.O.L.</label>
-                  <input type="text" value={mblData.pol || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="pol" value={form.pol} onChange={handleInputChange} placeholder="Port of Loading" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>P.O.D.</label>
-                  <input type="text" value={mblData.pod || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="pod" value={form.pod} onChange={handleInputChange} placeholder="Port of Discharge" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>F.P.D</label>
-                  <input type="text" value={mblData.final_pod || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="final_pod" value={form.final_pod} onChange={handleInputChange} placeholder="Final Destination" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>C.F.S.</label>
-                  <input type="text" value={mblData.cfs || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="cfs" value={form.cfs} onChange={handleInputChange} placeholder="CFS Name" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Item No.</label>
-                  <input type="text" value={mblData.item_no || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="item_no" value={form.item_no} onChange={handleInputChange} placeholder="Item No" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>SUB No.</label>
-                  <input type="text" value={mblData.sub_no || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="sub_no" value={form.sub_no} onChange={handleInputChange} placeholder="SUB No" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>IGM No.</label>
-                  <input type="text" value={mblData.igm_no || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="igm_no" value={form.igm_no} onChange={handleInputChange} placeholder="IGM No" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>IGM Date</label>
-                  <input type="text" value={mblData.igm_date || "—"} disabled className={disabledInputStyle} />
+                  <input type="date" name="igm_date" value={form.igm_date} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>ETA Date</label>
-                  <input type="text" value={mblData.eta || "—"} disabled className={disabledInputStyle} />
+                  <input type="date" name="eta" value={form.eta} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>ETD Date</label>
-                  <input type="text" value={mblData.etd || "—"} disabled className={disabledInputStyle} />
+                  <input type="date" name="etd" value={form.etd} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Reference No.</label>
@@ -1056,16 +1249,16 @@ export function SIHouseBLForm() {
                   <input type="text" name="cfs_filing" value={form.cfs_filing} onChange={handleInputChange} placeholder="CFS Filing" className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Branch Code</label>
-                  <input type="text" value={mblData.branch_code || "Mumbai"} disabled className={disabledInputStyle} />
+                  <label className={labelStyle}>Branch Code</label>
+                  <input type="text" name="branch_code" value={form.branch_code} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Execution Branch</label>
-                  <input type="text" value={mblData.execution_branch || "Mumbai"} disabled className={disabledInputStyle} />
+                  <label className={labelStyle}>Execution Branch</label>
+                  <input type="text" name="execution_branch" value={form.execution_branch} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />GST State From</label>
-                  <input type="text" value={mblData.gst_state_from || "Maharashtra"} disabled className={disabledInputStyle} />
+                  <label className={labelStyle}>GST State From</label>
+                  <input type="text" name="gst_state_from" value={form.gst_state_from} onChange={handleInputChange} className={inputStyle} />
                 </div>
               </div>
             </div>
@@ -1105,8 +1298,17 @@ export function SIHouseBLForm() {
                 </div>
 
                 <div>
-                  <label className={labelStyle}>Overseas Agent</label>
-                  <input type="text" value={mblData.agent_name || "—"} disabled className={disabledInputStyle} />
+                  <PartySelect
+                    label="Overseas Agent"
+                    name="agent"
+                    value={form.agent}
+                    onChange={handleInputChange}
+                    customers={customers}
+                    isHybrid={true}
+                    placeholder="Search Agent..."
+                    labelClassName={labelStyle}
+                    inputClassName={inputStyle}
+                  />
                 </div>
 
                 <div>
@@ -1125,12 +1327,12 @@ export function SIHouseBLForm() {
 
                 <div>
                   <label className={labelStyle}>Shipping Line / Carrier</label>
-                  <input type="text" value={mblData.carrier || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="carrier" value={form.carrier} onChange={handleInputChange} placeholder="Carrier" className={inputStyle} />
                 </div>
 
                 <div>
                   <label className={labelStyle}>Line Code</label>
-                  <input type="text" value={mblData.line || "—"} disabled className={disabledInputStyle} />
+                  <input type="text" name="line" value={form.line} onChange={handleInputChange} placeholder="Line Code" className={inputStyle} />
                 </div>
 
                 <div>
@@ -1218,15 +1420,15 @@ export function SIHouseBLForm() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className={labelStyle}>Container Size Type (CSize)</label>
-                    <input type="text" value={mblData.container_size || "—"} disabled className={disabledInputStyle} />
+                    <input type="text" name="container_size" value={form.container_size} onChange={handleInputChange} placeholder="Container Size Type" className={inputStyle} />
                   </div>
                   <div>
                     <label className={labelStyle}>No Of Units (Count)</label>
-                    <input type="text" value={mblData.container_count || "—"} disabled className={disabledInputStyle} />
+                    <input type="number" name="container_count" value={form.container_count} onChange={handleInputChange} placeholder="Number of Units" className={inputStyle} />
                   </div>
                   <div>
                     <label className={labelStyle}>Inventory Cargo Type</label>
-                    <input type="text" value={mblData.cargo_type || "—"} disabled className={disabledInputStyle} />
+                    <input type="text" name="cargo_type" value={form.cargo_type} onChange={handleInputChange} placeholder="Inventory Cargo Type" className={inputStyle} />
                   </div>
                 </div>
               </div>
@@ -1271,6 +1473,7 @@ export function SIHouseBLForm() {
                 rows={form.buy_rates}
                 customers={customers}
                 isBuy={true}
+                chargeOptions={chargeOptions}
                 onChange={(updated) => setForm(prev => ({ ...prev, buy_rates: updated }))}
                 onAddRow={(newRow) => setForm(prev => ({ ...prev, buy_rates: [...prev.buy_rates, newRow] }))}
                 onDeleteRow={(idx) => setForm(prev => ({
@@ -1288,6 +1491,8 @@ export function SIHouseBLForm() {
                 rows={form.sell_rates}
                 customers={customers}
                 isBuy={false}
+                consignee={form.consignee}
+                chargeOptions={chargeOptions}
                 onChange={(updated) => setForm(prev => ({ ...prev, sell_rates: updated }))}
                 onAddRow={(newRow) => setForm(prev => ({ ...prev, sell_rates: [...prev.sell_rates, newRow] }))}
                 onDeleteRow={(idx) => setForm(prev => ({

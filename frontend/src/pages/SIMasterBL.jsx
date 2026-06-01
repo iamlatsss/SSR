@@ -3,12 +3,31 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import DashboardLayout from "../components/DashboardLayout";
 import api from "../services/api";
 import {
-  Search, Filter, Plus, Edit2, Eye, CheckCircle, FileText, ChevronLeft, ChevronRight, Save, Anchor, XCircle
+  Search, Filter, Plus, Edit2, Eye, CheckCircle, FileText, ChevronLeft, ChevronRight, Save, Anchor, XCircle, Star, Files
 } from "lucide-react";
 import { toast } from "react-toastify";
 import PortSelect from "../components/PortSelect";
 import PartySelect from "../components/PartySelect";
 import { RateGrid, ContainerGrid, VehicleGrid } from "../components/LogisticsGrids";
+
+const formatDate = (dateStr) => {
+  if (!dateStr) return "—";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "—";
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}-${month}-${year}`;
+  } catch (e) {
+    return "—";
+  }
+};
+
+const copyToClipboard = (text, label) => {
+  navigator.clipboard.writeText(text);
+  toast.success(`${label} copied to clipboard`);
+};
 
 const CONTAINER_SIZES = [
   "20 Dry Standard", "40 Dry Standard", "40 Dry High", "45 Dry High",
@@ -24,9 +43,7 @@ const BL_TYPES = ["Original BL", "Seaway Bill", "Telex Release", "Express Releas
 const FREIGHT_STATUS_LIST = ["Prepaid", "Collect", "Third Party Pay"];
 const PACKAGE_TYPES_LIST = ["Pallet", "Carton", "Box", "Crate", "Drum", "Roll", "Bag", "Loose"];
 
-const RequiredStar = () => (
-  <span className="text-red-500 font-bold mr-0.5 select-none">*</span>
-);
+const RequiredStar = () => null; // Removed asterisk indicator completely
 
 
 /* =========================================================================
@@ -122,23 +139,6 @@ export function SIMasterBLList() {
   const currentJobs = filteredJobs.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "Draft":
-        return "text-slate-600 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
-      case "Sell Rate Updated":
-        return "text-amber-600 bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/30";
-      case "Invoice Generated":
-        return "text-blue-600 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/30";
-      case "Ready to Close":
-        return "text-orange-600 bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800/30";
-      case "Closed":
-        return "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/30";
-      default:
-        return "text-slate-600 bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700";
-    }
-  };
-
   if (loading) {
     return (
       <DashboardLayout title="SI MasterBL">
@@ -221,57 +221,200 @@ export function SIMasterBLList() {
 
       <div className="bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse border border-slate-200 dark:border-slate-700">
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
-                <th className="p-4">Job No</th>
-                <th className="p-4">MBL Number</th>
-                <th className="p-4">Nomination Date</th>
-                <th className="p-4">Shipper</th>
-                <th className="p-4">Route</th>
-                <th className="p-4 text-right">Actions</th>
+              <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold select-none whitespace-nowrap">
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Action</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700"></th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">History</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">Job_No</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Job_Date</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Consignee</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">HBL No</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">MBL_No</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">POL/POD Port</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Container_No</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Agent</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Line</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">ETD/ETA Date</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Manifest</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">CFS Name</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700">Sales</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">Status</th>
+                <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">Date_Added</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
               {currentJobs.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="p-8 text-center text-slate-500">
+                  <td colSpan="20" className="p-8 text-center text-slate-500">
                     {searchTerm ? "No MBL jobs match your search." : "No MBL jobs found."}
                   </td>
                 </tr>
               ) : (
-                currentJobs.map((job) => (
-                  <tr key={job.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                    <td className="p-4 font-mono font-medium text-indigo-600 dark:text-indigo-400">#{job.job_no}</td>
-                    <td className="p-4 font-medium text-slate-800 dark:text-slate-200 text-sm">{job.mbl_no}</td>
-                    <td className="p-4 text-slate-600 dark:text-slate-300 text-sm">
-                      {job.date_of_nomination ? job.date_of_nomination.split('T')[0] : "—"}
-                    </td>
-                    <td className="p-4">
-                      <div className="font-medium text-slate-800 dark:text-slate-200 text-sm">{job.shipper_name || "—"}</div>
-                      <div className="text-xs text-slate-500">{job.container_count} × {job.container_size}</div>
-                    </td>
-                    <td className="p-4 text-slate-600 dark:text-slate-300 text-sm">
-                      {job.pol ? job.pol.split(',')[0] : "—"} → {job.pod ? job.pod.split(',')[0] : "—"}
-                    </td>
-                    <td className="p-4 text-right flex justify-end gap-2">
-                      <button
-                        onClick={() => handleViewJob(job)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
-                        title="View"
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        onClick={() => handleEditJob(job.job_no)}
-                        className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded transition-colors"
-                        title="Edit"
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                currentJobs.map((job) => {
+                  let addDetails = {};
+                  if (job.additional_details) {
+                    try {
+                      addDetails = typeof job.additional_details === 'string'
+                        ? JSON.parse(job.additional_details)
+                        : job.additional_details;
+                    } catch (e) { }
+                  }
+
+                  const containersList = addDetails.containers || [];
+                  const containerNos = containersList
+                    .map(c => c.container_no)
+                    .filter(Boolean)
+                    .join(", ") || "X";
+
+                  const cfsVal = addDetails.cfs || "—";
+                  const salesVal = addDetails.sales || "Sentil Kumar";
+                  const manifestVal = addDetails.manifest_filing || "MBL";
+
+                  return (
+                    <tr key={job.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors text-xs text-slate-800 dark:text-slate-200">
+                      {/* Action */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
+                        <button
+                          onClick={() => handleEditJob(job.job_no)}
+                          className="p-1.5 bg-[#1d82f5] text-white rounded hover:bg-blue-600 transition-colors flex items-center justify-center mx-auto"
+                          title="Edit Job"
+                        >
+                          <Edit2 size={13} />
+                        </button>
+                      </td>
+
+                      {/* Star */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
+                        <button
+                          className="text-[#1d82f5] hover:text-blue-700 p-1 rounded flex items-center justify-center mx-auto"
+                          title="Favorite/Nominated"
+                        >
+                          <Star size={15} />
+                        </button>
+                      </td>
+
+                      {/* History */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
+                        <button
+                          onClick={() => handleViewJob(job)}
+                          className="p-1.5 bg-[#5bc0de] text-white rounded hover:bg-cyan-600 transition-colors flex items-center justify-center mx-auto"
+                          title="View Details"
+                        >
+                          <Eye size={13} />
+                        </button>
+                      </td>
+
+                      {/* Job No */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-mono font-medium text-slate-700 dark:text-slate-300">
+                        <div className="flex items-center gap-1.5">
+                          <span>{job.job_no}</span>
+                          <button
+                            onClick={() => copyToClipboard(job.job_no.toString(), "Job Number")}
+                            className="text-[#1d82f5] hover:text-blue-700 transition-colors"
+                            title="Copy Job Number"
+                          >
+                            <Files size={12} className="inline w-3 h-3" />
+                          </button>
+                        </div>
+                      </td>
+
+                      {/* Job Date */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 whitespace-nowrap">
+                        {formatDate(job.date_of_nomination)}
+                      </td>
+
+                      {/* Consignee */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-medium">
+                        {job.consignee_name || "—"}
+                      </td>
+
+                      {/* HBL No */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-mono">
+                        {job.hbls && job.hbls.length > 0 ? (
+                          job.hbls.map(h => h.hbl_no).join(", ")
+                        ) : (
+                          "—"
+                        )}
+                      </td>
+
+                      {/* MBL No */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-mono">
+                        <div className="flex items-center gap-1.5">
+                          <span>{job.mbl_no || "—"}</span>
+                          {job.mbl_no && (
+                            <button
+                              onClick={() => copyToClipboard(job.mbl_no, "MBL Number")}
+                              className="text-[#1d82f5] hover:text-blue-700 transition-colors"
+                              title="Copy MBL Number"
+                            >
+                              <Files size={12} className="inline w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* POL/POD Port */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-[11px] leading-tight">
+                        <div className="font-semibold text-sky-600 dark:text-sky-400">
+                          {job.pol ? job.pol.split(',')[0] : "—"}
+                        </div>
+                        <div className="font-semibold text-red-500 dark:text-red-400 uppercase mt-0.5">
+                          {job.pod ? job.pod.split(',')[0] : "—"}
+                        </div>
+                      </td>
+
+                      {/* Container No */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-mono">
+                        {containerNos}
+                      </td>
+
+                      {/* Agent */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-[11px] leading-tight">
+                        {job.agent_name || "—"}
+                      </td>
+
+                      {/* Line */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-[11px] leading-tight">
+                        {job.shipping_line_name || "—"}
+                      </td>
+
+                      {/* ETD/ETA Date */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-red-600 dark:text-red-400 font-semibold whitespace-nowrap text-center">
+                        <div>{job.etd ? formatDate(job.etd) : "—"}</div>
+                        {job.eta && <div className="mt-0.5 text-red-500/80">{formatDate(job.eta)}</div>}
+                      </td>
+
+                      {/* Manifest */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-semibold">
+                        {manifestVal}
+                      </td>
+
+                      {/* CFS Name */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-[11px] leading-tight">
+                        {cfsVal}
+                      </td>
+
+                      {/* Sales */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-medium">
+                        {salesVal.split(" ")[0]}
+                      </td>
+
+                      {/* Status */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
+                        <span className="inline-block bg-[#5c4084] text-white text-[9px] font-bold px-2.5 py-1 rounded uppercase select-none tracking-wider whitespace-nowrap shadow-sm">
+                          {(job.status || "DRAFT").toUpperCase().replace(/\s+/g, "_")}
+                        </span>
+                      </td>
+
+                      {/* Date Added */}
+                      <td className="p-2 border border-slate-100 dark:border-slate-800 whitespace-nowrap">
+                        {formatDate(job.created_at)}
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -426,6 +569,43 @@ export function SIMasterBLList() {
                   </div>
                 </div>
               </div>
+
+              {/* SECTION: LINKED HOUSE BLS (HBLS) */}
+              {selectedJob.hbls && selectedJob.hbls.length > 0 && (
+                <div className="col-span-1 md:col-span-2 border-t border-slate-100 dark:border-slate-800 pt-6 mt-4">
+                  <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider mb-4 border-b border-slate-100 dark:border-slate-800 pb-2">Linked House BLs (HBLs)</h4>
+                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-xl">
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-semibold border-b border-slate-100 dark:border-slate-800">
+                          <th className="p-3">HBL No</th>
+                          <th className="p-3">Shipper</th>
+                          <th className="p-3">Consignee</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3 text-right">Freight Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {selectedJob.hbls.map(h => (
+                          <tr key={h.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                            <td className="p-3 font-mono font-medium text-indigo-600 dark:text-indigo-400">{h.hbl_no}</td>
+                            <td className="p-3">{h.shipper_name || "—"}</td>
+                            <td className="p-3">{h.consignee_name || "—"}</td>
+                            <td className="p-3">
+                              <span className="inline-block bg-[#5c4084] text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                                {h.status || "DRAFT"}
+                              </span>
+                            </td>
+                            <td className="p-3 text-right font-semibold">
+                              {h.freight_amount ? `${h.freight_amount} ${h.freight_currency || "USD"}` : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="mt-8 pt-6 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
@@ -453,7 +633,7 @@ export function SIMasterBLList() {
 }
 
 /* =========================================================================
-   2. FORM VIEW COMPONENT (SIMasterBLForm) - Multi-tab Redesign
+   2. FORM VIEW COMPONENT (SIMasterBLForm)
    ========================================================================= */
 export function SIMasterBLForm() {
   const navigate = useNavigate();
@@ -462,12 +642,12 @@ export function SIMasterBLForm() {
 
   const [jobNo, setJobNo] = useState(null);
   const [customers, setCustomers] = useState([]);
+  const [chargeOptions, setChargeOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Main");
 
   // Form State containing both main columns and additional JSON fields
   const [form, setForm] = useState({
-    // Standard MBL columns
     mbl_no: "",
     date_of_nomination: new Date().toISOString().slice(0, 10),
     shipper: "",
@@ -492,7 +672,6 @@ export function SIMasterBLForm() {
     freight_amount: "",
     freight_currency: "USD",
 
-    // Main Tab extra fields
     enquiry_no: "",
     mbl_date: "",
     services: "",
@@ -517,7 +696,6 @@ export function SIMasterBLForm() {
     execution_branch: "Mumbai",
     gst_state_from: "Maharashtra",
 
-    // Party Tab extra fields
     carrier: "",
     line: "",
     notify: "",
@@ -526,49 +704,61 @@ export function SIMasterBLForm() {
     do_date: "",
     delivery_date: "",
 
-    // Packages Tab extra fields
     no_of_packages: "",
     package_type: "Carton",
     no_of_pallets: "",
     volume: "",
 
-    // Inventory + Container Tab extra fields
     inv_container_type: "",
     inv_no_of_units: "",
     inv_csize: "",
     containers: [],
-
-    // Description Tab
     description: "",
 
-    // Rates & Vehicles arrays
     buy_rates: [],
     sell_rates: [],
     vehicles: [],
+    hbls: [], // linked HBLs array
   });
+
+  const cloneJobNoParam = searchParams.get("cloneJobNo");
 
   useEffect(() => {
     initForm();
-  }, [jobNoParam]);
+  }, [jobNoParam, cloneJobNoParam]);
 
   const initForm = async () => {
     try {
       setLoading(true);
+      try {
+        const chargesRes = await api.get("/invoice/charges");
+        if (chargesRes.data.success) {
+          setChargeOptions(chargesRes.data.charges || []);
+        }
+      } catch (err) {
+        console.error("Error loading charges:", err);
+      }
       const initRes = await api.get("/masterbl/init");
+      let nextJobNumber = 8000;
       if (initRes.data.success) {
         setCustomers(initRes.data.customers || []);
+        nextJobNumber = initRes.data.nextJobNo;
         if (!jobNoParam) {
-          setJobNo(initRes.data.nextJobNo);
+          setJobNo(nextJobNumber);
         }
       }
 
-      if (jobNoParam) {
-        setJobNo(jobNoParam);
-        const res = await api.get(`/masterbl/get/${jobNoParam}`);
+      const activeJobId = jobNoParam || cloneJobNoParam;
+      if (activeJobId) {
+        if (jobNoParam) {
+          setJobNo(jobNoParam);
+        } else {
+          setJobNo(nextJobNumber);
+        }
+        const res = await api.get(`/masterbl/get/${activeJobId}`);
         if (res.data.success) {
           const b = res.data.job;
 
-          // Parse manual parties
           let manualDetails = {};
           if (b.manual_party_details) {
             try {
@@ -578,7 +768,6 @@ export function SIMasterBLForm() {
             } catch (e) { }
           }
 
-          // Parse additional details
           let addDetails = {};
           if (b.additional_details) {
             try {
@@ -593,7 +782,7 @@ export function SIMasterBLForm() {
           const hasManualAgent = !b.agent && manualDetails.agent;
 
           setForm({
-            mbl_no: b.mbl_no || "",
+            mbl_no: cloneJobNoParam ? "" : (b.mbl_no || ""),
             date_of_nomination: b.date_of_nomination ? b.date_of_nomination.slice(0, 10) : "",
             shipper: hasManualShipper ? manualDetails.shipper : (b.shipper || ""),
             consignee: hasManualConsignee ? manualDetails.consignee : (b.consignee || ""),
@@ -603,7 +792,7 @@ export function SIMasterBLForm() {
             final_pod: b.final_pod || "",
             container_size: b.container_size || "",
             container_count: b.container_count || 1,
-            status: b.status || "Draft",
+            status: cloneJobNoParam ? "Draft" : (b.status || "Draft"),
             eta: b.eta ? b.eta.slice(0, 10) : "",
             etd: b.etd ? b.etd.slice(0, 10) : "",
             shipper_invoice_no: b.shipper_invoice_no || "",
@@ -617,7 +806,6 @@ export function SIMasterBLForm() {
             freight_amount: b.freight_amount || "",
             freight_currency: b.freight_currency || "USD",
 
-            // Extra Main fields
             enquiry_no: addDetails.enquiry_no || "",
             mbl_date: addDetails.mbl_date ? addDetails.mbl_date.slice(0, 10) : "",
             services: addDetails.services || "",
@@ -642,7 +830,6 @@ export function SIMasterBLForm() {
             execution_branch: "Mumbai",
             gst_state_from: "Maharashtra",
 
-            // Extra Party fields
             carrier: addDetails.carrier || "",
             line: addDetails.line || "",
             notify: addDetails.notify || "",
@@ -651,25 +838,21 @@ export function SIMasterBLForm() {
             do_date: addDetails.do_date ? addDetails.do_date.slice(0, 10) : "",
             delivery_date: addDetails.delivery_date ? addDetails.delivery_date.slice(0, 10) : "",
 
-            // Packages fields
             no_of_packages: addDetails.no_of_packages || "",
             package_type: addDetails.package_type || "Carton",
             no_of_pallets: addDetails.no_of_pallets || "",
             volume: addDetails.volume || "",
 
-            // Inventory + Container
             inv_container_type: addDetails.inv_container_type || "",
             inv_no_of_units: addDetails.inv_no_of_units || "",
             inv_csize: addDetails.inv_csize || "",
             containers: addDetails.containers || [],
-
-            // Description
             description: addDetails.description || b.marks_and_numbers || "",
 
-            // Grids
             buy_rates: addDetails.buy_rates || [],
             sell_rates: addDetails.sell_rates || [],
             vehicles: addDetails.vehicles || [],
+            hbls: b.hbls || [],
           });
         }
       }
@@ -693,7 +876,6 @@ export function SIMasterBLForm() {
     }
 
     try {
-      // Re-calculate totals and freight values
       const firstSellRate = form.sell_rates?.find(r => r.amount && parseFloat(r.amount) > 0);
       const calculatedFreightAmount = form.sell_rates?.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0) || 0;
       const freightCurrency = firstSellRate?.currency || "USD";
@@ -703,7 +885,6 @@ export function SIMasterBLForm() {
         finalStatus = "Sell Rate Updated";
       }
 
-      // Structure additional details for the JSON storage
       const additionalDetailsObj = {
         enquiry_no: form.enquiry_no,
         mbl_date: form.mbl_date,
@@ -739,12 +920,12 @@ export function SIMasterBLForm() {
 
         no_of_packages: form.no_of_packages,
         package_type: form.package_type,
-        no_of_pallets: form.no_of_pallets,
+        no_of_pallets: form.no_of_pallets || form.no_of_palette,
         volume: form.volume,
 
-        inv_container_type: form.inv_container_type,
-        inv_no_of_units: form.inv_no_of_units,
-        inv_csize: form.inv_csize,
+        inv_container_type: form.inv_container_type || form.container_size,
+        inv_no_of_units: form.inv_no_of_units || form.container_count,
+        inv_csize: form.inv_csize || form.container_size,
         containers: form.containers,
 
         description: form.description,
@@ -756,6 +937,7 @@ export function SIMasterBLForm() {
 
       const payload = {
         ...form,
+        no_of_palette: form.no_of_pallets || form.no_of_palette,
         status: finalStatus,
         freight_amount: calculatedFreightAmount,
         freight_currency: freightCurrency,
@@ -776,15 +958,26 @@ export function SIMasterBLForm() {
     }
   };
 
-  const tabs = [
-    "Main", "Party", "Packages", "Container", "Description", "BuyRates", "SellRates", "Vehicle"
-  ];  const labelStyle = "block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1 select-none";
+  const tabs = jobNoParam
+    ? ["Main", "Party", "Packages", "Container", "Description", "BuyRates", "SellRates", "Vehicle", "Linked HBLs"]
+    : ["Main", "Party", "Packages", "Container", "Description", "BuyRates", "SellRates", "Vehicle"];
+
+  const labelStyle = "block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1 select-none";
   const inputStyle = "w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 transition-all";
-  const disabledInputStyle = "w-full px-2 py-1 bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700/50 rounded text-xs text-slate-700 dark:text-slate-300 cursor-not-allowed select-none transition-all";
+
+  if (loading) {
+    return (
+      <DashboardLayout title="MasterBL Form">
+        <div className="flex justify-center h-96 items-center">
+          <div className="animate-spin h-10 w-10 border-b-2 border-indigo-600 rounded-full" />
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout title={jobNoParam ? "Edit SI MasterBL" : "New SI MasterBL"}>
-      {/* Title Header exactly like the screenshot */}
+      {/* Title Header */}
       <div className="flex items-center justify-between pb-2 mb-4 border-b border-slate-200 dark:border-slate-700/80">
         <div className="flex items-center gap-2 text-slate-700 dark:text-slate-200">
           <Edit2 size={16} className="text-slate-500" />
@@ -812,11 +1005,10 @@ export function SIMasterBLForm() {
                 key={tb}
                 type="button"
                 onClick={() => setActiveTab(tb)}
-                className={`px-4 py-1.5 text-xs font-semibold tracking-wide transition-all rounded-t border-t border-l border-r ${
-                  isActive
-                    ? 'bg-white dark:bg-dark-card border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white border-b-white dark:border-b-dark-card'
-                    : 'bg-transparent border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 border-b-slate-200 dark:border-b-slate-700/80'
-                }`}
+                className={`px-4 py-1.5 text-xs font-semibold tracking-wide transition-all rounded-t border-t border-l border-r ${isActive
+                  ? 'bg-white dark:bg-dark-card border-slate-200 dark:border-slate-700/80 text-slate-800 dark:text-white border-b-white dark:border-b-dark-card'
+                  : 'bg-transparent border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 border-b-slate-200 dark:border-b-slate-700/80'
+                  }`}
               >
                 {tb}
               </button>
@@ -824,16 +1016,21 @@ export function SIMasterBLForm() {
           })}
         </div>
 
-        {/* Dynamic Full-Width Form Panel with integrated bottom/side roundings */}
+        {/* Dynamic Full-Width Form Panel */}
         <div className="bg-white dark:bg-dark-card p-6 border border-slate-200 dark:border-slate-700/80 rounded-b rounded-r shadow-sm">
+
           {/* TAB 1: MAIN */}
           {activeTab === "Main" && (
             <div className="space-y-6">
               <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Main Shipment Route & Invoicing Info</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className={labelStyle}><RequiredStar />MBL_No</label>
-                  <input type="text" name="mbl_no" value={form.mbl_no} onChange={handleInputChange} placeholder="Enter MBL No" className={inputStyle + " font-mono font-bold"} />
+                  <label className={labelStyle}>MBL_No</label>
+                  <input type="text" name="mbl_no" value={form.mbl_no} onChange={handleInputChange} placeholder="Enter MBL No" className={inputStyle + " font-mono font-semibold"} />
+                </div>
+                <div>
+                  <label className={labelStyle}>MBL Date</label>
+                  <input type="date" name="mbl_date" value={form.mbl_date} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Job Date</label>
@@ -844,10 +1041,6 @@ export function SIMasterBLForm() {
                   <input type="text" name="enquiry_no" value={form.enquiry_no} onChange={handleInputChange} placeholder="Enquiry No" className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}>MBL Date</label>
-                  <input type="date" name="mbl_date" value={form.mbl_date} onChange={handleInputChange} className={inputStyle} />
-                </div>
-                <div>
                   <label className={labelStyle}>Services</label>
                   <select name="services" value={form.services} onChange={handleInputChange} className={inputStyle}>
                     <option value="">Select Service</option>
@@ -855,16 +1048,11 @@ export function SIMasterBLForm() {
                   </select>
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Shipment Type</label>
-                  <select name="shipment_type" value={form.shipment_type} onChange={handleInputChange} className={inputStyle}>
-                    <option value="">Select Type</option>
-                    <option value="FCL">FCL</option>
-                    <option value="LCL">LCL</option>
-                    <option value="Air">Air</option>
-                  </select>
+                  <label className={labelStyle}>Shipment Type</label>
+                  <input type="text" name="shipment_type" value={form.shipment_type} onChange={handleInputChange} placeholder="e.g. FCL / LCL" className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />INCO Terms</label>
+                  <label className={labelStyle}>INCO Terms</label>
                   <select name="inco_terms" value={form.inco_terms} onChange={handleInputChange} className={inputStyle}>
                     <option value="">Select INCO Term</option>
                     {INCO_TERMS_LIST.map(v => <option key={v} value={v}>{v}</option>)}
@@ -873,28 +1061,26 @@ export function SIMasterBLForm() {
                 <div>
                   <PartySelect
                     label="Client"
-                    name="shipper"
-                    value={form.shipper}
+                    name="client"
+                    value={form.client}
                     onChange={handleInputChange}
                     customers={customers}
                     isHybrid={true}
-                    required={true}
-                    RequiredStar={RequiredStar}
                     placeholder="Search client..."
                     labelClassName={labelStyle}
                     inputClassName={inputStyle}
                   />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Sales</label>
-                  <input type="text" name="sales" value={form.sales} disabled placeholder="Sales Rep" className={disabledInputStyle} />
+                  <label className={labelStyle}>Sales</label>
+                  <input type="text" name="sales" value={form.sales} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>CS</label>
-                  <input type="text" name="cs" value={form.cs} disabled placeholder="CS Exec" className={disabledInputStyle} />
+                  <input type="text" name="cs" value={form.cs} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Freight Status</label>
+                  <label className={labelStyle}>Freight Status</label>
                   <select name="freight_status" value={form.freight_status} onChange={handleInputChange} className={inputStyle}>
                     <option value="">Select Freight Status</option>
                     {FREIGHT_STATUS_LIST.map(v => <option key={v} value={v}>{v}</option>)}
@@ -909,28 +1095,55 @@ export function SIMasterBLForm() {
                 </div>
                 <div>
                   <label className={labelStyle}>Vessel</label>
-                  <input type="text" name="shipping_line_name" value={form.shipping_line_name} onChange={handleInputChange} placeholder="Vessel name / Line" className={inputStyle} />
+                  <input type="text" name="shipping_line_name" value={form.shipping_line_name} onChange={handleInputChange} placeholder="Vessel Name" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Voyage</label>
-                  <input type="text" name="voyage" value={form.voyage} onChange={handleInputChange} placeholder="Voyage" className={inputStyle} />
+                  <input type="text" name="voyage" value={form.voyage} onChange={handleInputChange} placeholder="Voyage No" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>P.O.R.</label>
-                  <input type="text" name="por" value={form.por} onChange={handleInputChange} placeholder="POR" className={inputStyle} />
+                  <input type="text" name="por" value={form.por} onChange={handleInputChange} placeholder="Place of Receipt" className={inputStyle} />
                 </div>
                 <div>
-                  <PortSelect label="P.O.L." name="pol" value={form.pol} onChange={handleInputChange} placeholder="Select POL Port" labelClassName={labelStyle} inputClassName={inputStyle} />
+
+                  <PortSelect
+                    label="P.O.L. Port"
+                    name="pol"
+                    value={form.pol}
+                    onChange={handleInputChange}
+                    placeholder="Search Port of Loading..."
+                    labelClassName={labelStyle}
+                    inputClassName={inputStyle}
+                  />
                 </div>
                 <div>
-                  <PortSelect label="P.O.D." name="pod" value={form.pod} onChange={handleInputChange} placeholder="Select POD Port" labelClassName={labelStyle} inputClassName={inputStyle} />
+
+                  <PortSelect
+                    label="P.O.D. Port"
+                    name="pod"
+                    value={form.pod}
+                    onChange={handleInputChange}
+                    placeholder="Search Port of Discharge..."
+                    labelClassName={labelStyle}
+                    inputClassName={inputStyle}
+                  />
                 </div>
                 <div>
-                  <PortSelect label="F.P.D" name="final_pod" value={form.final_pod} onChange={handleInputChange} placeholder="Select FPD Port" labelClassName={labelStyle} inputClassName={inputStyle} />
+
+                  <PortSelect
+                    label="F.P.D Port"
+                    name="final_pod"
+                    value={form.final_pod}
+                    onChange={handleInputChange}
+                    placeholder="Search Final Destination..."
+                    labelClassName={labelStyle}
+                    inputClassName={inputStyle}
+                  />
                 </div>
                 <div>
                   <label className={labelStyle}>C.F.S.</label>
-                  <input type="text" name="cfs" value={form.cfs} onChange={handleInputChange} placeholder="CFS Details" className={inputStyle} />
+                  <input type="text" name="cfs" value={form.cfs} onChange={handleInputChange} placeholder="CFS Name" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Item No.</label>
@@ -973,16 +1186,16 @@ export function SIMasterBLForm() {
                   <input type="text" name="cfs_filing" value={form.cfs_filing} onChange={handleInputChange} placeholder="CFS Filing" className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Branch Code</label>
-                  <input type="text" name="branch_code" value={form.branch_code} disabled placeholder="Branch Code" className={disabledInputStyle} />
+                  <label className={labelStyle}>Branch Code</label>
+                  <input type="text" name="branch_code" value={form.branch_code} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />Execution Branch</label>
-                  <input type="text" name="execution_branch" value={form.execution_branch} disabled placeholder="Execution Branch" className={disabledInputStyle} />
+                  <label className={labelStyle}>Execution Branch</label>
+                  <input type="text" name="execution_branch" value={form.execution_branch} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}><RequiredStar />GST State From</label>
-                  <input type="text" name="gst_state_from" value={form.gst_state_from} disabled placeholder="GST State From" className={disabledInputStyle} />
+                  <label className={labelStyle}>GST State From</label>
+                  <input type="text" name="gst_state_from" value={form.gst_state_from} onChange={handleInputChange} className={inputStyle} />
                 </div>
               </div>
             </div>
@@ -1029,7 +1242,7 @@ export function SIMasterBLForm() {
                     onChange={handleInputChange}
                     customers={customers}
                     isHybrid={true}
-                    placeholder="Search Overseas Agent..."
+                    placeholder="Search Agent..."
                     labelClassName={labelStyle}
                     inputClassName={inputStyle}
                   />
@@ -1050,22 +1263,13 @@ export function SIMasterBLForm() {
                 </div>
 
                 <div>
-                  <PartySelect
-                    label="Shipping Line / Carrier"
-                    name="carrier"
-                    value={form.carrier}
-                    onChange={handleInputChange}
-                    customers={customers}
-                    isHybrid={false}
-                    placeholder="Search Carrier..."
-                    labelClassName={labelStyle}
-                    inputClassName={inputStyle}
-                  />
+                  <label className={labelStyle}>Shipping Line / Carrier</label>
+                  <input type="text" name="carrier" value={form.carrier} onChange={handleInputChange} placeholder="Carrier" className={inputStyle} />
                 </div>
 
                 <div>
                   <label className={labelStyle}>Line Code</label>
-                  <input type="text" name="line" value={form.line} onChange={handleInputChange} placeholder="Line code" className={inputStyle} />
+                  <input type="text" name="line" value={form.line} onChange={handleInputChange} placeholder="Line Code" className={inputStyle} />
                 </div>
 
                 <div>
@@ -1126,7 +1330,7 @@ export function SIMasterBLForm() {
                 </div>
                 <div>
                   <label className={labelStyle}>No Of Pallets</label>
-                  <input type="number" name="no_of_palette" value={form.no_of_palette} onChange={handleInputChange} placeholder="e.g. 10" className={inputStyle} />
+                  <input type="number" name="no_of_pallets" value={form.no_of_pallets} onChange={handleInputChange} placeholder="e.g. 10" className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Gross Weight (kg)</label>
@@ -1154,19 +1358,19 @@ export function SIMasterBLForm() {
                   <div>
                     <label className={labelStyle}>Container Size Type (CSize)</label>
                     <select name="container_size" value={form.container_size} onChange={handleInputChange} className={inputStyle}>
-                      <option value="">Select Size</option>
-                      {CONTAINER_SIZES.map(sz => <option key={sz} value={sz}>{sz}</option>)}
+                      <option value="">Select Size Type</option>
+                      {CONTAINER_SIZES.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className={labelStyle}>No Of Units (Count)</label>
-                    <input type="number" name="container_count" value={form.container_count} onChange={handleInputChange} className={inputStyle} />
+                    <input type="number" name="container_count" value={form.container_count} onChange={handleInputChange} placeholder="Number of Units" className={inputStyle} />
                   </div>
                   <div>
                     <label className={labelStyle}>Inventory Cargo Type</label>
                     <select name="cargo_type" value={form.cargo_type} onChange={handleInputChange} className={inputStyle}>
                       <option value="">Select Cargo Type</option>
-                      {CARGO_TYPES.map(c => <option key={c} value={c}>{c}</option>)}
+                      {CARGO_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
                   </div>
                 </div>
@@ -1212,6 +1416,7 @@ export function SIMasterBLForm() {
                 rows={form.buy_rates}
                 customers={customers}
                 isBuy={true}
+                chargeOptions={chargeOptions}
                 onChange={(updated) => setForm(prev => ({ ...prev, buy_rates: updated }))}
                 onAddRow={(newRow) => setForm(prev => ({ ...prev, buy_rates: [...prev.buy_rates, newRow] }))}
                 onDeleteRow={(idx) => setForm(prev => ({
@@ -1229,6 +1434,8 @@ export function SIMasterBLForm() {
                 rows={form.sell_rates}
                 customers={customers}
                 isBuy={false}
+                consignee={form.consignee}
+                chargeOptions={chargeOptions}
                 onChange={(updated) => setForm(prev => ({ ...prev, sell_rates: updated }))}
                 onAddRow={(newRow) => setForm(prev => ({ ...prev, sell_rates: [...prev.sell_rates, newRow] }))}
                 onDeleteRow={(idx) => setForm(prev => ({
@@ -1254,6 +1461,59 @@ export function SIMasterBLForm() {
             </div>
           )}
 
+          {/* TAB 9: LINKED HBLS */}
+          {activeTab === "Linked HBLs" && (
+            <div className="space-y-6">
+              <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Linked House BLs (HBLs)</h3>
+              {form.hbls && form.hbls.length > 0 ? (
+                <div className="overflow-x-auto border border-slate-200 dark:border-slate-700/80 rounded-xl">
+                  <table className="w-full text-left text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-700">
+                        <th className="p-4">HBL No</th>
+                        <th className="p-4">Shipper</th>
+                        <th className="p-4">Consignee</th>
+                        <th className="p-4">Status</th>
+                        <th className="p-4">Freight Amount</th>
+                        <th className="p-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                      {form.hbls.map(h => (
+                        <tr key={h.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10">
+                          <td className="p-4 font-mono font-medium text-indigo-600 dark:text-indigo-400">{h.hbl_no}</td>
+                          <td className="p-4">{h.shipper_name || "—"}</td>
+                          <td className="p-4">{h.consignee_name || "—"}</td>
+                          <td className="p-4">
+                            <span className="inline-block bg-[#5c4084] text-white text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                              {h.status || "DRAFT"}
+                            </span>
+                          </td>
+                          <td className="p-4 font-semibold">
+                            {h.freight_amount ? `${h.freight_amount} ${h.freight_currency || "USD"}` : "—"}
+                          </td>
+                          <td className="p-4 text-right">
+                            <button
+                              type="button"
+                              onClick={() => navigate(`/si-housebl-form?id=${h.id}`)}
+                              className="px-3 py-1 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 rounded hover:bg-indigo-100 transition-colors text-xs font-semibold"
+                            >
+                              Edit HBL
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-slate-500 italic p-4 text-center">
+                  No House BLs are currently linked to this Master BL job.
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Form Actions Footer */}
           <div className="pt-6 mt-8 border-t border-slate-100 dark:border-slate-800 flex justify-end gap-3">
             <button
@@ -1268,7 +1528,7 @@ export function SIMasterBLForm() {
               onClick={handleSave}
               className="flex items-center gap-2 px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider shadow-md hover:shadow-lg transition-all"
             >
-              <Save size={16} /> Save MBL Job
+              <Save size={16} /> Save MasterBL Job
             </button>
           </div>
 

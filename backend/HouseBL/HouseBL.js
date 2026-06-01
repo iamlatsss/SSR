@@ -5,6 +5,7 @@ import { knexDB } from "../Database.js";
 const router = express.Router();
 
 const ALLOWED_FIELDS = [
+  "job_no",
   "date_of_nomination",
   "hbl_no",
   "mbl_no",
@@ -68,34 +69,26 @@ function processHybridFields(inputBody, targetData) {
   }
 }
 
+// Helper to sanitize dates
+function sanitizeDates(targetData) {
+  const dateFields = ["date_of_nomination", "invoice_date"];
+  dateFields.forEach(f => {
+    if (targetData[f] === "") {
+      targetData[f] = null;
+    }
+  });
+}
+
 // HouseBL Init
 router.get("/init", authenticateJWT, async (req, res) => {
   try {
-    const dbName = process.env.MYSQL_DATABASE || 'ssr';
+    // 1. Get Customers
+    const customers = await knexDB("Customers").select("customer_id", "name", "address", "office_address", "branch_office", "gstin", "customer_type");
 
-    // 1. Get AUTO_INCREMENT from schema
-    const [status] = await knexDB.raw(
-      `SELECT AUTO_INCREMENT 
-       FROM information_schema.TABLES 
-       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = 'HouseBL'`,
-      [dbName]
-    );
-
-    // 2. Get MAX(job_no) from table
-    const [maxResult] = await knexDB("HouseBL").max("job_no as maxJobNo");
-
-    const autoIncrementVal = status[0]?.AUTO_INCREMENT || 9000;
-    const maxJobNo = maxResult.maxJobNo || 8999;
-
-    const nextJobNo = Math.max(autoIncrementVal, maxJobNo + 1);
-
-    // 3. Get Customers
-    const customers = await knexDB("Customers").select("customer_id", "name", "customer_type");
-
-    // 4. Get active MasterBLs to populate MBL dropdown in HBL form
+    // 2. Get active MasterBLs to populate MBL dropdown in HBL form
     const masterBLs = await knexDB("MasterBL").select("mbl_no", "job_no");
 
-    res.json({ success: true, nextJobNo, customers, masterBLs });
+    res.json({ success: true, nextJobNo: null, customers, masterBLs });
   } catch (error) {
     console.error("Error initializing HouseBL:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -118,6 +111,7 @@ router.post("/insert", authenticateJWT, async (req, res) => {
     }
 
     processHybridFields(req.body, insertData);
+    sanitizeDates(insertData);
 
     if (!insertData.status) {
       insertData.status = 'Draft';
@@ -127,16 +121,16 @@ router.post("/insert", authenticateJWT, async (req, res) => {
       insertData.status = 'Sell Rate Updated';
     }
 
-    const [jobNo] = await knexDB('HouseBL').insert(insertData);
-    res.status(201).json({ success: true, message: "HouseBL Job created", JobNo: jobNo });
+    const [hblId] = await knexDB('HouseBL').insert(insertData);
+    res.status(201).json({ success: true, message: "HouseBL Job created", id: hblId });
   } catch (error) {
     console.error("Error inserting HouseBL:", error);
     res.status(500).json({ success: false, message: "Internal server error: " + error.message });
   }
 });
 
-// Get Specific HouseBL by JobNo with MasterBL Sync
-router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
+// Get Specific HouseBL by ID with MasterBL Sync
+router.get("/get/:id", authenticateJWT, async (req, res) => {
   try {
     const job = await knexDB('HouseBL')
       .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
@@ -159,7 +153,7 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
         'M.agent as agent',
         knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(M.manual_party_details, '$.agent'))) as agent_name")
       )
-      .where({ 'HouseBL.job_no': req.params.JobNo })
+      .where({ 'HouseBL.id': req.params.id })
       .first();
 
     if (!job) {
@@ -206,8 +200,8 @@ router.get("/get", authenticateJWT, async (req, res) => {
   }
 });
 
-// Update HouseBL by JobNo
-router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
+// Update HouseBL by ID
+router.put("/update/:id", authenticateJWT, async (req, res) => {
   const updateData = {};
 
   for (const key of ALLOWED_FIELDS) {
@@ -219,7 +213,7 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
   try {
     // Hybrid field handling
     if (req.body.shipper !== undefined || req.body.consignee !== undefined) {
-      const current = await knexDB('HouseBL').select('manual_party_details').where({ job_no: req.params.jobNo }).first();
+      const current = await knexDB('HouseBL').select('manual_party_details').where({ id: req.params.id }).first();
       let currentManual = {};
       if (current && current.manual_party_details) {
         try {
@@ -232,8 +226,10 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
       processHybridFields(mockBody, updateData);
     }
 
+    sanitizeDates(updateData);
+
     // Status state machine based on recent activity
-    const currentJob = await knexDB('HouseBL').where({ job_no: req.params.jobNo }).first();
+    const currentJob = await knexDB('HouseBL').where({ id: req.params.id }).first();
     if (currentJob) {
       let finalStatus = updateData.status || currentJob.status;
 
@@ -246,7 +242,7 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
       updateData.status = finalStatus;
     }
 
-    const affectedRows = await knexDB('HouseBL').where({ job_no: req.params.jobNo }).update(updateData);
+    const affectedRows = await knexDB('HouseBL').where({ id: req.params.id }).update(updateData);
     if (affectedRows === 0) {
       return res.status(404).json({ success: false, message: "HouseBL job not found" });
     }

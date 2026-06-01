@@ -77,6 +77,16 @@ function processHybridFields(inputBody, targetData) {
   }
 }
 
+// Helper to sanitize dates
+function sanitizeDates(targetData) {
+  const dateFields = ["date_of_nomination", "eta", "etd", "invoice_date"];
+  dateFields.forEach(f => {
+    if (targetData[f] === "") {
+      targetData[f] = null;
+    }
+  });
+}
+
 // MasterBL Init
 router.get("/init", authenticateJWT, async (req, res) => {
   try {
@@ -99,7 +109,7 @@ router.get("/init", authenticateJWT, async (req, res) => {
     const nextJobNo = Math.max(autoIncrementVal, maxJobNo + 1);
 
     // 3. Get Customers
-    const customers = await knexDB("Customers").select("customer_id", "name", "customer_type");
+    const customers = await knexDB("Customers").select("customer_id", "name", "address", "office_address", "branch_office", "gstin", "customer_type");
 
     res.json({ success: true, nextJobNo, customers });
   } catch (error) {
@@ -124,6 +134,7 @@ router.post("/insert", authenticateJWT, async (req, res) => {
     }
 
     processHybridFields(req.body, insertData);
+    sanitizeDates(insertData);
 
     // Automatic status logic: Draft by default, Sell Rate Updated if freight_amount is provided
     if (!insertData.status) {
@@ -162,6 +173,20 @@ router.get("/get-by-mbl/:mblNo", authenticateJWT, async (req, res) => {
       return res.status(404).json({ success: false, message: "MasterBL not found" });
     }
 
+    // Fetch linked HBLs
+    const hbls = await knexDB('HouseBL')
+      .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
+      .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+      .select(
+        'HouseBL.*',
+        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
+        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.consignee'))) as consignee_name")
+      )
+      .where({ mbl_no: job.mbl_no })
+      .orWhere({ job_no: job.job_no });
+
+    job.hbls = hbls;
+
     res.json({ success: true, job });
   } catch (error) {
     console.error("Error fetching MasterBL by MBL:", error);
@@ -189,6 +214,20 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
       return res.status(404).json({ success: false, message: "MasterBL not found" });
     }
 
+    // Fetch linked HBLs
+    const hbls = await knexDB('HouseBL')
+      .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
+      .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+      .select(
+        'HouseBL.*',
+        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
+        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.consignee'))) as consignee_name")
+      )
+      .where({ mbl_no: job.mbl_no })
+      .orWhere({ job_no: job.job_no });
+
+    job.hbls = hbls;
+
     res.json({ success: true, job });
   } catch (error) {
     console.error("Error fetching MasterBL:", error);
@@ -211,7 +250,23 @@ router.get("/get", authenticateJWT, async (req, res) => {
       )
       .orderBy('MasterBL.created_at', 'desc');
 
-    res.json({ success: true, jobs });
+    // Fetch all HouseBLs
+    const hbls = await knexDB('HouseBL')
+      .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
+      .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+      .select(
+        'HouseBL.*',
+        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
+        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.consignee'))) as consignee_name")
+      );
+
+    // Map HBLs to their parent MBLs
+    const jobsWithHbls = jobs.map(job => {
+      const linked = hbls.filter(h => h.mbl_no === job.mbl_no || h.job_no === job.job_no);
+      return { ...job, hbls: linked };
+    });
+
+    res.json({ success: true, jobs: jobsWithHbls });
   } catch (error) {
     console.error("Error fetching all MasterBL jobs:", error);
     res.status(500).json({ success: false, message: "Internal server error" });
@@ -243,6 +298,8 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
       const mockBody = { ...req.body, manual_party_details: currentManual };
       processHybridFields(mockBody, updateData);
     }
+
+    sanitizeDates(updateData);
 
     // Status state machine based on recent activity
     const currentJob = await knexDB('MasterBL').where({ job_no: req.params.jobNo }).first();
