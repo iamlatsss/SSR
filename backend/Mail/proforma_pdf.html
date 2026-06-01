@@ -1,304 +1,197 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html>
 <head>
-  <meta charset="utf-8"/>
-  <title>Proforma Invoice - SSR Logistic Solutions</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <style>
-    :root {
-      --border: #000;
-      --muted: #444;
-      --accent: #f5f5f5;
-      --font: "Calibri", "Helvetica", Arial, sans-serif;
-    }
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: #fff;
-      font-family: var(--font);
-      color: #000;
-      -webkit-print-color-adjust: exact;
-    }
-    .page {
-      max-width: 900px;
-      margin: 10px auto;
-      padding: 20px;
-      border: 1px solid var(--border);
-      box-sizing: border-box;
-      position: relative;
-    }
-    .meta {
-      text-align: right;
-      font-size: 10px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    header {
-      display: flex;
-      align-items: center;
-      gap: 15px;
-      margin-bottom: 12px;
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 8px;
-    }
-    header img {
-      height: 65px;
-      width: auto;
-    }
-    header .org {
-      flex: 1;
-      text-align: center;
-      line-height: 1.2;
-    }
-    header .org h1 {
-      margin: 0;
-      font-size: 20px;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-    header .org .sub {
-      font-size: 11px;
-      margin-top: 4px;
-      color: #333;
-    }
-    h2.title {
-      text-align: center;
-      margin: 5px 0 10px;
-      font-size: 15px;
-      font-weight: 700;
-      text-decoration: underline;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    table.main {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 11px;
-      margin-bottom: 10px;
-    }
-    table.main th, table.main td {
-      border: 1px solid var(--border);
-      padding: 5px 6px;
-      vertical-align: top;
-      text-align: left;
-    }
-    table.main th {
-      background: var(--accent);
-      font-weight: 700;
-      width: 20%;
-    }
-    table.main td {
-      width: 30%;
-    }
-    .charges {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      font-size: 11px;
-    }
-    .charges th, .charges td {
-      border: 1px solid var(--border);
-      padding: 5px 6px;
-      text-align: left;
-    }
-    .charges th {
-      background: var(--accent);
-      font-weight: 700;
-      text-align: center;
-    }
-    .charges td.num {
-      text-align: right;
-    }
-    .charges td.center {
-      text-align: center;
-    }
-    .totals {
-      margin-top: 10px;
-      font-size: 12px;
-      font-weight: 700;
-      line-height: 1.4;
-      border: 1px solid var(--border);
-      padding: 8px;
-      background: #fafafa;
-    }
-    .terms {
-      margin-top: 10px;
-      border: 1px solid var(--border);
-      padding: 8px;
-      font-size: 10.5px;
-      line-height: 1.35;
-    }
-    .bank {
-      margin-top: 8px;
-      font-size: 11px;
-      line-height: 1.3;
-    }
-    .sign {
-      display: flex;
-      justify-content: space-between;
-      margin-top: 15px;
-      font-size: 11px;
-    }
-    .source {
-      margin-top: 8px;
-      font-size: 9px;
-      color: var(--muted);
-      text-align: right;
-    }
-    @media print {
-      body {
-        background: #fff;
-      }
-      .page {
-        border: none;
-        margin: 0;
-        padding: 0;
-        max-width: 100%;
-      }
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Proforma Invoice</title>
+<style>
+@page { size:A4; margin:10mm; }
+body{font-family: Arial, sans-serif; font-size:11px; margin:0; line-height: 1.35; color: #0f172a;}
+table{border-collapse:collapse; width:100%; margin-bottom: 6px;}
+td,th{border:1px solid #334155; padding:4px 6px; vertical-align:top}
+th{background-color: #f8fafc; font-weight: bold; text-align: left; color: #1e293b;}
+.center{text-align:center}
+.right{text-align:right}
+.bold{font-weight:bold}
+.header-title{font-size:19px; font-weight:bold; color: #1e3a8a; text-transform: uppercase;}
+.small{font-size:10px}
+.no-border{border:none!important}
+.pre-wrap{white-space: pre-line;}
+.charges-table td, .charges-table th {
+  padding: 3px 5px !important;
+  vertical-align: middle !important;
+  line-height: 1.25 !important;
+  word-wrap: break-word !important;
+}
+.charges-table th {
+  background-color: #f1f5f9 !important;
+}
+</style>
 </head>
 <body>
-  <div class="page">
-    <div class="meta">SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</div>
-    <header>
-      <img src="https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg" alt="SSR Logo">
-      <div class="org">
-        <h1>SSR LOGISTIC SOLUTIONS PVT. LTD.</h1>
-        <div class="sub">
-          Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi,<br>
-          Navi Mumbai - 400703, India • Tel.No : 7700990630 • Website: www.ssrlogistic.net
-        </div>
-      </div>
-    </header>
 
-    <h2 class="title">PROFORMA INVOICE ({{PRINT_TYPE_LABEL}})</h2>
+<table>
+<tr>
+<td style="width:120px; border: 1px solid #334155; text-align: center; vertical-align: middle;">
+<img src="{{company_logo}}" style="max-width:100px; max-height:75px; object-fit: contain;">
+</td>
+<td class="center" style="border: 1px solid #334155; padding: 6px;">
+<div class="header-title">{{company_name}}</div>
+<div class="pre-wrap" style="font-weight: 500; font-size: 10px; color: #475569; margin: 3px 0;">{{company_address}}</div>
+<div style="font-weight: bold; color: #1d4ed8; font-size: 10px;">Website: {{website}}</div>
+</td>
+</tr>
+</table>
 
-    <table class="main">
-      <tr>
-        <th>Party Name</th>
-        <td><strong>{{PARTY_NAME}}</strong><br>{{PARTY_ADDRESS}}<br>GSTIN: {{PARTY_GSTIN}}<br>State Code: {{PARTY_STATE}}</td>
-        <th>Proforma No.</th>
-        <td><strong>{{PROFORMA_NO}}</strong></td>
-      </tr>
-      <tr>
-        <th>Proforma Date</th>
-        <td>{{PROFORMA_DATE}}</td>
-        <th>Ref No. / Job No.</th>
-        <td>{{REF_NO}} / #{{JOB_NO}}</td>
-      </tr>
-      <tr>
-        <th>HBL No.</th>
-        <td>{{HBL_NO}}</td>
-        <th>MBL No.</th>
-        <td>{{MBL_NO}}</td>
-      </tr>
-      <tr>
-        <th>Vessel / Voyage</th>
-        <td>{{VESSEL_VOYAGE}}</td>
-        <th>POL</th>
-        <td>{{POL}}</td>
-      </tr>
-      <tr>
-        <th>FPD</th>
-        <td>{{FPD}}</td>
-        <th>IGM No.</th>
-        <td>{{IGM_NO}}</td>
-      </tr>
-      <tr>
-        <th>Line No. / Date</th>
-        <td>{{LINE_NO}}</td>
-        <th>Sub Line No.</th>
-        <td>{{SUB_LINE_NO}}</td>
-      </tr>
-      <tr>
-        <th>ETD Date</th>
-        <td>{{ETD_DATE}}</td>
-        <th>No. of Cntrs / Type</th>
-        <td>{{CNTRS_TYPE}}</td>
-      </tr>
-      <tr>
-        <th>Consignee</th>
-        <td>{{CONSIGNEE}}</td>
-        <th>Shipper</th>
-        <td>{{SHIPPER}}</td>
-      </tr>
-      <tr>
-        <th>Cargo Type</th>
-        <td>{{CARGO_TYPE}}</td>
-        <th>Shipping Line</th>
-        <td>{{SHIPPER_LINE}}</td>
-      </tr>
-      <tr>
-        <th>Cargo Weight (KGS)</th>
-        <td>{{CARGO_WEIGHT}}</td>
-        <th>Volume (CBM)</th>
-        <td>{{CBM}}</td>
-      </tr>
-      <tr>
-        <th>POD</th>
-        <td>{{POD}}</td>
-        <th>No. of Pkgs</th>
-        <td>{{NO_OF_PKGS}}</td>
-      </tr>
-      <tr>
-        <th>ETA Date</th>
-        <td>{{ETA_DATE}}</td>
-        <th>Ex Rate (USD/INR)</th>
-        <td>{{EX_RATE}}</td>
-      </tr>
-      <tr>
-        <th>Container No.</th>
-        <td colspan="3">{{CONTAINER_NO}}</td>
-      </tr>
-    </table>
+<table>
+<tr>
+<th style="width: 25%;">State: {{state}}</th>
+<th style="width: 25%;">State Code: {{state_code}}</th>
+<th style="width: 25%;">GST No: {{company_gst}}</th>
+<th style="width: 25%;">PAN No: {{company_pan}}</th>
+</tr>
+</table>
 
-    <!-- Dynamic charges grid with the correct header based on print_type -->
-    <table class="charges" aria-label="Charges Table">
-      {{CHARGES_THEAD}}
-      <tbody>
-        {{CHARGES_ROWS}}
-        {{SUBTOTAL_ROW}}
-      </tbody>
-    </table>
+<table>
+<tr><th class="center" colspan="2" style="font-size:15px; background-color: #f1f5f9; padding: 5px; border-bottom: 2px solid #1e3a8a; text-align: center;">PROFORMA INVOICE</th></tr>
 
-    <div class="totals">
-      {{TAX_ROWS}}
-      <strong>{{GRAND_TOTAL_LABEL}}: {{GRAND_TOTAL_VAL}}</strong><br>
-      <span style="font-size: 11px; text-transform: uppercase;">Amount in Words: {{GRAND_TOTAL_WORDS}}</span>
-    </div>
+<tr>
+<td style="width:50%; border: 1px solid #334155;">
+<b>Party Name:</b> <span style="font-weight: bold;">{{party_name}}</span><br>
+<b>Address:</b> <span class="pre-wrap">{{party_address}}</span><br>
+<b>GST No:</b> {{party_gst}}<br>
+<b>Place of Supply:</b> {{place_of_supply}}
+</td>
+<td style="width:50%; border: 1px solid #334155;">
+<b>Proforma No:</b> <span style="font-weight: bold;">{{proforma_no}}</span><br>
+<b>Proforma Date:</b> {{proforma_date}}<br>
+<b>Ref No:</b> {{ref_no}}
+</td>
+</tr>
 
-    <div class="terms">
-      <strong>Terms &amp; Conditions:</strong><br>
-      1) Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.<br>
-      2) Interest would be charged @ 24% p.a. on delayed payment.<br>
-      3) In case of any objection / reservation in the billed Invoice / Debit Note, the same must be lodged within 5 days from the issue date and a written receipt taken from our Accounts Manager.<br>
-      4) Payment to be made at Mumbai by A/c payee Cheque / NEFT / RTGS only and receipt for the same must be insisted.<br>
-      5) Any dispute subject to Mumbai Jurisdiction only.
-    </div>
+<tr>
+<td style="border: 1px solid #334155;">
+<b>HBL No:</b> {{hbl_no}} &nbsp;&nbsp;&nbsp;&nbsp; <b>Date:</b> {{hbl_date}}<br>
+<b>MBL No:</b> {{mbl_no}} &nbsp;&nbsp;&nbsp;&nbsp; <b>Date:</b> {{mbl_date}}<br>
+<b>Vessel/Voy:</b> {{vessel_voy}}<br>
+<b>POL:</b> {{pol}}<br>
+<b>FPD:</b> {{fpd}}<br>
+<b>IGM No:</b> {{igm_no}}<br>
+<b>Line No:</b> {{line_no}} &nbsp;&nbsp;&nbsp;&nbsp; <b>Date:</b> {{line_date}}<br>
+<b>Sub Line No:</b> {{sub_line_no}}<br>
+<b>ETD Date:</b> {{etd_date}}<br>
+<b>No. of Cntrs/Type:</b> {{container_type_count}}
+</td>
+<td style="border: 1px solid #334155;">
+<b>Consignee:</b> {{consignee}}<br>
+<b>Shipper:</b> {{shipper}}<br>
+<b>Cargo Type:</b> {{cargo_type}}<br>
+<b>Shipper Line:</b> {{shipper_line}}<br>
+<b>Cargo Weight:</b> {{cargo_weight}}<br>
+<b>CBM:</b> {{cbm}}<br>
+<b>POD:</b> {{pod}}<br>
+<b>No. of Pkgs:</b> {{no_of_pkgs}}<br>
+<b>ETA Date:</b> {{eta_date}}<br>
+<b>Ex Rate:</b> {{ex_rate}}
+</td>
+</tr>
 
-    <div class="bank">
-      <strong>Our Bank Details Are:</strong><br>
-      Bank Name : KOTAK MAHINDRA BANK LTD<br>
-      Account Number : 1050002555<br>
-      IFSC Code: KKBK0001370<br>
-      Branch: Vashi, Navi Mumbai
-    </div>
+<tr>
+<td colspan="2" style="border: 1px solid #334155;"><b>Container No:</b> {{container_numbers}}</td>
+</tr>
+</table>
 
-    <div class="sign">
-      <div>
-        PAN No: AAECS9908F<br>
-        GSTIN: 27AAECS9908F1Z0
-      </div>
-      <div style="text-align:right">
-        <strong>FOR SSR LOGISTIC SOLUTIONS PVT. LTD.</strong><br><br><br>
-        Accounts Department<br>
-        E &amp; O.E.<br>
-        <em>System generated Proforma Invoice. Does not require Signature</em>
-      </div>
-    </div>
+<table class="charges-table" style="table-layout: fixed; border-collapse: collapse; width: 100%; font-size: 11px;">
+<colgroup>
+<col style="width: 32%;">
+<col style="width: 7%;">
+<col style="width: 10%;">
+<col style="width: 5%;">
+<col style="width: 5%;">
+<col style="width: 10%;">
+<col style="width: 6%;">
+<col style="width: 10%;">
+<col style="width: 15%;">
+</colgroup>
+<thead>
+<tr style="background-color: #f1f5f9; font-weight: bold;">
+<th style="border: 1px solid #334155; padding: 4px 6px;">Charge Name</th>
+<th style="border: 1px solid #334155; text-align: center;">HSN/SAC</th>
+<th style="border: 1px solid #334155; text-align: right;">Rate Per Unit</th>
+<th style="border: 1px solid #334155; text-align: center;">Curr</th>
+<th style="border: 1px solid #334155; text-align: center;">Qty</th>
+<th style="border: 1px solid #334155; text-align: right;">Amount</th>
+<th style="border: 1px solid #334155; text-align: right;">GST Rate(%)</th>
+<th style="border: 1px solid #334155; text-align: right;">GST Amount</th>
+<th style="border: 1px solid #334155; text-align: right;">Total Amount</th>
+</tr>
+</thead>
+<tbody>
+{{#each charges}}
+<tr>
+<td style="border: 1px solid #334155; font-weight: bold; text-transform: uppercase;">{{charge_name}}</td>
+<td style="border: 1px solid #334155;" class="center">{{hsn_sac}}</td>
+<td style="border: 1px solid #334155;" class="right">{{rate}}</td>
+<td style="border: 1px solid #334155;" class="center">{{currency}}</td>
+<td style="border: 1px solid #334155;" class="center">{{qty}}</td>
+<td style="border: 1px solid #334155;" class="right">{{amount}}</td>
+<td style="border: 1px solid #334155;" class="right">{{gst_rate}}%</td>
+<td style="border: 1px solid #334155;" class="right">{{gst_amount}}</td>
+<td style="border: 1px solid #334155;" class="right">{{total_amount}}</td>
+</tr>
+{{/each}}
+</tbody>
+<tfoot>
+<tr style="background-color: #fafafa; font-weight: bold;">
+<td colspan="5" style="border: 1px solid #334155; text-align: right; padding-right: 6px;">Total / Subtotal:</td>
+<td class="right" style="border: 1px solid #334155;">{{taxable_total}}</td>
+<td colspan="2" class="right" style="border: 1px solid #334155;">{{gst_total}}</td>
+<td class="right" style="border: 1px solid #334155;">{{grand_total}}</td>
+</tr>
+{{#if is_intra_state}}
+<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">CGST 9%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{cgst}}</td></tr>
+<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">SGST 9%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{sgst}}</td></tr>
+<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">CGST ON FREIGHT @2.5%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{cgst_freight}}</td></tr>
+<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">SGST ON FREIGHT @2.5%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{sgst_freight}}</td></tr>
+{{else}}
+<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">IGST 18%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{igst}}</td></tr>
+<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">IGST ON FREIGHT @5%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{igst_freight}}</td></tr>
+{{/if}}
+</tfoot>
+</table>
 
-    <div class="source">Generated via SSR Logistics Platform on {{GENERATED_AT}}</div>
-  </div>
+<table>
+<tr>
+<td style="width: 60%; border: 1px solid #334155; font-size: 10px; font-weight: bold; text-transform: uppercase;">Amount in Words: {{amount_in_words}}</td>
+<td class="right" style="width: 40%; border: 1px solid #334155; font-weight: bold; font-size: 12px; background-color: #f8fafc; color: #1e3a8a;">{{currency_label}} TOTAL: {{grand_total}}</td>
+</tr>
+<tr><td colspan="2" style="border: 1px solid #334155; font-weight: 500;">Reverse Charge Amount : {{reverse_charge}}</td></tr>
+</table>
+
+<table>
+<tr><td class="pre-wrap" style="border: 1px solid #334155; font-size: 10px; color: #334155; line-height: 1.4;">
+<b>Terms & Conditions:</b><br>
+{{terms_conditions}}
+</td></tr>
+</table>
+
+<table>
+<tr>
+<td style="width:50%; border: 1px solid #334155; line-height: 1.4;">
+<b>Our Bank Details Are:</b><br>
+Bank Name: <span style="font-weight: bold;">{{bank_name}}</span><br>
+Account Number: <span style="font-weight: bold;">{{account_number}}</span><br>
+IFSC: <span style="font-weight: bold;">{{ifsc}}</span>
+</td>
+<td class="center" style="width:50%; border: 1px solid #334155; padding-top: 10px;">
+<b>FOR {{company_name}}</b><br>
+<img src="{{company_stamp}}" style="max-height:60px; width: auto; display: inline-block; vertical-align: middle; margin: 5px 0;"><br>
+<b>Accounts Department</b>
+</td>
+</tr>
+<tr>
+<td colspan="2" class="center" style="font-size: 9px; color: #64748b; border: 1px solid #334155; font-style: italic;">System generated Invoice. Does not require Signature</td>
+</tr>
+</table>
+
 </body>
 </html>

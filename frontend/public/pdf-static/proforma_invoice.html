@@ -66,15 +66,19 @@
     .charges {
       width:100%;
       border-collapse:collapse;
+      table-layout: fixed;
       margin-top:8px;
-      font-size:13px;
+      font-size:11px;
     }
     .charges th, .charges td {
       border:1px solid var(--border);
-      padding:6px 8px;
-      text-align:left;
+      padding:4px 6px;
+      vertical-align: middle;
     }
     .charges th { background:var(--accent); font-weight:700; }
+    .text-left { text-align: left !important; }
+    .text-center { text-align: center !important; }
+    .text-right { text-align: right !important; }
 
     .totals {
       margin-top:10px;
@@ -214,73 +218,84 @@
 
     <!-- Charges table -->
     <table class="charges" aria-label="Charges">
-      <tr>
-        <th>Charge Name</th>
-        <th>HSN / SAC</th>
-        <th>Rate Per Unit</th>
-        <th>Curr.</th>
-        <th>Qty</th>
-        <th>Amount</th>
-        <th>GST Rate(%)</th>
-        <th>GST Amount</th>
-        <th>Total Amount</th>
-      </tr>
-
-      <tr>
-        <td>OCEAN FREIGHT CHARGES (IGST -5%)</td>
-        <td>996521</td>
-        <td>1050.00</td>
-        <td>USD</td>
-        <td>1</td>
-        <td>90,405.00</td>
-        <td>5.00</td>
-        <td>4,520.25</td>
-        <td>94,925.25</td>
-      </tr>
-
-      <tr>
-        <td>SHIPPING LINE CHARGES (IGST -18%)</td>
-        <td>996759</td>
-        <td>31,510.00</td>
-        <td>INR</td>
-        <td>1</td>
-        <td>31,510.00</td>
-        <td>18.00</td>
-        <td>5,671.80</td>
-        <td>37,181.80</td>
-      </tr>
-
-      <tr>
-        <td>DO CHARGES (IGST -18%)</td>
-        <td>996719</td>
-        <td>2,500.00</td>
-        <td>INR</td>
-        <td>1</td>
-        <td>2,500.00</td>
-        <td>18.00</td>
-        <td>450.00</td>
-        <td>2,950.00</td>
-      </tr>
-
-      <tr>
-        <td>HAULAGE CHARGES (IGST -18%)</td>
-        <td>996759</td>
-        <td>77,788.00</td>
-        <td>INR</td>
-        <td>1</td>
-        <td>77,788.00</td>
-        <td>18.00</td>
-        <td>14,001.84</td>
-        <td>91,789.84</td>
-      </tr>
-
-      <tr>
-        <th colspan="5" style="text-align:right">SUBTOTAL</th>
-        <th>202,203.00</th>
-        <th></th>
-        <th>24,643.89</th>
-        <th>226,846.89</th>
-      </tr>
+      <colgroup>
+        <col style="width: 32%;" />
+        <col style="width: 7%;" />
+        <col style="width: 10%;" />
+        <col style="width: 5%;" />
+        <col style="width: 5%;" />
+        <col style="width: 10%;" />
+        <col style="width: 6%;" />
+        <col style="width: 10%;" />
+        <col style="width: 15%;" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="text-left">Charge Name</th>
+          <th class="text-center">HSN / SAC</th>
+          <th class="text-right">Rate Per Unit</th>
+          <th class="text-center">Curr.</th>
+          <th class="text-center">Qty</th>
+          <th class="text-right">Amount</th>
+          <th class="text-right">GST Rate(%)</th>
+          <th class="text-right">GST Amount</th>
+          <th class="text-right">Total Amount</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td class="text-left" style="font-weight: bold; text-transform: uppercase;">OCEAN FREIGHT CHARGES (IGST -5%)</td>
+          <td class="text-center">996521</td>
+          <td class="text-right">1050.00</td>
+          <td class="text-center">USD</td>
+          <td class="text-center">1</td>
+          <td class="text-right">90,405.00</td>
+          <td class="text-right">5.00</td>
+          <td class="text-right">4,520.25</td>
+          <td class="text-right">94,925.25</td>
+        </tr>
+        <tr>
+          <td class="text-left" style="font-weight: bold; text-transform: uppercase;">SHIPPING LINE CHARGES (IGST -18%)</td>
+          <td class="text-center">996759</td>
+          <td class="text-right">31,510.00</td>
+          <td class="text-center">INR</td>
+          <td class="text-center">1</td>
+          <td class="text-right">31,510.00</td>
+          <td class="text-right">18.00</td>
+          <td class="text-right">5,671.80</td>
+          <td class="text-right">37,181.80</td>
+        </tr>
+        <tr>
+          <td class="text-left" style="font-weight: bold; text-transform: uppercase;">DO CHARGES (IGST -18%)</td>
+          <td class="text-center">996719</td>
+          <td class="text-right">2,500.00</td>
+          <td class="text-center">INR</td>
+          <td class="text-center">1</td>
+          <td class="text-right">2,500.00</td>
+          <td class="text-right">18.00</td>
+          <td class="text-right">450.00</td>
+          <td class="text-right">2,950.00</td>
+        </tr>
+        <tr>
+          <td class="text-left" style="font-weight: bold; text-transform: uppercase;">HAULAGE CHARGES (IGST -18%)</td>
+          <td class="text-center">996759</td>
+          <td class="text-right">77,788.00</td>
+          <td class="text-center">INR</td>
+          <td class="text-center">1</td>
+          <td class="text-right">77,788.00</td>
+          <td class="text-right">18.00</td>
+          <td class="text-right">14,001.84</td>
+          <td class="text-right">91,789.84</td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr style="font-weight: bold; background: var(--accent);">
+          <td colspan="5" class="text-right" style="padding-right: 6px;">Total / Subtotal:</td>
+          <td class="text-right">202,203.00</td>
+          <td colspan="2" class="text-right">24,643.89</td>
+          <td class="text-right">226,846.89</td>
+        </tr>
+      </tfoot>
     </table>
 
     <div class="totals">

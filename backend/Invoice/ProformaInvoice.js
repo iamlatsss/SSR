@@ -6,6 +6,7 @@ import path from 'path';
 import puppeteer from 'puppeteer';
 import { uploadFile } from '../S3/S3Service.js';
 import { fileURLToPath } from 'url';
+import handlebars from 'handlebars';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -142,18 +143,13 @@ router.get("/init", authenticateJWT, async (req, res) => {
 router.get("/job-details/:jobNo", authenticateJWT, async (req, res) => {
     const jobNo = parseInt(req.params.jobNo);
     try {
-        let job = null;
+        let job = await knexDB("MasterBL").where({ job_no: jobNo }).first();
         let relatedHBLs = [];
         let type = 'MBL';
 
-        if (jobNo >= 8000 && jobNo < 9000) {
-            // MasterBL
-            job = await knexDB("MasterBL").where({ job_no: jobNo }).first();
-            if (job) {
-                relatedHBLs = await knexDB("HouseBL").where({ mbl_no: job.mbl_no }).select("job_no", "hbl_no");
-            }
-        } else if (jobNo >= 9000) {
-            // HouseBL
+        if (job) {
+            relatedHBLs = await knexDB("HouseBL").where({ mbl_no: job.mbl_no }).select("id", "job_no", "hbl_no");
+        } else {
             job = await knexDB("HouseBL").where({ job_no: jobNo }).first();
             type = 'HBL';
         }
@@ -185,7 +181,7 @@ router.get("/search-charges", authenticateJWT, async (req, res) => {
     try {
         let record = null;
         if (mbl_hbl_type === 'MBL') {
-            record = await knexDB("MasterBL").where({ mbl_no }).first();
+            record = await knexDB("MasterBL").where({ mbl_no: mbl_hbl_no }).first();
         } else {
             record = await knexDB("HouseBL").where({ hbl_no: mbl_hbl_no }).first();
         }
@@ -213,6 +209,33 @@ router.get("/search-charges", authenticateJWT, async (req, res) => {
     }
 });
 
+// Helper to get State Name and State Code from GSTIN or Address
+const getStateByGstin = (gstin, clientAddress = '') => {
+    const code = gstin ? String(gstin).substring(0, 2) : '';
+    const stateMap = {
+        '01': 'Jammu & Kashmir', '02': 'Himachal Pradesh', '03': 'Punjab', '04': 'Chandigarh',
+        '05': 'Uttarakhand', '06': 'Haryana', '07': 'Delhi', '08': 'Rajasthan',
+        '09': 'Uttar Pradesh', '10': 'Bihar', '11': 'Sikkim', '12': 'Arunachal Pradesh',
+        '13': 'Nagaland', '14': 'Manipur', '15': 'Mizoram', '16': 'Tripura',
+        '17': 'Meghalaya', '18': 'Assam', '19': 'West Bengal', '20': 'Jharkhand',
+        '21': 'Odisha', '22': 'Chhattisgarh', '23': 'Madhya Pradesh', '24': 'Gujarat',
+        '26': 'Dadra & Nagar Haveli and Daman & Diu', '27': 'Maharashtra', '29': 'Karnataka',
+        '30': 'Goa', '31': 'Lakshadweep', '32': 'Kerala', '33': 'Tamil Nadu',
+        '34': 'Puducherry', '35': 'Andaman & Nicobar Islands', '36': 'Telangana',
+        '37': 'Andhra Pradesh', '38': 'Ladakh'
+    };
+    if (stateMap[code]) {
+        return { name: stateMap[code], code };
+    }
+    const addrLower = String(clientAddress).toLowerCase();
+    for (const [c, name] of Object.entries(stateMap)) {
+        if (addrLower.includes(name.toLowerCase())) {
+            return { name, code: c };
+        }
+    }
+    return { name: 'Maharashtra', code: '27' };
+};
+
 // 4. Save and Generate PDF
 router.post("/save", authenticateJWT, async (req, res) => {
     const {
@@ -236,7 +259,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
     }
 
     try {
-        // Insert a record into database first to get the sequential ID starting at 5300
+        // Insert record into DB to get Sequential ID
         const payload = {
             job_no: jobNo,
             mbl_hbl_type: mblHblType,
@@ -250,7 +273,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
             proforma_date: proformaDate || new Date().toISOString().split('T')[0],
             items: JSON.stringify(items),
             totals: JSON.stringify(totals),
-            pdf_link: null // will be updated shortly
+            pdf_link: null
         };
 
         const [insertedId] = await knexDB("ProformaInvoices").insert(payload);
@@ -259,12 +282,12 @@ router.post("/save", authenticateJWT, async (req, res) => {
         // Update proforma_no field
         await knexDB("ProformaInvoices").where({ id: insertedId }).update({ proforma_no: proformaNoStr });
 
-        // Retrieve the linked Job details to fill metadata in A4 layout
+        // Retrieve Linked Job details to fill metadata
         let jobRecord = null;
         if (mblHblType === 'MBL') {
             jobRecord = await knexDB("MasterBL").where({ job_no: jobNo }).first();
         } else {
-            jobRecord = await knexDB("HouseBL").where({ job_no: jobNo }).first();
+            jobRecord = await knexDB("HouseBL").where({ hbl_no: mblHblNo }).first();
         }
 
         let addDetails = {};
@@ -274,7 +297,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
                 : jobRecord.additional_details;
         }
 
-        // Setup manual parties or actual client metadata
+        // Setup manual parties or actual client details
         let consigneeName = '';
         let shipperName = '';
         if (jobRecord) {
@@ -282,14 +305,15 @@ router.post("/save", authenticateJWT, async (req, res) => {
             shipperName = jobRecord.shipper_name || '';
             if (!consigneeName && jobRecord.manual_party_details) {
                 try {
-                    const mp = typeof jobRecord.manual_party_details === 'string' ? JSON.parse(jobRecord.manual_party_details) : jobRecord.manual_party_details;
+                    const mp = typeof jobRecord.manual_party_details === 'string'
+                        ? JSON.parse(jobRecord.manual_party_details)
+                        : jobRecord.manual_party_details;
                     consigneeName = mp.consignee || '';
                     shipperName = mp.shipper || '';
                 } catch(e){}
             }
         }
 
-        // Formatting dates
         const formatDate = (dateStr) => {
             if (!dateStr) return '—';
             try {
@@ -298,257 +322,187 @@ router.post("/save", authenticateJWT, async (req, res) => {
             } catch (e) { return dateStr; }
         };
 
-        // Prepare Replacements map
-        const replacements = {
-            '{{PRINT_TYPE_LABEL}}': printType === 'USD' ? 'USD PRICING' : 'INR LOCAL',
-            '{{PARTY_NAME}}': clientName || '—',
-            '{{PARTY_ADDRESS}}': clientAddress || '—',
-            '{{PARTY_GSTIN}}': clientGstin || 'N/A',
-            '{{PARTY_STATE}}': clientState || '—',
-            '{{PROFORMA_NO}}': proformaNoStr,
-            '{{PROFORMA_DATE}}': formatDate(proformaDate || new Date()),
-            '{{REF_NO}}': addDetails.reference_no || '—',
-            '{{JOB_NO}}': String(jobNo),
-            '{{HBL_NO}}': mblHblType === 'HBL' ? mblHblNo : (addDetails.hbl_no || '—'),
-            '{{MBL_NO}}': mblHblType === 'MBL' ? mblHblNo : (jobRecord?.mbl_no || '—'),
-            '{{VESSEL_VOYAGE}}': `${jobRecord?.vessel || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
-            '{{POL}}': jobRecord?.pol || '—',
-            '{{FPD}}': jobRecord?.final_pod || addDetails.fpd || '—',
-            '{{IGM_NO}}': addDetails.igm_no || '—',
-            '{{LINE_NO}}': `${addDetails.item_no || '—'} (Date: ${formatDate(addDetails.igm_date)})`,
-            '{{SUB_LINE_NO}}': addDetails.sub_no || '—',
-            '{{ETD_DATE}}': formatDate(jobRecord?.etd || addDetails.etd_date),
-            '{{CNTRS_TYPE}}': `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'}`,
-            '{{CONSIGNEE}}': consigneeName || '—',
-            '{{SHIPPER}}': shipperName || '—',
-            '{{CARGO_TYPE}}': jobRecord?.cargo_type || addDetails.shipment_type || 'General',
-            '{{SHIPPER_LINE}}': jobRecord?.shipping_line_name || addDetails.carrier || '—',
-            '{{CARGO_WEIGHT}}': jobRecord?.gross_weight || addDetails.gross_weight || '—',
-            '{{CBM}}': jobRecord?.net_weight || addDetails.volume || '—',
-            '{{POD}}': jobRecord?.pod || '—',
-            '{{NO_OF_PKGS}}': addDetails.no_of_packages || '—',
-            '{{ETA_DATE}}': formatDate(jobRecord?.eta || addDetails.eta_date),
-            '{{EX_RATE}}': parseFloat(exRate || 85.00).toFixed(2),
-            '{{CONTAINER_NO}}': jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.containerNo).join(', ')) || '—',
-            '{{GENERATED_AT}}': new Date().toLocaleString()
-        };
-
-        // Build Table Headers and Rows depending on INR vs USD Print Type
-        let headersHtml = '';
-        let rowsHtml = '';
-        let subtotalHtml = '';
-        let taxRowsHtml = '';
-        let grandTotalValStr = '';
-        let grandTotalLabel = 'INR TOTAL';
-        let wordsStr = '';
-
+        // Determine place of supply and client state code
+        const stateInfo = getStateByGstin(clientGstin, clientAddress);
+        const isIntraState = stateInfo.code === '27';
         const effectiveExRate = parseFloat(exRate || 85.00);
+        const targetCurrency = printType === 'USD' ? 'USD' : 'INR';
 
-        if (printType === 'USD') {
-            headersHtml = `
-            <thead>
-              <tr>
-                <th>Particulars</th>
-                <th>HSN / SAC</th>
-                <th>Rate</th>
-                <th>Qty</th>
-                <th>Curr.</th>
-                <th>EX RATE</th>
-                <th>Amount (FC)</th>
-                <th>Taxable (USD)</th>
-                <th>Non-Taxable (USD)</th>
-              </tr>
-            </thead>`;
+        // Map and compute items
+        const chargesList = items.map((item) => {
+            const qty = parseFloat(item.quantity || 1);
+            const baseRate = parseFloat(item.rate || 0);
+            const itemCurrency = item.currency || 'USD';
+            const rowExRate = parseFloat(item.ex_rate || effectiveExRate);
 
-            // Totals Accumulator in USD
-            let taxableUSDTotal = 0;
-            let nonTaxableUSDTotal = 0;
-            let igstUSDTotal = 0;
-            let cgstUSDTotal = 0;
-            let sgstUSDTotal = 0;
+            let amount = qty * baseRate;
+            let targetRate = baseRate;
 
-            items.forEach((item) => {
-                const qty = parseFloat(item.quantity || 1);
-                const rate = parseFloat(item.rate || 0);
-                const itemCurrency = item.currency || 'USD';
-                const rowExRate = parseFloat(item.ex_rate || effectiveExRate);
-
-                let amountFC = qty * rate;
-                let amountUSD = amountFC;
+            if (printType === 'USD') {
                 if (itemCurrency === 'INR') {
-                    // Convert INR to USD
-                    amountUSD = amountFC / rowExRate;
+                    amount = (qty * baseRate) / rowExRate;
+                    targetRate = baseRate / rowExRate;
                 }
+            } else {
+                if (itemCurrency === 'USD') {
+                    amount = qty * baseRate * rowExRate;
+                    targetRate = baseRate * rowExRate;
+                }
+            }
 
-                const gstRate = parseFloat(item.gst || 0);
-                const isMaharashtra = String(clientState || '').startsWith('27') || String(clientGstin || '').startsWith('27');
+            const gstRate = parseFloat(item.gst || 0);
+            const gstAmount = amount * (gstRate / 100);
+            const totalAmount = amount + gstAmount;
 
-                let taxableUSD = 0;
-                let nonTaxableUSD = 0;
+            // Classify as freight if the name contains 'freight' or the gst rate is 5%
+            const isFreight = String(item.charge || '').toLowerCase().includes('freight') || gstRate === 5;
 
-                if (gstRate > 0) {
-                    taxableUSD = amountUSD;
-                    taxableUSDTotal += amountUSD;
+            return {
+                charge_name: item.charge || '—',
+                hsn_sac: item.hsn_sac || '996521',
+                rate: targetRate.toFixed(2),
+                currency: targetCurrency,
+                qty: qty,
+                amount: amount.toFixed(2),
+                gst_rate: gstRate.toFixed(1),
+                gst_amount: gstAmount.toFixed(2),
+                total_amount: totalAmount.toFixed(2),
+                is_freight: isFreight,
+                taxable_amount: amount,
+                gst_rate_num: gstRate,
+                gst_amount_num: gstAmount
+            };
+        });
 
-                    // Calculate tax in USD
-                    const taxAmountUSD = amountUSD * (gstRate / 100);
-                    if (isMaharashtra) {
-                        cgstUSDTotal += taxAmountUSD / 2;
-                        sgstUSDTotal += taxAmountUSD / 2;
+        // Compute GST breakdown
+        let taxableTotalVal = 0;
+        let gstTotalVal = 0;
+        let grandTotalVal = 0;
+
+        let cgstVal = 0;
+        let sgstVal = 0;
+        let cgstFreightVal = 0;
+        let sgstFreightVal = 0;
+
+        let igstVal = 0;
+        let igstFreightVal = 0;
+
+        chargesList.forEach((c) => {
+            taxableTotalVal += c.taxable_amount;
+            gstTotalVal += c.gst_amount_num;
+            grandTotalVal += c.taxable_amount + c.gst_amount_num;
+
+            if (c.gst_rate_num > 0) {
+                if (isIntraState) {
+                    if (c.is_freight) {
+                        cgstFreightVal += c.gst_amount_num / 2;
+                        sgstFreightVal += c.gst_amount_num / 2;
                     } else {
-                        igstUSDTotal += taxAmountUSD;
+                        cgstVal += c.gst_amount_num / 2;
+                        sgstVal += c.gst_amount_num / 2;
                     }
                 } else {
-                    nonTaxableUSD = amountUSD;
-                    nonTaxableUSDTotal += amountUSD;
+                    if (c.is_freight) {
+                        igstFreightVal += c.gst_amount_num;
+                    } else {
+                        igstVal += c.gst_amount_num;
+                    }
                 }
-
-                rowsHtml += `
-                <tr>
-                  <td>${item.charge}</td>
-                  <td class="center">${item.hsn_sac || '996521'}</td>
-                  <td class="num">${rate.toFixed(2)}</td>
-                  <td class="center">${qty}</td>
-                  <td class="center">${itemCurrency}</td>
-                  <td class="num">${rowExRate.toFixed(2)}</td>
-                  <td class="num">${amountFC.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td class="num">${taxableUSD > 0 ? taxableUSD.toFixed(2) : '0.00'}</td>
-                  <td class="num">${nonTaxableUSD > 0 ? nonTaxableUSD.toFixed(2) : '0.00'}</td>
-                </tr>`;
-            });
-
-            const subtotalUSD = taxableUSDTotal + nonTaxableUSDTotal;
-            const totalTaxUSD = igstUSDTotal + cgstUSDTotal + sgstUSDTotal;
-            const grandTotalUSD = subtotalUSD + totalTaxUSD;
-
-            subtotalHtml = `
-            <tr>
-              <th colspan="7" style="text-align:right">SUBTOTAL (USD)</th>
-              <th class="num">${taxableUSDTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</th>
-              <th class="num">${nonTaxableUSDTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</th>
-            </tr>`;
-
-            // Build tax breakdown
-            if (igstUSDTotal > 0) {
-                taxRowsHtml += `IGST USD Total: ${igstUSDTotal.toFixed(2)}<br>`;
             }
-            if (cgstUSDTotal > 0) {
-                taxRowsHtml += `CGST USD Total: ${cgstUSDTotal.toFixed(2)}<br>`;
-            }
-            if (sgstUSDTotal > 0) {
-                taxRowsHtml += `SGST USD Total: ${sgstUSDTotal.toFixed(2)}<br>`;
-            }
+        });
 
-            grandTotalLabel = 'USD GRAND TOTAL';
-            grandTotalValStr = `$ ${grandTotalUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} (Equiv. INR ${(grandTotalUSD * effectiveExRate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
-            wordsStr = `${numberToWordsUSD(grandTotalUSD)}`;
+        const formatNum = (val) => val > 0 ? val.toFixed(2) : '0.00';
 
-        } else {
-            // INR LOCAL Print Type
-            headersHtml = `
-            <thead>
-              <tr>
-                <th>Charge Name</th>
-                <th>HSN / SAC</th>
-                <th>Rate Per Unit</th>
-                <th>Curr.</th>
-                <th>Qty</th>
-                <th>Amount (INR)</th>
-                <th>GST Rate (%)</th>
-                <th>GST Amount (INR)</th>
-                <th>Total Amount (INR)</th>
-              </tr>
-            </thead>`;
+        const roundedGrandTotal = Math.round(grandTotalVal);
+        const amountInWords = printType === 'USD'
+            ? numberToWordsUSD(grandTotalVal)
+            : numberToWordsINR(roundedGrandTotal);
 
-            let subtotalINR = 0;
-            let taxTotalINR = 0;
-            let igstTotalINR = 0;
-            let cgstTotalINR = 0;
-            let sgstTotalINR = 0;
+        const termsConditions = `1) Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.
+2) Interest would be charged @ 24% p.a. on delayed payment.
+3) In case of any objection / reservation in the billed Invoice / Debit Note, the same must be lodged within 5 days from the issue date and a written receipt taken from our Accounts Manager.
+4) Payment to be made at Mumbai by A/c payee Cheque / NEFT / RTGS only and receipt for the same must be insisted.
+5) Any dispute subject to Mumbai Jurisdiction only.`;
 
-            items.forEach((item) => {
-                const qty = parseFloat(item.quantity || 1);
-                const rate = parseFloat(item.rate || 0);
-                const itemCurrency = item.currency || 'INR';
-                const rowExRate = parseFloat(item.ex_rate || effectiveExRate);
+        // Context for Handlebars template rendering
+        const contextData = {
+            company_logo: "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg",
+            company_name: "SSR LOGISTIC SOLUTIONS PRIVATE LIMITED",
+            company_address: "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai - 400703, Maharashtra, India",
+            website: "www.ssrlogistic.net",
+            state: "Maharashtra",
+            state_code: "27",
+            company_gst: "27ABMCS1941A1ZI",
+            company_pan: "ABMCS1941A",
+            company_stamp: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", // transparent spacer
 
-                let baseAmountINR = qty * rate;
-                if (itemCurrency === 'USD') {
-                    baseAmountINR = qty * rate * rowExRate;
-                }
+            party_name: clientName || '—',
+            party_address: clientAddress || '—',
+            party_gst: clientGstin || 'N/A',
+            place_of_supply: stateInfo.name,
 
-                const gstRate = parseFloat(item.gst || 0);
-                const taxAmountINR = baseAmountINR * (gstRate / 100);
-                const isMaharashtra = String(clientState || '').startsWith('27') || String(clientGstin || '').startsWith('27');
+            proforma_no: proformaNoStr,
+            proforma_date: formatDate(proformaDate || new Date()),
+            ref_no: addDetails.reference_no || '—',
 
-                if (isMaharashtra) {
-                    cgstTotalINR += taxAmountINR / 2;
-                    sgstTotalINR += taxAmountINR / 2;
-                } else {
-                    igstTotalINR += taxAmountINR;
-                }
+            hbl_no: mblHblType === 'HBL' ? mblHblNo : (addDetails.hbl_no || '—'),
+            hbl_date: formatDate(jobRecord?.hbl_date || jobRecord?.created_at || addDetails.hbl_date),
+            mbl_no: mblHblType === 'MBL' ? mblHblNo : (jobRecord?.mbl_no || '—'),
+            mbl_date: formatDate(jobRecord?.mbl_date || jobRecord?.created_at || addDetails.mbl_date),
+            vessel_voy: `${jobRecord?.vessel || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
+            pol: jobRecord?.pol || '—',
+            fpd: jobRecord?.final_pod || addDetails.fpd || '—',
+            igm_no: addDetails.igm_no || '—',
+            line_no: addDetails.item_no || '—',
+            line_date: formatDate(addDetails.igm_date || jobRecord?.created_at),
+            sub_line_no: addDetails.sub_no || '—',
+            etd_date: formatDate(jobRecord?.etd || addDetails.etd_date),
+            container_type_count: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'}`,
+            consignee: consigneeName || '—',
+            shipper: shipperName || '—',
+            cargo_type: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
+            shipper_line: jobRecord?.shipping_line_name || addDetails.carrier || '—',
+            cargo_weight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
+            cbm: jobRecord?.net_weight || addDetails.volume || '—',
+            pod: jobRecord?.pod || '—',
+            no_of_pkgs: addDetails.no_of_packages || '—',
+            eta_date: formatDate(jobRecord?.eta || addDetails.eta_date),
+            ex_rate: effectiveExRate.toFixed(2),
+            container_numbers: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.containerNo).join(', ')) || '—',
 
-                subtotalINR += baseAmountINR;
-                taxTotalINR += taxAmountINR;
+            charges: chargesList,
 
-                rowsHtml += `
-                <tr>
-                  <td>${item.charge}</td>
-                  <td class="center">${item.hsn_sac || '996521'}</td>
-                  <td class="num">${rate.toFixed(2)}</td>
-                  <td class="center">${itemCurrency}</td>
-                  <td class="center">${qty}</td>
-                  <td class="num">${baseAmountINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td class="center">${gstRate > 0 ? gstRate.toFixed(1) + '%' : '0%'}</td>
-                  <td class="num">${taxAmountINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                  <td class="num">${(baseAmountINR + taxAmountINR).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                </tr>`;
-            });
+            taxable_total: taxableTotalVal.toFixed(2),
+            gst_total: gstTotalVal.toFixed(2),
+            grand_total: printType === 'USD' ? grandTotalVal.toFixed(2) : roundedGrandTotal.toFixed(2),
 
-            const grandTotalINR = subtotalINR + taxTotalINR;
+            is_intra_state: isIntraState,
+            cgst: formatNum(cgstVal),
+            sgst: formatNum(sgstVal),
+            cgst_freight: formatNum(cgstFreightVal),
+            sgst_freight: formatNum(sgstFreightVal),
 
-            subtotalHtml = `
-            <tr>
-              <th colspan="5" style="text-align:right">SUBTOTAL</th>
-              <th class="num">${subtotalINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</th>
-              <th></th>
-              <th class="num">${taxTotalINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</th>
-              <th class="num">${grandTotalINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</th>
-            </tr>`;
+            igst: formatNum(igstVal),
+            igst_freight: formatNum(igstFreightVal),
 
-            if (igstTotalINR > 0) {
-                taxRowsHtml += `IGST Total: INR ${igstTotalINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>`;
-            }
-            if (cgstTotalINR > 0) {
-                taxRowsHtml += `CGST Total: INR ${cgstTotalINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>`;
-            }
-            if (sgstTotalINR > 0) {
-                taxRowsHtml += `SGST Total: INR ${sgstTotalINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}<br>`;
-            }
-
-            grandTotalLabel = 'INR GRAND TOTAL';
-            grandTotalValStr = `INR ${grandTotalINR.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-            wordsStr = `${numberToWordsINR(grandTotalINR)}`;
-        }
-
-        replacements['{{CHARGES_THEAD}}'] = headersHtml;
-        replacements['{{CHARGES_ROWS}}'] = rowsHtml;
-        replacements['{{SUBTOTAL_ROW}}'] = subtotalHtml;
-        replacements['{{TAX_ROWS}}'] = taxRowsHtml;
-        replacements['{{GRAND_TOTAL_LABEL}}'] = grandTotalLabel;
-        replacements['{{GRAND_TOTAL_VAL}}'] = grandTotalValStr;
-        replacements['{{GRAND_TOTAL_WORDS}}'] = wordsStr;
+            amount_in_words: amountInWords,
+            currency_label: targetCurrency,
+            reverse_charge: 'No',
+            terms_conditions: termsConditions,
+            bank_name: 'KOTAK MAHINDRA BANK LTD',
+            account_number: '1050002555',
+            ifsc: 'KKBK0001370'
+        };
 
         // Read Template HTML
         const templatePath = path.join(__dirname, '..', 'Mail', 'proforma_pdf.html');
-        let html = await fs.readFile(templatePath, 'utf-8');
+        const templateSource = await fs.readFile(templatePath, 'utf-8');
 
-        // Apply replacements
-        for (const [key, value] of Object.entries(replacements)) {
-            html = html.replace(new RegExp(key, 'g'), value);
-        }
+        // Compile with Handlebars
+        const template = handlebars.compile(templateSource);
+        const html = template(contextData);
 
-        // Launch Puppeteer to render and build the PDF
+        // Render to PDF using Puppeteer
         const browser = await puppeteer.launch({
             headless: 'new',
             args: ['--no-sandbox', '--disable-setuid-sandbox']
@@ -567,7 +521,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
         });
         await browser.close();
 
-        // Upload generated PDF to S3
+        // Upload PDF to S3
         const filename = `Proforma_${proformaNoStr}_${Date.now()}.pdf`;
         const uploadRes = await uploadFile({
             fileBuffer: pdfBuffer,
@@ -580,14 +534,14 @@ router.post("/save", authenticateJWT, async (req, res) => {
             return res.status(500).json({ success: false, message: "Failed to upload generated Proforma Invoice PDF to S3" });
         }
 
-        // Update the S3 PDF link in database
+        // Update S3 PDF link in database
         await knexDB("ProformaInvoices").where({ id: insertedId }).update({ pdf_link: uploadRes.url });
 
-        // Update status of the MasterBL / HouseBL job record to 'Invoice Generated' if applicable
+        // Update MasterBL / HouseBL status
         if (mblHblType === 'MBL') {
             await knexDB("MasterBL").where({ job_no: jobNo }).update({ status: 'Invoice Generated' });
         } else {
-            await knexDB("HouseBL").where({ job_no: jobNo }).update({ status: 'Invoice Generated' });
+            await knexDB("HouseBL").where({ hbl_no: mblHblNo }).update({ status: 'Invoice Generated' });
         }
 
         res.json({

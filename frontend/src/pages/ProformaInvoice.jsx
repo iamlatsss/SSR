@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import api from "../services/api";
 import {
   FileText, Search, Printer, Download, Eye, AlertCircle, CheckCircle, RefreshCw, X
 } from "lucide-react";
 import { toast } from "react-toastify";
+import SearchableDropdown from "../components/SearchableDropdown";
 
 // Helper to convert numbers to Indian Rupee Words in frontend
 function numberToWordsINR(num) {
@@ -127,6 +128,32 @@ export default function ProformaInvoice() {
   const [printType, setPrintType] = useState("Invoice"); // 'Invoice' (INR) or 'USD'
   const [proformaDate, setProformaDate] = useState(new Date().toISOString().split("T")[0]);
 
+  // Dynamic filter state
+  const [filteredCustomers, setFilteredCustomers] = useState([]);
+  const [currentJob, setCurrentJob] = useState(null);
+
+  // Memoized options for SearchableDropdowns
+  const jobOptions = useMemo(() => {
+    return mblJobs.map(j => ({
+      value: j.job_no,
+      label: `Job #${j.job_no} (${j.mbl_no || "No MBL"})`
+    }));
+  }, [mblJobs]);
+
+  const mblHblOptions = useMemo(() => {
+    return mblHblDropdownList.map(opt => ({
+      value: JSON.stringify(opt),
+      label: opt.label
+    }));
+  }, [mblHblDropdownList]);
+
+  const clientOptions = useMemo(() => {
+    return filteredCustomers.map(c => ({
+      value: c.customer_id,
+      label: `${c.name} ${c.gstin ? `(${c.gstin})` : ''}`
+    }));
+  }, [filteredCustomers]);
+
   // Charges spreadsheet state
   const [allCharges, setAllCharges] = useState([]);
   const [checkedItems, setCheckedItems] = useState({});
@@ -156,6 +183,7 @@ export default function ProformaInvoice() {
     if (!selectedMblJobNo) {
       setMblHblDropdownList([]);
       setSelectedMblHbl("");
+      setCurrentJob(null);
       return;
     }
 
@@ -200,6 +228,7 @@ export default function ProformaInvoice() {
       const res = await api.get(`/proforma/job-details/${jobNo}`);
       if (res.data.success) {
         const job = res.data.job;
+        setCurrentJob(job);
         const options = [];
 
         // 1. Add MBL option
@@ -231,6 +260,94 @@ export default function ProformaInvoice() {
       toast.error("Failed to load BL details for Job #" + jobNo);
     }
   };
+
+  // Fetch sell rates silently in the background to filter Client/Vendor
+  useEffect(() => {
+    const fetchRatesSilently = async () => {
+      if (!selectedMblJobNo || !selectedMblHbl) {
+        setFilteredCustomers([]);
+        setSelectedClient("");
+        return;
+      }
+      try {
+        const chosenBL = JSON.parse(selectedMblHbl);
+        const res = await api.get("/proforma/search-charges", {
+          params: {
+            job_no: selectedMblJobNo,
+            mbl_hbl_type: chosenBL.type,
+            mbl_hbl_no: chosenBL.number
+          }
+        });
+        if (res.data.success) {
+          const sellRates = res.data.sellRates || [];
+          const uniqueParties = [...new Set(sellRates.map(r => r.party).filter(Boolean))];
+          
+          const matched = [];
+          const customParties = [];
+          
+          uniqueParties.forEach(p => {
+            const found = customers.find(c => String(c.customer_id) === String(p));
+            if (found) {
+              matched.push(found);
+            } else {
+              const foundByName = customers.find(c => c.name.toLowerCase().trim() === String(p).toLowerCase().trim());
+              if (foundByName) {
+                matched.push(foundByName);
+              } else {
+                // Wrap custom string party
+                customParties.push({
+                  customer_id: p,
+                  name: p,
+                  address: "",
+                  gstin: "",
+                  customer_type: "Custom"
+                });
+              }
+            }
+          });
+          
+          const combined = [...matched, ...customParties];
+          const seen = new Set();
+          const finalCustomers = combined.filter(c => {
+            const key = String(c.customer_id);
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+          });
+          
+          setFilteredCustomers(finalCustomers);
+          
+          // Pre-select based on Sell Rate active parties
+          let preferredClient = "";
+          if (currentJob) {
+            const shipperMatch = finalCustomers.find(c => String(c.customer_id) === String(currentJob.shipper));
+            const consigneeMatch = finalCustomers.find(c => String(c.customer_id) === String(currentJob.consignee));
+            if (shipperMatch) {
+              preferredClient = shipperMatch.customer_id;
+            } else if (consigneeMatch) {
+              preferredClient = consigneeMatch.customer_id;
+            }
+          }
+          
+          if (preferredClient) {
+            setSelectedClient(preferredClient);
+          } else if (finalCustomers.length === 1) {
+            setSelectedClient(finalCustomers[0].customer_id);
+          } else {
+            // Keep if current is valid, else empty
+            const currentIsValid = finalCustomers.some(c => String(c.customer_id) === String(selectedClient));
+            if (!currentIsValid) {
+              setSelectedClient("");
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error silently fetching charges for client filter:", error);
+      }
+    };
+    
+    fetchRatesSilently();
+  }, [selectedMblJobNo, selectedMblHbl, customers, currentJob]);
 
   const handleSearchCharges = async () => {
     if (!selectedMblJobNo) {
@@ -281,7 +398,7 @@ export default function ProformaInvoice() {
 
   const getClientDetails = () => {
     if (!selectedClient) return null;
-    return customers.find(c => c.customer_id == selectedClient) || null;
+    return filteredCustomers.find(c => c.customer_id == selectedClient) || customers.find(c => c.customer_id == selectedClient) || null;
   };
 
   const calculateGridTotals = () => {
@@ -439,56 +556,36 @@ export default function ProformaInvoice() {
             {/* 1. MBL Job Selector */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Select MBL Job No</label>
-              <select
+              <SearchableDropdown
+                options={jobOptions}
                 value={selectedMblJobNo}
-                onChange={(e) => setSelectedMblJobNo(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-              >
-                <option value="">Select Job Reference</option>
-                {mblJobs.map((j) => (
-                  <option key={j.job_no} value={j.job_no}>
-                    Job #{j.job_no} ({j.mbl_no || "No MBL"})
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedMblJobNo(val)}
+                placeholder="Select Job Reference"
+              />
             </div>
 
             {/* 2. MBL / HBL Number Selector */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">MBL / HBL No Dropdown</label>
-              <select
+              <SearchableDropdown
+                options={mblHblOptions}
                 value={selectedMblHbl}
-                onChange={(e) => setSelectedMblHbl(e.target.value)}
+                onChange={(val) => setSelectedMblHbl(val)}
                 disabled={mblHblDropdownList.length === 0}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none disabled:opacity-50"
-              >
-                {mblHblDropdownList.length === 0 ? (
-                  <option value="">Choose Job first</option>
-                ) : (
-                  mblHblDropdownList.map((opt, idx) => (
-                    <option key={idx} value={JSON.stringify(opt)}>
-                      {opt.label}
-                    </option>
-                  ))
-                )}
-              </select>
+                placeholder={mblHblDropdownList.length === 0 ? "Choose Job first" : "Select MBL / HBL Number"}
+              />
             </div>
 
             {/* 3. Client / Vendor Dropdown */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Client / Vendor Dropdown</label>
-              <select
+              <SearchableDropdown
+                options={clientOptions}
                 value={selectedClient}
-                onChange={(e) => setSelectedClient(e.target.value)}
-                className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-              >
-                <option value="">Select Client for Invoice</option>
-                {customers.map((c) => (
-                  <option key={c.customer_id} value={c.customer_id}>
-                    {c.name} {c.gstin ? `(${c.gstin})` : ''}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => setSelectedClient(val)}
+                placeholder="Select Client for Invoice"
+                noOptionsText="No clients in Sell Rates for this Job"
+              />
             </div>
 
             {/* 4. Print Type & Ex-Rate */}
@@ -586,10 +683,10 @@ export default function ProformaInvoice() {
             </h3>
 
             <div className="overflow-x-auto border border-slate-200 dark:border-slate-700/80 rounded-xl">
-              <table className="w-full text-left border-collapse table-auto text-xs min-w-[1100px]">
+              <table className="w-full text-left border-collapse table-fixed text-xs min-w-[1150px]">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
-                    <th className="p-3.5 text-center w-12">
+                    <th className="p-3.5 text-center w-[40px]">
                       <input
                         type="checkbox"
                         checked={allCharges.length > 0 && allCharges.every((_, idx) => checkedItems[idx])}
@@ -597,16 +694,16 @@ export default function ProformaInvoice() {
                         className="accent-indigo-600 w-4 h-4 rounded cursor-pointer"
                       />
                     </th>
-                    <th className="p-3.5">Party (Client/Vendor)</th>
-                    <th className="p-3.5">Charge Name</th>
-                    <th className="p-3.5 text-center">GST Rate</th>
-                    <th className="p-3.5">Unit</th>
-                    <th className="p-3.5 text-center">Qty</th>
-                    <th className="p-3.5 text-right">Base Rate</th>
-                    <th className="p-3.5 text-center">Curr</th>
-                    <th className="p-3.5 text-right">Ex Rate</th>
-                    <th className="p-3.5 text-right">Amount (FC)</th>
-                    <th className="p-3.5 text-right">Amount (INR)</th>
+                    <th className="p-3.5 w-[180px]">Party (Client/Vendor)</th>
+                    <th className="p-3.5 w-[320px]">Charge Name</th>
+                    <th className="p-3.5 text-center w-[70px]">GST Rate</th>
+                    <th className="p-3.5 w-[100px]">Unit</th>
+                    <th className="p-3.5 text-center w-[50px]">Qty</th>
+                    <th className="p-3.5 text-right w-[80px]">Base Rate</th>
+                    <th className="p-3.5 text-center w-[60px]">Curr</th>
+                    <th className="p-3.5 text-right w-[70px]">Ex Rate</th>
+                    <th className="p-3.5 text-right w-[90px]">Amount (FC)</th>
+                    <th className="p-3.5 text-right w-[95px]">Amount (INR)</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
@@ -625,6 +722,8 @@ export default function ProformaInvoice() {
                       const isUSD = (row.currency || 'USD') === 'USD';
                       const inrAmt = isUSD ? fcAmt * ex : fcAmt;
 
+                      const partyName = filteredCustomers.find(c => c.customer_id == row.party)?.name || customers.find(c => c.customer_id == row.party)?.name || row.party || '—';
+
                       return (
                         <tr
                           key={idx}
@@ -641,10 +740,10 @@ export default function ProformaInvoice() {
                             />
                           </td>
                           <td className="p-3 font-medium text-slate-800 dark:text-slate-200">
-                            {customers.find(c => c.customer_id == row.party)?.name || row.party || '—'}
+                            <span className="block truncate" title={partyName}>{partyName}</span>
                           </td>
                           <td className="p-3 font-mono font-medium text-indigo-600 dark:text-indigo-400">
-                            {row.charge}
+                            <span className="block truncate" title={row.charge}>{row.charge}</span>
                           </td>
                           <td className="p-3 text-center font-bold text-teal-600 dark:text-teal-400">
                             {row.gst || '0%'}

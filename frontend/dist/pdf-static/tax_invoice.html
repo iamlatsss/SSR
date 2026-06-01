@@ -1,298 +1,586 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>TAX INVOICE</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SSR Tax Invoice</title>
+  <style>
+    @page {
+      size: A4 portrait;
+      margin: 8mm;
+    }
 
-<style>
-  body {
-    font-family: Calibri, Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background: #fff;
-    font-size: 14px;
-  }
+    * { box-sizing: border-box; }
 
-  .container {
-    width: 900px;
-    margin: 25px auto;
-    border: 2px solid #000;
-    padding: 25px 30px;
-    box-sizing: border-box;
-  }
+    html, body {
+      margin: 0;
+      padding: 0;
+      font: 8.5pt/1.28 Arial, Helvetica, sans-serif;
+      color: #000;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
 
-  .header-top {
-    text-align: center;
-    border-bottom: 1px solid #000;
-    padding-bottom: 8px;
-  }
+    body.screen { background: #e8e8e8; }
 
-  .header-top img {
-    height: 70px;
-    width: auto;
-  }
+    .no-print {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: #1a3a6b;
+      color: #fff;
+      padding: 10px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .no-print button {
+      background: #fff;
+      color: #1a3a6b;
+      border: none;
+      padding: 8px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 4px;
+    }
 
-  .header-main {
-    text-align: center;
-    font-weight: bold;
-    margin-top: 5px;
-  }
+    @media print {
+      .no-print { display: none !important; }
+      body.screen { background: #fff; }
+    }
 
-  .header-details {
-    text-align: center;
-    margin-top: 4px;
-    font-size: 13px;
-    line-height: 1.3;
-  }
+    /* Single bordered sheet — natural height, one page */
+    .page {
+      width: 194mm;
+      margin: 8px auto;
+      background: #fff;
+      border: 1px solid #000;
+    }
 
-  .invoice-title {
-    text-align: center;
-    font-weight: bold;
-    font-size: 18px;
-    margin-top: 18px;
-    text-decoration: underline;
-  }
+    @media print {
+      .page {
+        width: 100%;
+        margin: 0;
+        page-break-inside: avoid;
+        page-break-after: avoid;
+      }
+    }
 
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-    font-size: 13px;
-  }
+    .header {
+      display: table;
+      width: 100%;
+      border-bottom: 1px solid #000;
+      padding: 2mm 2mm 2mm 2mm;
+    }
+    .header-logo {
+      display: table-cell;
+      width: 40mm;
+      vertical-align: middle;
+    }
+    .header-logo .ssr-logo {
+      width: 38mm;
+      max-height: 18mm;
+      height: auto;
+      object-fit: contain;
+      display: block;
+    }
+    .header-center {
+      display: table-cell;
+      vertical-align: top;
+      text-align: center;
+      padding: 0 2mm;
+    }
+    .header-center h1 {
+      margin: 0 0 1mm;
+      font: 700 12pt/1.15 Arial, Helvetica, sans-serif;
+    }
+    .header-center .addr {
+      font: 400 7.5pt/1.3 Arial, Helvetica, sans-serif;
+    }
+    .header-qr {
+      display: table-cell;
+      width: 26mm;
+      vertical-align: top;
+      text-align: right;
+    }
+    .qr-box {
+      width: 22mm;
+      height: 22mm;
+      border: 1px solid #999;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font: 400 6pt Arial, Helvetica, sans-serif;
+      color: #666;
+    }
 
-  table th, table td {
-    border: 1px solid #000;
-    padding: 7px 10px;
-    vertical-align: top;
-    text-align: left;
-  }
+    .id-bar {
+      border-bottom: 1px solid #000;
+      padding: 1.2mm 2mm;
+      font: 400 7.5pt Arial, Helvetica, sans-serif;
+      text-align: center;
+    }
 
-  table th {
-    background: #f2f2f2;
-    font-weight: bold;
-    width: 22%;
-  }
+    .doc-title {
+      text-align: center;
+      font: 700 9.5pt Arial, Helvetica, sans-serif;
+      border-bottom: 1px solid #000;
+      padding: 1.5mm;
+      background: #f5f5f5;
+    }
 
-  .charges-table th, .charges-table td {
-    text-align: left;
-  }
+    .two-cols {
+      display: table;
+      width: 100%;
+      border-bottom: 1px solid #000;
+    }
+    .col {
+      display: table-cell;
+      width: 50%;
+      vertical-align: top;
+      padding: 1.5mm 2.5mm;
+    }
+    .col + .col { border-left: 1px solid #000; }
 
-  .amount-summary {
-    margin-top: 12px;
-    font-size: 14px;
-    font-weight: bold;
-  }
+    .field {
+      margin-bottom: 0.6mm;
+      font: 400 8pt/1.28 Arial, Helvetica, sans-serif;
+      word-break: break-word;
+    }
+    .field-irn { font-size: 7pt; }
 
-  .terms {
-    border: 1px solid #000;
-    padding: 12px;
-    margin-top: 18px;
-    font-size: 12.5px;
-    line-height: 1.5;
-  }
+    .full-row {
+      border-bottom: 1px solid #000;
+      padding: 1.5mm 2.5mm;
+      font: 400 8pt Arial, Helvetica, sans-serif;
+    }
 
-  .bank-details {
-    margin-top: 15px;
-    font-size: 13px;
-    line-height: 1.4;
-  }
+    table.charges {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font: 400 7.5pt Arial, Helvetica, sans-serif;
+    }
+    table.charges th,
+    table.charges td {
+      border: 1px solid #000;
+      padding: 0.6mm 0.8mm;
+      vertical-align: middle;
+      word-wrap: break-word;
+      line-height: 1.25;
+    }
+    table.charges th {
+      background: #f0f0f0;
+      font-weight: 700;
+    }
+    .text-left { text-align: left !important; }
+    .text-center { text-align: center !important; }
+    .text-right { text-align: right !important; }
 
-  .footer-sign {
-    margin-top: 25px;
-    display: flex;
-    justify-content: space-between;
-    font-size: 14px;
-  }
+    .amount-words {
+      border-top: 1px solid #000;
+      border-bottom: 1px solid #000;
+      padding: 1.5mm 2.5mm;
+      font: 700 8.5pt Arial, Helvetica, sans-serif;
+    }
 
-  .system-note {
-    margin-top: 12px;
-    font-size: 12px;
-    text-align: center;
-    color: #444;
-  }
+    .terms {
+      border-bottom: 1px solid #000;
+      padding: 1.5mm 2.5mm;
+      font: 400 7pt/1.3 Arial, Helvetica, sans-serif;
+    }
+    .terms strong { font-weight: 700; }
+    .terms ol { margin: 0.5mm 0 0; padding-left: 4.5mm; }
+    .terms li { margin-bottom: 0.3mm; }
 
-</style>
+    .footer-block {
+      display: table;
+      width: 100%;
+      border-bottom: 1px solid #000;
+    }
+    .footer-bank {
+      display: table-cell;
+      width: 50%;
+      padding: 2mm 2.5mm;
+      vertical-align: top;
+      font: 400 7.5pt/1.3 Arial, Helvetica, sans-serif;
+      border-right: 1px solid #000;
+    }
+    .footer-bank strong { font-weight: 700; }
+    .footer-sign {
+      display: table-cell;
+      width: 50%;
+      padding: 2mm 2.5mm;
+      text-align: center;
+      vertical-align: bottom;
+      font: 400 8pt/1.25 Arial, Helvetica, sans-serif;
+    }
+    .stamp-signature-img {
+      width: 32mm;
+      max-height: 28mm;
+      height: auto;
+      object-fit: contain;
+      display: block;
+      margin: 1mm auto 0;
+    }
+
+    .eoe {
+      text-align: right;
+      font: 400 7pt Arial, Helvetica, sans-serif;
+      padding: 0.5mm 2.5mm 0;
+    }
+    .footer-note {
+      text-align: center;
+      font: 700 7.5pt Arial, Helvetica, sans-serif;
+      padding: 1.5mm;
+    }
+  </style>
 </head>
+<body class="screen">
+  <div class="no-print">
+    <span>SSR Tax Invoice</span>
+    <button type="button" onclick="window.print()">Print / Save PDF</button>
+  </div>
 
-<body>
-
-<div class="container">
-
-  <!-- HEADER -->
-  <div class="header-top">
-    <img src="https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg" alt="SSR Logo">
-    <div class="header-main">SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
-
-    <div class="header-details">
-      Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi,<br>
-      Navi Mumbai - 400703, India &nbsp; Tel.No : 7700990630<br>
-      Website: www.ssrlogistic.net<br>
-      <b>State: Maharashtra &nbsp; State Code: 27 &nbsp; GST No.: 27ABMCS1941A1ZI &nbsp; PAN No.: ABMCS1941A</b>
+  <div class="page" id="invoice-root">
+    <div class="header">
+      <div class="header-logo">
+        <img src="assets/logo.png" alt="SSR Logistic Solutions" class="ssr-logo" />
+      </div>
+      <div class="header-center">
+        <h1>SSR LOGISTIC SOLUTIONS PVT. LTD.</h1>
+        <div class="addr">
+          Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall,<br />
+          Vashi, Navi Mumbai - 400703, India Tel No : 7700990630, Website: www.ssrlogistic.net
+        </div>
+      </div>
+      <div class="header-qr"><div class="qr-box" id="qr-box">QR</div></div>
     </div>
-  </div>
 
-  <!-- TITLE -->
-  <div class="invoice-title">TAX INVOICE (Original for Recipient)</div>
-
-  <!-- MAIN TABLE -->
-  <table>
-    <tr>
-      <th>Party Name:</th>
-      <td colspan="3">
-        MSC MEDITERRANEAN SHIPPING CO. (UP)<br>
-        C/O MSC Agency (India) PVT. LTD. The Corenthum, B-52, Plot No. A-41, Sec-62 Noida-201301<br>
-        NOIDA Uttar Pradesh India 201301<br>
-        GST NO: 09AACCM4945P1ZT , State Code: 9<br>
-        Place of supply : Uttar Pradesh
-      </td>
-    </tr>
-
-    <tr>
-      <th>Invoice No.:</th><td>SSRPUR2526-0225</td>
-      <th>Invoice Date:</th><td>03-11-2025</td>
-    </tr>
-
-    <tr>
-      <th>Ref No.:</th><td>5342</td>
-      <th>IRN:</th><td></td>
-    </tr>
-
-    <tr>
-      <th>Narration:</th><td>NIL</td>
-      <th></th><td></td>
-    </tr>
-
-    <tr>
-      <th>HBL No.:</th><td>YSNBF25095037 (12-10-2025)</td>
-      <th>MBL No.:</th><td>MEDUW4408433 (12-10-2025)</td>
-    </tr>
-
-    <tr>
-      <th>Vessel / Voyage:</th><td>MSC ALBANY / V.QS540A</td>
-      <th>POL:</th><td>SHANGHAI</td>
-    </tr>
-
-    <tr>
-      <th>FPD:</th><td>Patli</td>
-      <th>IGM No. (Date):</th><td>1161095 (25-10-2025)</td>
-    </tr>
-
-    <tr>
-      <th>Line No.:</th><td>544</td>
-      <th>Sub Line No.:</th><td>1</td>
-    </tr>
-
-    <tr>
-      <th>ETD Date:</th><td>12-10-2025</td>
-      <th>No of Cntrs / Type:</th><td>1 X 40HQ</td>
-    </tr>
-
-    <tr>
-      <th>Consignee:</th><td>AMIT RUBBER CHEM TRADING CO PVT LTD</td>
-      <th>Shipper:</th><td>ANHUI DONGJUE SILICONE CO LTD</td>
-    </tr>
-
-    <tr>
-      <th>Shipping Line:</th><td>MSC MEDITERRANEAN SHIPPING CO. S.A. (G)</td>
-      <th>Cargo Type:</th><td>General</td>
-    </tr>
-
-    <tr>
-      <th>Cargo Weight:</th><td>26000.000</td>
-      <th>CBM:</th><td>37.800</td>
-    </tr>
-
-    <tr>
-      <th>POD:</th><td>MUNDRA, INDIA</td>
-      <th>No. of Pkgs:</th><td>27</td>
-    </tr>
-
-    <tr>
-      <th>ETA Date:</th><td>02-10-2025</td>
-      <th>Ex Rate:</th><td>1</td>
-    </tr>
-
-    <tr>
-      <th>Container No.:</th><td colspan="3">FFAU3773115</td>
-    </tr>
-  </table>
-
-  <!-- CHARGES -->
-  <table class="charges-table">
-    <tr>
-      <th>Charge Name</th>
-      <th>HSN/SAC</th>
-      <th>Rate Per Unit</th>
-      <th>Curr.</th>
-      <th>Quantity</th>
-      <th>Amount</th>
-      <th>GST %</th>
-      <th>GST Amount</th>
-      <th>Total Amount</th>
-    </tr>
-
-    <tr>
-      <td>SHIPPING LINE LOCAL CHARGES</td>
-      <td>996759</td>
-      <td>16940.00</td>
-      <td>INR</td>
-      <td>1</td>
-      <td>16,940.00</td>
-      <td>18%</td>
-      <td>3049.20</td>
-      <td>19,989.20</td>
-    </tr>
-
-    <tr>
-      <th colspan="5" style="text-align:right;">TOTAL</th>
-      <th>16,940.00</th>
-      <th></th>
-      <th>3049.20</th>
-      <th>19,989.20</th>
-    </tr>
-  </table>
-
-  <!-- TOTAL SUMMARY -->
-  <div class="amount-summary">
-    IGST 18%: 3049.20<br>
-    Round Off: -0.20<br>
-    <b>INR TOTAL: 19,989.00</b><br><br>
-    INR - Nineteen Thousands Nine Hundred And Eighty Nine Rupees Only
-  </div>
-
-  <!-- TERMS & CONDITIONS -->
-  <div class="terms">
-    <b>Terms & Conditions:</b><br>
-    1) Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.<br>
-    2) Interest would be charged @ 24% p.a. on delayed payment.<br>
-    3) Any objection must be reported within 5 days, otherwise invoice deemed correct.<br>
-    4) Payment only via A/c Payee Cheque / DD / NEFT at Mumbai office.<br>
-    5) Any dispute subject to Mumbai jurisdiction only.
-  </div>
-
-  <!-- BANK DETAILS -->
-  <div class="bank-details">
-    <b>Our Bank Details:</b><br>
-    Bank Name: KOTAK MAHINDRA BANK LTD<br>
-    Account Number: 1050002555<br>
-    IFSC: KKBK0001370
-  </div>
-
-  <!-- SIGNATURE -->
-  <div class="footer-sign">
-    <div></div>
-    <div style="text-align:right;">
-      <b>FOR SSR LOGISTIC SOLUTIONS Pvt. Ltd.</b><br><br>
-      Accounts Department<br>
-      <span style="font-size:12px;">E & O.E.</span>
+    <div class="id-bar">
+      State: Maharashtra &nbsp;|&nbsp; State Code: 27 &nbsp;|&nbsp;
+      GST No. : 27ABMCS1941A1ZI &nbsp;|&nbsp; PAN No. : ABMCS1941A
     </div>
+    <div class="doc-title">TAX INVOICE (Original for Recipient)</div>
+
+    <div class="two-cols">
+      <div class="col">
+        <div class="field"><span>Party Name: </span><span data-field="partyName"></span></div>
+        <div class="field"><span>Address: </span><span data-field="partyAddress"></span></div>
+        <div class="field">
+          <span>GST NO : </span><span data-field="partyGstNo"></span>,
+          <span>State Code: </span><span data-field="partyStateCode"></span>
+        </div>
+        <div class="field"><span>Place of supply : </span><span data-field="placeOfSupply"></span></div>
+      </div>
+      <div class="col">
+        <div class="field"><span>Invoice No. : </span><span data-field="invoiceNo"></span></div>
+        <div class="field"><span>Invoice Date : </span><span data-field="invoiceDate"></span></div>
+        <div class="field"><span>Ref No. : </span><span data-field="refNo"></span></div>
+        <div class="field"><span>IRN : </span><span class="field-irn" data-field="irn"></span></div>
+        <div class="field"><span>Narration : </span><span data-field="narration"></span></div>
+      </div>
+    </div>
+
+    <div class="two-cols">
+      <div class="col">
+        <div class="field"><span>HBL No. : </span><span data-field="hblNo"></span> <span>Date: </span><span data-field="hblDate"></span></div>
+        <div class="field"><span>MBL No. : </span><span data-field="mblNo"></span> <span>Date : </span><span data-field="mblDate"></span></div>
+        <div class="field"><span>Vessel / Voy : </span><span data-field="vesselVoy"></span></div>
+        <div class="field"><span>POL : </span><span data-field="pol"></span></div>
+        <div class="field"><span>FPD : </span><span data-field="fpd"></span></div>
+        <div class="field"><span>IGM No. : </span><span data-field="igmNo"></span> <span>Date : </span><span data-field="igmDate"></span></div>
+        <div class="field"><span>Line No. : </span><span data-field="lineNo"></span></div>
+        <div class="field"><span>Sub Line No. : </span><span data-field="subLineNo"></span></div>
+        <div class="field"><span>ETD Date : </span><span data-field="etdDate"></span></div>
+        <div class="field"><span>No: of Cntrs / Type : </span><span data-field="cntrsType"></span></div>
+      </div>
+      <div class="col">
+        <div class="field"><span>Consignee : </span><span data-field="consignee"></span></div>
+        <div class="field"><span>Shipper Name : </span><span data-field="shipperName"></span></div>
+        <div class="field"><span>Shipping Line : </span><span data-field="shippingLine"></span></div>
+        <div class="field"><span>Cargo Type : </span><span data-field="cargoType"></span></div>
+        <div class="field"><span>Cargo Weight : </span><span data-field="cargoWeight"></span></div>
+        <div class="field"><span>CBM : </span><span data-field="cbm"></span></div>
+        <div class="field"><span>POD : </span><span data-field="pod"></span></div>
+        <div class="field"><span>No. of Pkgs : </span><span data-field="noOfPkgs"></span></div>
+        <div class="field"><span>ETA Date : </span><span data-field="etaDate"></span></div>
+        <div class="field"><span>Ex Rate : </span><span data-field="exRate"></span></div>
+      </div>
+    </div>
+
+    <div class="full-row"><span>Container No.: </span><span data-field="containerNo"></span></div>
+
+    <table class="charges">
+      <colgroup>
+        <col style="width: 32%;" />
+        <col style="width: 7%;" />
+        <col style="width: 10%;" />
+        <col style="width: 5%;" />
+        <col style="width: 5%;" />
+        <col style="width: 10%;" />
+        <col style="width: 6%;" />
+        <col style="width: 10%;" />
+        <col style="width: 15%;" />
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="text-left">Charge Name</th>
+          <th class="text-center">HSN/SAC</th>
+          <th class="text-right">Rate Per Unit</th>
+          <th class="text-center">Curr.</th>
+          <th class="text-center">Quantity</th>
+          <th class="text-right">Amount</th>
+          <th class="text-right">GST Rate(%)</th>
+          <th class="text-right">GST Amount</th>
+          <th class="text-right">Total Amount</th>
+        </tr>
+      </thead>
+      <tbody id="charges-body"></tbody>
+      <tfoot>
+        <tr>
+          <td colspan="5" class="label-cell text-right" style="font-weight: bold; padding-right: 2mm;">Total / Subtotal:</td>
+          <td class="text-right" style="font-weight: bold;" data-total="amount"></td>
+          <td></td>
+          <td class="text-right" style="font-weight: bold;" data-total="gstAmount"></td>
+          <td class="text-right" style="font-weight: bold;" data-total="totalSum"></td>
+        </tr>
+        <tr>
+          <td colspan="8" class="label-cell text-right" style="padding-right: 2mm;">CGST 9%</td>
+          <td class="text-right" data-total="cgst9">0.00</td>
+        </tr>
+        <tr>
+          <td colspan="8" class="label-cell text-right" style="padding-right: 2mm;">CGST ON FREIGHT @ 2.5%</td>
+          <td class="text-right" data-total="cgstFreight25">0.00</td>
+        </tr>
+        <tr>
+          <td colspan="8" class="label-cell text-right" style="padding-right: 2mm;">SGST 9%</td>
+          <td class="text-right" data-total="sgst9">0.00</td>
+        </tr>
+        <tr>
+          <td colspan="8" class="label-cell text-right" style="padding-right: 2mm;">SGST ON FREIGHT @ 2.5%</td>
+          <td class="text-right" data-total="sgstFreight25">0.00</td>
+        </tr>
+        <tr>
+          <td colspan="8" class="label-cell text-right" style="padding-right: 2mm;">Round Off</td>
+          <td class="text-right" data-total="roundOff">0.00</td>
+        </tr>
+        <tr>
+          <td colspan="8" class="label-cell text-right" style="padding-right: 2mm;"><strong>INR TOTAL</strong></td>
+          <td class="text-right"><strong data-total="inrTotal"></strong></td>
+        </tr>
+      </tfoot>
+    </table>
+
+    <div class="amount-words" data-field="amountInWords"></div>
+    <div class="full-row"><span>Reverse Charge Amount : </span><span data-field="reverseCharge"></span></div>
+
+    <div class="terms">
+      <strong>Terms &amp; Conditions:</strong>
+      <ol>
+        <li>Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.</li>
+        <li>Interest would be charged @ 24% p.a. on the delayed payment.</li>
+        <li>In case of any objection / reservation in the billed Invoice / Debit Note, the same must be lodged (brought to our notice) by you within 5 days from the issue date of the Invoice / Debit Note, failing which the Invoice / Debit Note shall be deemed to be correct and accepted by you.</li>
+        <li>Payment to be made at Mumbai by A/c payee Cheque / Demand Draft / NEFT only in favour of SSR LOGISTIC SOLUTIONS PVT. LTD.</li>
+        <li>Any dispute subject to Mumbai Jurisdiction only.</li>
+      </ol>
+    </div>
+
+    <div class="footer-block">
+      <div class="footer-bank">
+        <strong>Our Bank Details Are:</strong><br />
+        Bank Name : KOTAK MAHINDRA BANK LTD<br />
+        Account Number : 1050002555<br />
+        IFSC: KKBK001370
+      </div>
+      <div class="footer-sign">
+        FOR SSR LOGISTIC SOLUTIONS PVT. LTD.<br />
+        <img src="assets/stamp-signature.png" alt="Stamp and signature" class="stamp-signature-img" />
+        Accounts Department
+      </div>
+    </div>
+    <div class="eoe">E &amp; O.E.</div>
+    <div class="footer-note">System generated Invoice. Does not require Signature</div>
   </div>
 
-  <div class="system-note">
-    System generated Invoice. Does not require Signature
-  </div>
+  <template id="charge-row-tpl">
+    <tr>
+      <td class="text-left" style="font-weight: 700; text-transform: uppercase;" data-col="chargeName"></td>
+      <td class="text-center" data-col="hsnSac"></td>
+      <td class="text-right" data-col="ratePerUnit"></td>
+      <td class="text-center" data-col="curr"></td>
+      <td class="text-center" data-col="quantity"></td>
+      <td class="text-right" data-col="amount"></td>
+      <td class="text-right" data-col="gstRate"></td>
+      <td class="text-right" data-col="gstAmount"></td>
+      <td class="text-right" data-col="totalAmount"></td>
+    </tr>
+  </template>
 
-</div>
+  <script>
+    var CHARGE_COLS = [
+      "chargeName", "hsnSac", "ratePerUnit", "curr", "quantity",
+      "amount", "gstRate", "gstAmount", "totalAmount"
+    ];
 
+    var TOTAL_DEFAULT_ZERO = ["cgst9", "cgstFreight25", "sgst9", "sgstFreight25", "roundOff"];
+
+    function formatTotalValue(key, value) {
+      if (value != null && String(value).trim() !== "") return String(value);
+      if (TOTAL_DEFAULT_ZERO.indexOf(key) !== -1) return "0.00";
+      return "";
+    }
+
+    window.fillDocument = function (data) {
+      if (!data) return;
+
+      document.querySelectorAll("[data-field]").forEach(function (el) {
+        var key = el.getAttribute("data-field");
+        el.textContent = data[key] != null ? String(data[key]) : "";
+      });
+
+      var tbody = document.getElementById("charges-body");
+      var tpl = document.getElementById("charge-row-tpl");
+      tbody.innerHTML = "";
+
+      var totalSum = 0;
+      var charges = data.lineItems || data.charges || [];
+      charges.forEach(function (item) {
+        var row = tpl.content.cloneNode(true);
+        CHARGE_COLS.forEach(function (col) {
+          var cell = row.querySelector('[data-col="' + col + '"]');
+          if (cell) cell.textContent = item[col] != null ? String(item[col]) : "";
+        });
+        tbody.appendChild(row);
+
+        // Accumulate totalSum dynamically
+        var tAmt = parseFloat(String(item.totalAmount || "").replace(/,/g, "")) || 0;
+        totalSum += tAmt;
+      });
+
+      var totals = data.totals || {};
+      totals["totalSum"] = totalSum.toFixed(2);
+      
+      // Dynamic intra vs inter state layout adjustment
+      var isIntraState = String(data.partyStateCode || "").trim() === "27";
+      
+      var cgstEl = document.querySelector('[data-total="cgst9"]');
+      var cgstFreightEl = document.querySelector('[data-total="cgstFreight25"]');
+      var sgstEl = document.querySelector('[data-total="sgst9"]');
+      var sgstFreightEl = document.querySelector('[data-total="sgstFreight25"]');
+
+      if (cgstEl && cgstFreightEl && sgstEl && sgstFreightEl) {
+        var rowCgst = cgstEl.closest("tr");
+        var rowCgstFreight = cgstFreightEl.closest("tr");
+        var rowSgst = sgstEl.closest("tr");
+        var rowSgstFreight = sgstFreightEl.closest("tr");
+
+        if (isIntraState) {
+          rowCgst.style.display = "";
+          rowCgstFreight.style.display = "";
+          rowSgst.style.display = "";
+          rowSgstFreight.style.display = "";
+
+          rowCgst.querySelector(".label-cell").innerHTML = "CGST 9%";
+          rowCgstFreight.querySelector(".label-cell").innerHTML = "CGST ON FREIGHT @ 2.5%";
+          rowSgst.querySelector(".label-cell").innerHTML = "SGST 9%";
+          rowSgstFreight.querySelector(".label-cell").innerHTML = "SGST ON FREIGHT @ 2.5%";
+        } else {
+          // Inter-state: repurpose CGST rows for IGST, and hide SGST rows
+          rowCgst.style.display = "";
+          rowCgstFreight.style.display = "";
+          rowSgst.style.display = "none";
+          rowSgstFreight.style.display = "none";
+
+          rowCgst.querySelector(".label-cell").innerHTML = "IGST 18%";
+          rowCgstFreight.querySelector(".label-cell").innerHTML = "IGST ON FREIGHT @ 5%";
+
+          // Re-map totals values dynamically for inter-state
+          totals["cgst9"] = totals["igst18"] || "0.00";
+          totals["cgstFreight25"] = totals["igstFreight5"] || "0.00";
+        }
+      }
+
+      document.querySelectorAll("[data-total]").forEach(function (el) {
+        var key = el.getAttribute("data-total");
+        el.textContent = formatTotalValue(key, totals[key]);
+      });
+    };
+
+    window.addEventListener("message", function (event) {
+      var msg = event.data;
+      if (!msg || msg.type !== "SSR_INVOICE_FILL") return;
+      window.fillDocument(msg.payload);
+      if (msg.print) setTimeout(function () { window.print(); }, 300);
+    });
+
+    if (window.parent !== window) {
+      window.parent.postMessage({ type: "SSR_INVOICE_READY" }, "*");
+    }
+
+    if (location.search.indexOf("embed=1") !== -1) {
+      var bar = document.querySelector(".no-print");
+      if (bar) bar.style.display = "none";
+      document.body.classList.remove("screen");
+    }
+
+    var SAMPLE_DATA = {
+      partyName: "NATIONAL ALUMINIUM",
+      partyAddress: "BLOCK NO 1, GROUND FLOOR, KH VILE PARLE-WEST MUMBAI 400056 INDIA MUMBAI Maharashtra India 400056",
+      partyGstNo: "27AACPJ9549D1ZM",
+      partyStateCode: "27",
+      placeOfSupply: "Maharashtra",
+      invoiceNo: "SSRINV2627-0056",
+      invoiceDate: "30-05-2026",
+      refNo: "5486",
+      irn: "",
+      narration: "NIL",
+      consignee: "NATIONAL ALUMINIUM",
+      shipperName: "HAINING LIJIALONG PILE WEATHER STRIP CO., LTD",
+      shippingLine: "MAERSK LINE INDIA PRIVATE LIMITED",
+      cargoType: "General",
+      cargoWeight: "9917.000",
+      cbm: "70.00",
+      pod: "NHAVA SHEVA, INDIA",
+      noOfPkgs: "756",
+      etaDate: "31-05-2026",
+      exRate: "97.47",
+      hblNo: "YSNBF26050072",
+      hblDate: "09-05-2026",
+      mblNo: "270488879",
+      mblDate: "09-05-2026",
+      vesselVoy: "JENS MAERSK / V.619W",
+      pol: "SHANGHAI",
+      fpd: "NHAVA SHEVA, INDIA",
+      igmNo: "1192857",
+      igmDate: "11-05-2026",
+      lineNo: "173",
+      subLineNo: "1",
+      etdDate: "09-05-2026",
+      cntrsType: "1 X 40HQ",
+      containerNo: "MRKU6361977",
+      lineItems: [
+        { chargeName: "FREIGHT", hsnSac: "996521", ratePerUnit: "1.00", curr: "USD", quantity: "1.00", amount: "1500.00", gstRate: "18", gstAmount: "270.00", totalAmount: "1770.00" },
+        { chargeName: "HANDLING CHARGES", hsnSac: "996519", ratePerUnit: "1.00", curr: "INR", quantity: "1.00", amount: "5000.00", gstRate: "18", gstAmount: "900.00", totalAmount: "5900.00" },
+        { chargeName: "THC", hsnSac: "996519", ratePerUnit: "1.00", curr: "INR", quantity: "1.00", amount: "8500.00", gstRate: "18", gstAmount: "1530.00", totalAmount: "10030.00" }
+      ],
+      totals: {
+        amount: "15000.00",
+        gstAmount: "2700.00",
+        cgst9: "0.00",
+        cgstFreight25: "0.00",
+        sgst9: "0.00",
+        sgstFreight25: "0.00",
+        roundOff: "0.00",
+        inrTotal: "164720.00"
+      },
+      amountInWords: "INR - One Lakh Sixty Four Thousands Seven Hundred And Twenty Rupees Only",
+      reverseCharge: "No"
+    };
+
+    if (location.search.indexOf("embed=1") === -1) {
+      fillDocument(SAMPLE_DATA);
+    }
+  </script>
 </body>
 </html>
