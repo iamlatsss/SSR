@@ -1,5 +1,5 @@
 import express from 'express';
-import { knexDB } from '../Database.js';
+import { knexDB, mapPartyToCustomer } from '../Database.js';
 import { authenticateJWT } from "../AuthAPI/Auth.js";
 import fs from 'fs/promises';
 import path from 'path';
@@ -125,7 +125,8 @@ router.get("/init", authenticateJWT, async (req, res) => {
         const hblJobs = await knexDB("HouseBL").select("job_no", "hbl_no", "mbl_no", "date_of_nomination", "shipper", "consignee");
         
         // Fetch Customers list
-        const customers = await knexDB("Customers").select("customer_id", "name", "address", "gstin", "customer_type");
+        const parties = await knexDB("Parties").select("*");
+        const customers = parties.map(mapPartyToCustomer);
         
         res.json({
             success: true,
@@ -259,8 +260,20 @@ router.post("/save", authenticateJWT, async (req, res) => {
     }
 
     try {
-        // Insert record into DB to get Sequential ID
+        // Prevent duplicate/overwrite issues by deleting existing proforma invoice for this job/MBL/HBL
+        const existingProforma = await knexDB("ProformaInvoices")
+            .where({ job_no: jobNo, mbl_hbl_type: mblHblType, mbl_hbl_no: mblHblNo })
+            .first();
+
+        if (existingProforma) {
+            await knexDB("ProformaInvoices").where({ id: existingProforma.id }).delete();
+        }
+
+        const proformaNoStr = String(jobNo);
+
+        // Insert record into DB
         const payload = {
+            proforma_no: proformaNoStr,
             job_no: jobNo,
             mbl_hbl_type: mblHblType,
             mbl_hbl_no: mblHblNo,
@@ -277,10 +290,6 @@ router.post("/save", authenticateJWT, async (req, res) => {
         };
 
         const [insertedId] = await knexDB("ProformaInvoices").insert(payload);
-        const proformaNoStr = String(insertedId);
-
-        // Update proforma_no field
-        await knexDB("ProformaInvoices").where({ id: insertedId }).update({ proforma_no: proformaNoStr });
 
         // Retrieve Linked Job details to fill metadata
         let jobRecord = null;
@@ -359,7 +368,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
 
             return {
                 charge_name: item.charge || '—',
-                hsn_sac: item.hsn_sac || '996521',
+                hsn_sac: item.hsn_sac || item.sac || '996521',
                 rate: targetRate.toFixed(2),
                 currency: targetCurrency,
                 qty: qty,
@@ -424,6 +433,22 @@ router.post("/save", authenticateJWT, async (req, res) => {
 4) Payment to be made at Mumbai by A/c payee Cheque / NEFT / RTGS only and receipt for the same must be insisted.
 5) Any dispute subject to Mumbai Jurisdiction only.`;
 
+        let polVal = jobRecord?.pol || addDetails?.pol || '—';
+        let podVal = jobRecord?.pod || addDetails?.pod || '—';
+        let fpdVal = jobRecord?.final_pod || addDetails?.fpd || addDetails?.final_pod || '—';
+
+        if (polVal === '—' || podVal === '—' || fpdVal === '—') {
+            let linkedMblNo = jobRecord?.mbl_no || addDetails?.mbl_no;
+            if (linkedMblNo) {
+                const mblRec = await knexDB("MasterBL").where({ mbl_no: linkedMblNo }).first();
+                if (mblRec) {
+                    if (polVal === '—') polVal = mblRec.pol || '—';
+                    if (podVal === '—') podVal = mblRec.pod || '—';
+                    if (fpdVal === '—') fpdVal = mblRec.final_pod || '—';
+                }
+            }
+        }
+
         // Context for Handlebars template rendering
         const contextData = {
             company_logo: "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg",
@@ -443,15 +468,15 @@ router.post("/save", authenticateJWT, async (req, res) => {
 
             proforma_no: proformaNoStr,
             proforma_date: formatDate(proformaDate || new Date()),
-            ref_no: addDetails.reference_no || '—',
+            ref_no: jobNo,
 
             hbl_no: mblHblType === 'HBL' ? mblHblNo : (addDetails.hbl_no || '—'),
             hbl_date: formatDate(jobRecord?.hbl_date || jobRecord?.created_at || addDetails.hbl_date),
             mbl_no: mblHblType === 'MBL' ? mblHblNo : (jobRecord?.mbl_no || '—'),
             mbl_date: formatDate(jobRecord?.mbl_date || jobRecord?.created_at || addDetails.mbl_date),
             vessel_voy: `${jobRecord?.vessel || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
-            pol: jobRecord?.pol || '—',
-            fpd: jobRecord?.final_pod || addDetails.fpd || '—',
+            pol: polVal,
+            fpd: fpdVal,
             igm_no: addDetails.igm_no || '—',
             line_no: addDetails.item_no || '—',
             line_date: formatDate(addDetails.igm_date || jobRecord?.created_at),
@@ -464,7 +489,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
             shipper_line: jobRecord?.shipping_line_name || addDetails.carrier || '—',
             cargo_weight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
             cbm: jobRecord?.net_weight || addDetails.volume || '—',
-            pod: jobRecord?.pod || '—',
+            pod: podVal,
             no_of_pkgs: addDetails.no_of_packages || '—',
             eta_date: formatDate(jobRecord?.eta || addDetails.eta_date),
             ex_rate: effectiveExRate.toFixed(2),
@@ -568,6 +593,40 @@ router.get("/history", authenticateJWT, async (req, res) => {
     } catch (error) {
         console.error("Error fetching proforma history:", error);
         res.status(500).json({ success: false, message: "Database query error: " + error.message });
+    }
+});
+
+// Delete proforma invoice from database and reset job status
+router.delete("/delete/:id", authenticateJWT, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        const proforma = await knexDB("ProformaInvoices").where({ id }).first();
+        if (!proforma) {
+            return res.status(404).json({ success: false, message: "Proforma Invoice not found" });
+        }
+
+        const { job_no, mbl_hbl_type, mbl_hbl_no } = proforma;
+
+        await knexDB.transaction(async (trx) => {
+            // Delete proforma invoice
+            await trx("ProformaInvoices").where({ id }).delete();
+
+            // Reset job status to Sell Rate Updated
+            if (mbl_hbl_type === 'MBL') {
+                await trx("MasterBL").where({ job_no }).update({
+                    status: 'Sell Rate Updated'
+                });
+            } else {
+                await trx("HouseBL").where({ hbl_no: mbl_hbl_no }).update({
+                    status: 'Sell Rate Updated'
+                });
+            }
+        });
+
+        res.json({ success: true, message: "Proforma Invoice deleted successfully" });
+    } catch (error) {
+        console.error("Error deleting proforma invoice:", error);
+        res.status(500).json({ success: false, message: "Failed to delete proforma invoice: " + error.message });
     }
 });
 

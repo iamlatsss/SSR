@@ -19,41 +19,219 @@ import {
     ChevronDown,
     Bug,
     Upload,
-    Image as ImageIcon
+    Image as ImageIcon,
+    Ship,
+    Globe,
+    CreditCard,
+    DollarSign,
+    FileCheck2,
+    Compass,
+    Scroll
 } from 'lucide-react';
 
-const SidebarItem = ({ icon, text, to }) => {
+const SidebarItem = ({ icon, text, to, isCollapsed, queryParam }) => {
     const location = useLocation();
-    const active = to ? location.pathname === to : false;
-    const isActive = active || (to === '/' && location.pathname === '/');
+    const queryParams = new URLSearchParams(location.search);
+    const isPathActive = location.pathname === to;
+    
+    // Check if query params match if specified
+    const isQueryActive = queryParam
+        ? Object.entries(queryParam).every(([key, val]) => queryParams.get(key) === val)
+        : true;
+        
+    const isActive = isPathActive && isQueryActive;
+
     const content = (
-        <>
-            <span className={`mr-3 transition-colors ${isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'}`}>
+        <div className="flex items-center w-full">
+            <span className={`transition-colors shrink-0 flex items-center justify-center ${isCollapsed ? 'mx-auto' : 'mr-3'} ${
+                isActive 
+                    ? 'text-indigo-600 dark:text-indigo-400' 
+                    : 'text-slate-400 dark:text-slate-500 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+            }`}>
                 {icon}
             </span>
-            {text}
-        </>
+            {!isCollapsed && <span className="truncate">{text}</span>}
+        </div>
     );
-    const className = `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group ${isActive
-        ? 'bg-indigo-50 dark:bg-dark-card text-indigo-600 dark:text-indigo-400 shadow-sm border border-transparent dark:border-slate-700'
-        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-dark-card hover:text-slate-900 dark:hover:text-slate-200'
-        }`;
-    if (to) {
-        return (
-            <Link to={to} className={className}>
+
+    const className = `flex items-center px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 group relative ${
+        isActive
+            ? 'bg-indigo-50 dark:bg-indigo-950/20 text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-600 dark:border-indigo-400 shadow-sm'
+            : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50/80 dark:hover:bg-dark-card hover:text-slate-900 dark:hover:text-slate-200 border-l-4 border-transparent'
+    } ${isCollapsed ? 'justify-center w-12 h-12 px-0 py-0 mx-auto' : 'w-full'}`;
+
+    const linkUrl = to + (queryParam ? '?' + new URLSearchParams(queryParam).toString() : '');
+
+    return (
+        <div className="relative group">
+            <Link to={linkUrl} className={className}>
                 {content}
             </Link>
-        );
-    }
-    return (
-        <a href="#" className={className}>
-            {content}
-        </a>
+            
+            {/* Tooltip in collapsed mode */}
+            {isCollapsed && (
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 hidden group-hover:flex items-center z-50">
+                    <div className="bg-slate-900 dark:bg-slate-800 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-md whitespace-nowrap">
+                        {text}
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 
+const SidebarGroup = ({ icon, text, children, isCollapsed, isExpanded, onToggle, isActive }) => {
+    return (
+        <div className="relative group/parent">
+            {/* Parent Header Button */}
+            <button
+                onClick={onToggle}
+                className={`flex items-center justify-between w-full px-4 py-3 text-sm font-medium rounded-lg transition-all duration-200 relative ${
+                    isActive
+                        ? 'text-indigo-600 dark:text-indigo-400 border-l-4 border-indigo-600 dark:border-indigo-400 font-semibold'
+                        : 'text-slate-600 dark:text-slate-400 hover:bg-slate-50/80 dark:hover:bg-dark-card hover:text-slate-900 dark:hover:text-slate-200 border-l-4 border-transparent'
+                } ${isCollapsed ? 'justify-center w-12 h-12 px-0 py-0 mx-auto' : ''}`}
+            >
+                <div className="flex items-center min-w-0">
+                    <span className={`transition-colors shrink-0 flex items-center justify-center ${isCollapsed ? 'mx-auto' : 'mr-3'} ${
+                        isActive
+                            ? 'text-indigo-600 dark:text-indigo-400'
+                            : 'text-slate-400 dark:text-slate-500 group-hover/parent:text-slate-600 dark:group-hover/parent:text-slate-300'
+                    }`}>
+                        {icon}
+                    </span>
+                    {!isCollapsed && <span className="truncate">{text}</span>}
+                </div>
+                {!isCollapsed && (
+                    <ChevronDown
+                        size={16}
+                        className={`text-slate-400 transition-transform duration-200 shrink-0 ml-2 ${
+                            isExpanded ? 'rotate-180 text-indigo-500' : ''
+                        }`}
+                    />
+                )}
+            </button>
+
+            {/* Submenu Content */}
+            {!isCollapsed ? (
+                /* Expanded Sidebar: Sliding Accordion */
+                <div
+                    className="overflow-hidden transition-all duration-300 ease-in-out pl-4"
+                    style={{
+                        maxHeight: isExpanded ? `${React.Children.count(children) * 50}px` : '0px',
+                        opacity: isExpanded ? 1 : 0,
+                    }}
+                >
+                    <div className="py-1 space-y-1 pl-4 border-l border-slate-100 dark:border-slate-800">
+                        {children}
+                    </div>
+                </div>
+            ) : (
+                /* Collapsed Sidebar: Hover Popover */
+                <div className="absolute left-full top-0 ml-2 hidden group-hover/parent:block w-52 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+                    <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                        {text}
+                    </div>
+                    <div className="mt-1.5 space-y-0.5 px-2">
+                        {React.Children.map(children, child =>
+                            React.isValidElement(child) ? React.cloneElement(child, { isCollapsed: false }) : child
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const menuConfig = [
+    {
+        type: 'group',
+        text: 'Dashboard',
+        icon: <LayoutDashboard size={20} />,
+        to: '/',
+        groupKey: 'dashboard',
+        children: [
+            { text: 'KYC', to: '/kyc', adminOnly: true, icon: <ShieldCheck size={18} /> },
+            { text: 'Users', to: '/users', adminOnly: true, icon: <Users size={18} /> },
+            { text: 'Charge', to: '/charges', adminOnly: true, icon: <DollarSign size={18} /> },
+            { text: 'Party', to: '/parties', adminOnly: true, icon: <Briefcase size={18} /> }
+        ]
+    },
+    {
+        type: 'item',
+        text: 'Quotation',
+        to: '/quotation',
+        icon: <FileText size={20} />
+    },
+    {
+        type: 'group',
+        text: 'Sea Import',
+        icon: <Ship size={20} />,
+        groupKey: 'seaImport',
+        adminOnly: true,
+        children: [
+            { text: 'SI MasterBL', to: '/si-masterbl', queryParam: { direction: 'import' }, icon: <Anchor size={18} /> },
+            { text: 'SI HouseBL', to: '/si-housebl', queryParam: { direction: 'import' }, icon: <Compass size={18} /> }
+        ]
+    },
+    {
+        type: 'group',
+        text: 'Sea Export',
+        icon: <Globe size={20} />,
+        groupKey: 'seaExport',
+        adminOnly: true,
+        children: [
+            { text: 'SI MasterBL', to: '/si-masterbl', queryParam: { direction: 'export' }, icon: <Anchor size={18} /> },
+            { text: 'SI HouseBL', to: '/si-housebl', queryParam: { direction: 'export' }, icon: <Compass size={18} /> }
+        ]
+    },
+    {
+        type: 'item',
+        text: 'DO & FC',
+        to: '/do-fc',
+        adminOnly: true,
+        icon: <FileText size={20} />
+    },
+    {
+        type: 'item',
+        text: 'IGM',
+        to: '/igm',
+        adminOnly: true,
+        icon: <Compass size={20} />
+    },
+    {
+        type: 'group',
+        text: 'Invoice',
+        icon: <FileCheck2 size={20} />,
+        groupKey: 'invoice',
+        adminOnly: true,
+        children: [
+            { text: 'Tax Invoice', to: '/invoice', icon: <FileText size={18} /> },
+            { text: 'Proforma Invoice', to: '/proforma-invoice', icon: <FileText size={18} /> },
+            { text: 'E-Invoice Approval', to: '/e-invoice-approval', icon: <ShieldCheck size={18} /> },
+            { text: 'E-Invoice Posting', to: '/e-invoice-posting', icon: <Upload size={18} /> }
+        ]
+    },
+    {
+        type: 'group',
+        text: 'HBL Documents',
+        icon: <Scroll size={20} />,
+        groupKey: 'hblDocuments',
+        adminOnly: true,
+        children: [
+            { text: 'HBL Confirmation', to: '/hbl-confirmation', icon: <FileText size={18} /> },
+            { text: 'HBL Final', to: '/hbl-final', icon: <FileCheck2 size={18} /> },
+            { text: 'HBL Telex Release', to: '/hbl-telex-release', icon: <Anchor size={18} /> }
+        ]
+    }
+];
+
 const DashboardLayout = ({ children, title = "Dashboard" }) => {
     const { logout, user } = useAuth();
+    const location = useLocation();
+    const queryParams = new URLSearchParams(location.search);
+    const direction = queryParams.get('direction');
+
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
@@ -62,6 +240,40 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
         }
         return false;
     });
+
+    // Detect active groups based on pathname and direction query
+    const isDashboardActive = ['/kyc', '/users', '/charges', '/parties'].includes(location.pathname);
+    const isSeaImportActive = ['/si-masterbl', '/si-masterbl-form', '/si-housebl', '/si-housebl-form'].includes(location.pathname) && direction === 'import';
+    const isSeaExportActive = ['/si-masterbl', '/si-masterbl-form', '/si-housebl', '/si-housebl-form'].includes(location.pathname) && direction === 'export';
+    const isInvoiceActive = ['/invoice', '/proforma-invoice', '/e-invoice-approval', '/e-invoice-posting'].includes(location.pathname);
+    const isHblDocsActive = ['/hbl-confirmation', '/hbl-final', '/hbl-telex-release'].includes(location.pathname);
+
+    const [expandedMenus, setExpandedMenus] = useState({
+        dashboard: isDashboardActive,
+        seaImport: isSeaImportActive,
+        seaExport: isSeaExportActive,
+        invoice: isInvoiceActive,
+        hblDocuments: isHblDocsActive
+    });
+
+    // Sync menu expansion when changing routes
+    useEffect(() => {
+        setExpandedMenus(prev => ({
+            ...prev,
+            dashboard: isDashboardActive ? true : prev.dashboard,
+            seaImport: isSeaImportActive ? true : prev.seaImport,
+            seaExport: isSeaExportActive ? true : prev.seaExport,
+            invoice: isInvoiceActive ? true : prev.invoice,
+            hblDocuments: isHblDocsActive ? true : prev.hblDocuments
+        }));
+    }, [location.pathname, direction, isDashboardActive, isSeaImportActive, isSeaExportActive, isInvoiceActive, isHblDocsActive]);
+
+    const handleToggleGroup = (groupKey) => {
+        setExpandedMenus(prev => ({
+            ...prev,
+            [groupKey]: !prev[groupKey]
+        }));
+    };
 
     // Feedback State
     const [showFeedback, setShowFeedback] = useState(false);
@@ -94,55 +306,134 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
         ? user.user_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
         : 'U';
 
+    const isAdmin = user?.role?.toLowerCase() === 'admin';
+
+    // Filter menu items by user roles
+    const filteredMenu = menuConfig.map(menu => {
+        if (menu.adminOnly && !isAdmin) return null;
+        
+        if (menu.type === 'group') {
+            const visibleChildren = menu.children.filter(child => !child.adminOnly || isAdmin);
+            if (visibleChildren.length === 0) {
+                if (menu.to) {
+                    return {
+                        type: 'item',
+                        text: menu.text,
+                        to: menu.to,
+                        icon: menu.icon
+                    };
+                }
+                return null;
+            }
+            return {
+                ...menu,
+                children: visibleChildren
+            };
+        }
+        return menu;
+    }).filter(Boolean);
+
     return (
         <div className="flex h-screen bg-slate-50 dark:bg-dark-bg font-poppins text-slate-900 dark:text-white transition-colors duration-300">
             {isMobileMenuOpen && (
                 <div
-                    className="fixed inset-0 bg-black/50 z-20 md:hidden"
+                    className="fixed inset-0 bg-black/50 z-20 md:hidden animate-in fade-in duration-200"
                     onClick={() => setIsMobileMenuOpen(false)}
                 />
             )}
             <aside className={`
-        fixed inset-y-0 left-0 z-30 bg-white dark:bg-dark-bg border-r border-slate-200 dark:border-slate-800 transform transition-transform duration-300 ease-in-out shadow-xl md:shadow-sm
-        ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-        ${isSidebarCollapsed ? 'md:hidden md:w-0 md:border-r-0' : 'md:translate-x-0 md:static md:flex md:flex-col md:w-64'}
-      `}>
-                <div className="h-16 flex items-center justify-between px-6 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-3 font-bold text-xl text-indigo-600 dark:text-indigo-400">
-                        <img src="/images/SSR_Logo.png" alt="MANO" className="w-8 h-8" />
-                        <span>SSR Logistics</span>
+                fixed inset-y-0 left-0 z-30 bg-white dark:bg-dark-bg border-r border-slate-200 dark:border-slate-800 transform 
+                transition-all duration-300 ease-in-out shadow-xl md:shadow-sm flex flex-col h-full
+                ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
+                ${isSidebarCollapsed ? 'md:translate-x-0 md:static md:w-20' : 'md:translate-x-0 md:static md:w-64'}
+            `}>
+                {!isSidebarCollapsed ? (
+                    <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
+                        <div className="flex items-center gap-3 font-bold text-xl text-indigo-600 dark:text-indigo-400">
+                            <img src="/images/SSR_Logo.png" alt="MANO" className="w-8 h-8 shrink-0" />
+                            <span className="truncate">SSR Logistics</span>
+                        </div>
+                        <button
+                            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 cursor-pointer p-1.5 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                            onClick={() => {
+                                if (window.innerWidth < 768) {
+                                    setIsMobileMenuOpen(false);
+                                } else {
+                                    setIsSidebarCollapsed(true);
+                                    sessionStorage.setItem('sidebarCollapsed', 'true');
+                                }
+                            }}
+                            title="Collapse Sidebar"
+                        >
+                            <X size={20} />
+                        </button>
                     </div>
-                    <button
-                        className="md:hidden text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                        onClick={() => setIsMobileMenuOpen(false)}
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
-                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
-                    <SidebarItem icon={<LayoutDashboard size={20} />} text="Dashboard" to="/" />
-                    <SidebarItem icon={<FileText size={20} />} text="Quotation" to="/quotation" />
-                    
-                    {user?.role?.toLowerCase() === 'admin' && (
-                        <>
-                            <SidebarItem icon={<Briefcase size={20} />} text="Bookings" to="/bookings" />
-                            <SidebarItem icon={<Anchor size={20} />} text="SI MasterBL" to="/si-masterbl" />
-                            <SidebarItem icon={<Anchor size={20} />} text="SI HouseBL" to="/si-housebl" />
-                            <SidebarItem icon={<FileText size={20} />} text="DO / FC" to="/do-fc" />
-                            <SidebarItem icon={<Anchor size={20} />} text="IGM" to="/igm" />
-                            <SidebarItem icon={<FileText size={20} />} text="Tax Invoice" to="/invoice" />
-                            <SidebarItem icon={<FileText size={20} />} text="Proforma Invoice" to="/proforma-invoice" />
-                            <SidebarItem icon={<ShieldCheck size={20} />} text="KYC" to="/kyc" />
-                            <SidebarItem icon={<Users size={20} />} text="Users" to="/users" />
-                        </>
-                    )}
+                ) : (
+                    <div className="h-16 flex items-center justify-center border-b border-slate-100 dark:border-slate-800 shrink-0">
+                        <button
+                            className="text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 cursor-pointer p-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/60 transition-all duration-200"
+                            onClick={() => {
+                                setIsSidebarCollapsed(false);
+                                sessionStorage.setItem('sidebarCollapsed', 'false');
+                            }}
+                            title="Expand Sidebar"
+                        >
+                            <Menu size={20} />
+                        </button>
+                    </div>
+                )}
+                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                    {filteredMenu.map((menu, idx) => {
+                        if (menu.type === 'item') {
+                            return (
+                                <SidebarItem
+                                    key={idx}
+                                    icon={menu.icon}
+                                    text={menu.text}
+                                    to={menu.to}
+                                    isCollapsed={isSidebarCollapsed}
+                                />
+                            );
+                        } else if (menu.type === 'group') {
+                            const isGroupActive = 
+                                (menu.groupKey === 'dashboard' && isDashboardActive) ||
+                                (menu.groupKey === 'seaImport' && isSeaImportActive) ||
+                                (menu.groupKey === 'seaExport' && isSeaExportActive) ||
+                                (menu.groupKey === 'invoice' && isInvoiceActive) ||
+                                (menu.groupKey === 'hblDocuments' && isHblDocsActive);
+
+                            return (
+                                <SidebarGroup
+                                    key={idx}
+                                    icon={menu.icon}
+                                    text={menu.text}
+                                    isCollapsed={isSidebarCollapsed}
+                                    isExpanded={expandedMenus[menu.groupKey]}
+                                    isActive={isGroupActive}
+                                    onToggle={() => handleToggleGroup(menu.groupKey)}
+                                >
+                                    {menu.children.map((child, cIdx) => (
+                                        <SidebarItem
+                                            key={cIdx}
+                                            icon={child.icon}
+                                            text={child.text}
+                                            to={child.to}
+                                            queryParam={child.queryParam}
+                                            isCollapsed={false}
+                                        />
+                                    ))}
+                                </SidebarGroup>
+                            );
+                        }
+                        return null;
+                    })}
                 </nav>
-                <div className="p-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="p-4 border-t border-slate-100 dark:border-slate-800 shrink-0">
                     <button
                         onClick={() => setShowFeedback(true)}
-                        className="flex items-center gap-3 text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors w-full px-4 py-2 text-sm font-medium">
-                        <Bug size={18} />
-                        Bugs & Feedback
+                        className={`flex items-center text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors w-full py-2 text-sm font-medium ${isSidebarCollapsed ? 'justify-center' : 'gap-3 px-4'}`}>
+                        <Bug size={18} className="shrink-0" />
+                        {!isSidebarCollapsed && <span>Bugs & Feedback</span>}
                     </button>
                 </div>
             </aside>
@@ -150,17 +441,11 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                 <header className="h-16 bg-white dark:bg-dark-bg border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-10 z-10 shadow-sm shrink-0 transition-colors duration-300">
                     <div className="flex items-center gap-4">
                         <button
-                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300 cursor-pointer flex items-center justify-center"
+                            className="p-2 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300 cursor-pointer flex md:hidden items-center justify-center"
                             onClick={() => {
-                                if (window.innerWidth < 768) {
-                                    setIsMobileMenuOpen(!isMobileMenuOpen);
-                                } else {
-                                    const newVal = !isSidebarCollapsed;
-                                    setIsSidebarCollapsed(newVal);
-                                    sessionStorage.setItem('sidebarCollapsed', String(newVal));
-                                }
+                                setIsMobileMenuOpen(!isMobileMenuOpen);
                             }}
-                            title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                            title="Toggle Menu"
                         >
                             <Menu size={20} />
                         </button>

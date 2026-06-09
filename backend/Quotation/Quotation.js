@@ -1,5 +1,5 @@
 import express from 'express';
-import { saveQuotation, getAllSentQuotations, deleteQuotationsByIds } from '../Database.js';
+import { saveQuotation, getAllSentQuotations, deleteQuotationsByIds, knexDB } from '../Database.js';
 import fs from 'fs/promises';
 import path from 'path';
 import puppeteer from 'puppeteer';
@@ -13,12 +13,13 @@ import { CHARGES } from '../Invoice/Invoice.js';
 
 const router = express.Router();
 
-router.get('/charges', (req, res) => {
+router.get('/charges', async (req, res) => {
     try {
-        res.json({ success: true, charges: CHARGES });
+        const rows = await knexDB("Charges").select("*");
+        res.json({ success: true, charges: rows });
     } catch (error) {
-        console.error("Failed to fetch charges:", error);
-        res.status(500).json({ success: false, message: "Failed to fetch charges" });
+        console.error("Failed to fetch charges in Quotation:", error);
+        res.json({ success: true, charges: CHARGES });
     }
 });
 

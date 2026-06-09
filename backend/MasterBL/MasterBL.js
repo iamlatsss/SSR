@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticateJWT } from "../AuthAPI/Auth.js"
-import { knexDB } from "../Database.js";
+import { knexDB, mapPartyToCustomer } from "../Database.js";
 
 const router = express.Router();
 
@@ -109,7 +109,8 @@ router.get("/init", authenticateJWT, async (req, res) => {
     const nextJobNo = Math.max(autoIncrementVal, maxJobNo + 1);
 
     // 3. Get Customers
-    const customers = await knexDB("Customers").select("customer_id", "name", "address", "office_address", "branch_office", "gstin", "customer_type");
+    const parties = await knexDB("Parties").select("*");
+    const customers = parties.map(mapPartyToCustomer);
 
     res.json({ success: true, nextJobNo, customers });
   } catch (error) {
@@ -157,9 +158,9 @@ router.post("/insert", authenticateJWT, async (req, res) => {
 router.get("/get-by-mbl/:mblNo", authenticateJWT, async (req, res) => {
   try {
     const job = await knexDB('MasterBL')
-      .leftJoin('Customers as S', 'MasterBL.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'MasterBL.consignee', 'C.customer_id')
-      .leftJoin('Customers as A', 'MasterBL.agent', 'A.customer_id')
+      .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+      .leftJoin('Parties as A', 'MasterBL.agent', 'A.id')
       .select(
         'MasterBL.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -175,8 +176,8 @@ router.get("/get-by-mbl/:mblNo", authenticateJWT, async (req, res) => {
 
     // Fetch linked HBLs
     const hbls = await knexDB('HouseBL')
-      .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+      .leftJoin('Parties as S', 'HouseBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'HouseBL.consignee', 'C.id')
       .select(
         'HouseBL.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -198,9 +199,9 @@ router.get("/get-by-mbl/:mblNo", authenticateJWT, async (req, res) => {
 router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
   try {
     const job = await knexDB('MasterBL')
-      .leftJoin('Customers as S', 'MasterBL.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'MasterBL.consignee', 'C.customer_id')
-      .leftJoin('Customers as A', 'MasterBL.agent', 'A.customer_id')
+      .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+      .leftJoin('Parties as A', 'MasterBL.agent', 'A.id')
       .select(
         'MasterBL.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -216,8 +217,8 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
 
     // Fetch linked HBLs
     const hbls = await knexDB('HouseBL')
-      .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+      .leftJoin('Parties as S', 'HouseBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'HouseBL.consignee', 'C.id')
       .select(
         'HouseBL.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -239,9 +240,9 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
 router.get("/get", authenticateJWT, async (req, res) => {
   try {
     const jobs = await knexDB('MasterBL')
-      .leftJoin('Customers as S', 'MasterBL.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'MasterBL.consignee', 'C.customer_id')
-      .leftJoin('Customers as A', 'MasterBL.agent', 'A.customer_id')
+      .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+      .leftJoin('Parties as A', 'MasterBL.agent', 'A.id')
       .select(
         'MasterBL.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -252,8 +253,8 @@ router.get("/get", authenticateJWT, async (req, res) => {
 
     // Fetch all HouseBLs
     const hbls = await knexDB('HouseBL')
-      .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+      .leftJoin('Parties as S', 'HouseBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'HouseBL.consignee', 'C.id')
       .select(
         'HouseBL.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),

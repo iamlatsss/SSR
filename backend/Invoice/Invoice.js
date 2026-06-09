@@ -1,85 +1,25 @@
 import express from 'express';
-import { knexDB } from '../Database.js';
+import { knexDB, mapPartyToCustomer } from '../Database.js';
 import { authenticateJWT } from "../AuthAPI/Auth.js";
 import fs from 'fs/promises';
 import path from 'path';
 import puppeteer from 'puppeteer';
 import { uploadFile } from '../S3/S3Service.js';
 import { fileURLToPath } from 'url';
+import { STANDARD_CHARGES } from '../StandardCharges.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = express.Router();
 
-export const CHARGES = [
-    { "name": "AIR IMP. FREIGHT CHARGES", "gst": false },
-    { "name": "BL CHARGES", "gst": false },
-    { "name": "BL MANIFEST CHARGES -GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "BOND FORMALITIES CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "CFS CHARGES GST -18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "CFS CHARGES IGST -18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "CLEARANCE CHARGES IGST -18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "CONSOLIDATION CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "CONSOLIDATION CHARGES IGST-18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "CONT. IMBALANCING CHARGES IGST 18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "CONT. SEAL & MANDATORY USAGE CHARGES", "gst": false },
-    { "name": "CONT. SEAL CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "Cargo Handling Charges-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "DETENTION CHARGES IGST 18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "DETENTION CHARGES-GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "DO CHARGES GST -18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "DO CHARGES IGST -18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "DO EXTENSION", "gst": false },
-    { "name": "DO REVALIDATION", "gst": false },
-    { "name": "DOCK DESTUFFING CHARGES-IGST18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "DOCUMENTATION CHARGES", "gst": false },
-    { "name": "DPD REGISTRATION CHARGES- GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EX-WORK CHARGES GST -18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EXAMINATION CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EXP. AFS CHARGES- GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EXP. EMERGENCY SURCHARGES- GST18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EXP. ENS CHARGES- GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EXP. FAF CHARGES- GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EXP. GRI CHARGES- GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EXP. PCS CHARGES- GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "EXPORT CONST. FACILITATION & ADMIN CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "FCA CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "HAULAGE CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "HAULAGE CHARGES IGST-18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "HAZ CHARGES", "gst": false },
-    { "name": "IGM CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "IGM CHARGES IGST-18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "IGST SALE 18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "IGST SALE 5%", "gst": false, "igst": true, "percentage": 5 },
-    { "name": "INSURANCE CHARGES GST -18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "OCEAN FREIGHT CHARGES GST -5%", "gst": true, "igst": false, "percentage": 5 },
-    { "name": "OCEAN FREIGHT CHARGES IGST -5%", "gst": false, "igst": true, "percentage": 5 },
-    { "name": "OFF DOCK CHARGES IGST-18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "ON CARRIAGE CHARGES", "gst": false },
-    { "name": "OPEN TOP HANDLING CHARGES GST-5%", "gst": true, "igst": false, "percentage": 5 },
-    { "name": "Ocean Freight", "gst": false },
-    { "name": "PACKING CHARGES- GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "PORT CONGESTION CHARGE GST 18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "PORT STORAGE GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "RTO CHARGES", "gst": false },
-    { "name": "SALE 18 % GST", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "SALE 5% GST", "gst": true, "igst": false, "percentage": 5 },
-    { "name": "SCANNING CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "SCANNING CHARGES IGST-18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "SHIPPING LINE CHARGES GST -18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "SHIPPING LINE CHARGES IGST -18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "STAMP DUTY -0%", "gst": false },
-    { "name": "SURRENDER BL CHARGES -GST18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "TERMINAL HANDLING CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "TERMINAL HANDLING CHARGES IGST", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "THC GST -18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "THC IGST-18%", "gst": false, "igst": true, "percentage": 18 },
-    { "name": "TOLL CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "VESSEL CERTIFICATE CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "VGM CHARGES GST-18%", "gst": true, "igst": false, "percentage": 18 },
-    { "name": "WEIGHTMENT CHARGES IGST-18%", "gst": false, "igst": true, "percentage": 18 }
-];
+export const CHARGES = STANDARD_CHARGES.map(item => ({
+    name: item.name,
+    gst: !!item.gst,
+    igst: !!item.igst,
+    percentage: item.percentage || 0,
+    sac: item.sac || ''
+}));
 
 // Helper to convert numbers to Indian Rupee Words
 function numberToWordsINR(num) {
@@ -212,8 +152,202 @@ const getStateByGstin = (gstin, clientAddress = '') => {
 };
 
 // 1. Get all charge master heads
-router.get("/charges", (req, res) => {
-    res.json({ success: true, charges: CHARGES });
+router.get("/charges", async (req, res) => {
+    try {
+        const rows = await knexDB("Charges").select("*");
+        res.json({ success: true, charges: rows });
+    } catch (error) {
+        console.error("Failed to fetch charges from DB:", error);
+        res.json({ success: true, charges: CHARGES });
+    }
+});
+
+// Search charges with pagination (limit 20)
+router.get("/charges/search", async (req, res) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 20;
+        const search = req.query.search || '';
+        const offset = (page - 1) * limit;
+
+        let query = knexDB("Charges");
+        if (search) {
+            query = query.where(function() {
+                this.where("name", "like", `%${search}%`)
+                    .orWhere("short_name", "like", `%${search}%`)
+                    .orWhere("sac", "like", `%${search}%`);
+            });
+        }
+
+        const totalResult = await query.clone().count("id as count").first();
+        const total = totalResult ? totalResult.count : 0;
+
+        const rows = await query.select("*")
+            .orderBy("name", "asc")
+            .limit(limit)
+            .offset(offset);
+
+        res.json({
+            success: true,
+            charges: rows,
+            total,
+            page,
+            totalPages: Math.ceil(total / limit)
+        });
+    } catch (error) {
+        console.error("Error searching charges:", error);
+        res.status(500).json({ success: false, message: "Internal server error: " + error.message });
+    }
+});
+
+// Save a new charge
+router.post("/charges", async (req, res) => {
+    const {
+        name,
+        gst_charge_type,
+        short_name,
+        charge_type,
+        income_type,
+        tax_type,
+        unit,
+        currency,
+        rcm,
+        tds_applicable,
+        reimbursement_applicable,
+        status,
+        sac
+    } = req.body;
+
+    if (!name || !income_type || !tax_type || !status) {
+        return res.status(400).json({ success: false, message: "Missing mandatory fields" });
+    }
+
+    try {
+        let gst = false;
+        let igst = false;
+        let percentage = 0;
+
+        if (gst_charge_type === 'Taxable' || charge_type === 'Taxable') {
+            percentage = 18;
+            if (tax_type === 'Standard GST') {
+                gst = true;
+                igst = false;
+            } else if (tax_type === 'Charge Based IGST Fixed') {
+                gst = false;
+                igst = true;
+            } else {
+                gst = true;
+                igst = true;
+            }
+        }
+
+        const payload = {
+            name,
+            gst_charge_type: gst_charge_type || 'Taxable',
+            short_name: short_name || '',
+            charge_type: charge_type || 'Taxable',
+            income_type,
+            tax_type,
+            unit: unit || '--- None ---',
+            currency: currency || 'INR',
+            rcm: rcm || 'No',
+            tds_applicable: tds_applicable || 'No',
+            reimbursement_applicable: reimbursement_applicable || 'No',
+            status,
+            sac: sac || '',
+            gst,
+            igst,
+            percentage
+        };
+
+        const existing = await knexDB("Charges").where({ name }).first();
+        if (existing) {
+            return res.status(400).json({ success: false, message: `Charge '${name}' already exists` });
+        }
+
+        const [insertId] = await knexDB("Charges").insert(payload);
+        res.json({ success: true, message: "Charge created successfully", id: insertId, charge: { id: insertId, ...payload } });
+    } catch (error) {
+        console.error("Error creating charge:", error);
+        res.status(500).json({ success: false, message: "Internal server error: " + error.message });
+    }
+});
+
+// Update an existing charge
+router.put("/charges/:id", async (req, res) => {
+    const id = parseInt(req.params.id);
+    const {
+        name,
+        gst_charge_type,
+        short_name,
+        charge_type,
+        income_type,
+        tax_type,
+        unit,
+        currency,
+        rcm,
+        tds_applicable,
+        reimbursement_applicable,
+        status,
+        sac
+    } = req.body;
+
+    if (!name || !income_type || !tax_type || !status) {
+        return res.status(400).json({ success: false, message: "Missing mandatory fields" });
+    }
+
+    try {
+        let gst = false;
+        let igst = false;
+        let percentage = 0;
+
+        if (gst_charge_type === 'Taxable' || charge_type === 'Taxable') {
+            percentage = 18;
+            if (tax_type === 'Standard GST') {
+                gst = true;
+                igst = false;
+            } else if (tax_type === 'Charge Based IGST Fixed') {
+                gst = false;
+                igst = true;
+            } else {
+                gst = true;
+                igst = true;
+            }
+        }
+
+        const payload = {
+            name,
+            gst_charge_type: gst_charge_type || 'Taxable',
+            short_name: short_name || '',
+            charge_type: charge_type || 'Taxable',
+            income_type,
+            tax_type,
+            unit: unit || '--- None ---',
+            currency: currency || 'INR',
+            rcm: rcm || 'No',
+            tds_applicable: tds_applicable || 'No',
+            reimbursement_applicable: reimbursement_applicable || 'No',
+            status,
+            sac: sac || '',
+            gst,
+            igst,
+            percentage
+        };
+
+        const existing = await knexDB("Charges").where({ name }).andWhereNot({ id }).first();
+        if (existing) {
+            return res.status(400).json({ success: false, message: `Charge '${name}' already exists` });
+        }
+
+        const affected = await knexDB("Charges").where({ id }).update(payload);
+        if (affected === 0) {
+            return res.status(404).json({ success: false, message: "Charge not found" });
+        }
+        res.json({ success: true, message: "Charge updated successfully" });
+    } catch (error) {
+        console.error("Error updating charge:", error);
+        res.status(500).json({ success: false, message: "Internal server error: " + error.message });
+    }
 });
 
 // 2. Initialize Route for billing context selection
@@ -221,7 +355,8 @@ router.get("/init", authenticateJWT, async (req, res) => {
     try {
         const mblJobs = await knexDB("MasterBL").select("job_no", "mbl_no", "date_of_nomination", "pol", "pod", "shipper", "consignee");
         const hblJobs = await knexDB("HouseBL").select("job_no", "hbl_no", "mbl_no", "date_of_nomination", "shipper", "consignee");
-        const customers = await knexDB("Customers").select("customer_id", "name", "address", "gstin", "customer_type");
+        const parties = await knexDB("Parties").select("*");
+        const customers = parties.map(mapPartyToCustomer);
         
         res.json({
             success: true,
@@ -328,20 +463,44 @@ router.post("/save", authenticateJWT, async (req, res) => {
     }
 
     try {
-        // Query maximum sequential number from existing invoices
-        const existingInvoices = await knexDB("Invoices").select("invoice_no");
-        let nextSeq = 1;
-        existingInvoices.forEach(inv => {
-            if (inv.invoice_no) {
-                const parts = String(inv.invoice_no).split('/');
-                const lastPart = parts[parts.length - 1];
-                const seq = parseInt(lastPart, 10);
-                if (!isNaN(seq) && seq >= nextSeq) {
-                    nextSeq = seq + 1;
-                }
+        // Prevent modifying or re-saving if already approved or posted
+        // Prevent modifying or re-saving if already approved or posted
+        const existingApproved = await knexDB("Invoices")
+            .where({ job_no: jobNo })
+            .first();
+
+        if (existingApproved) {
+            if (existingApproved.approval_status === 'Approved') {
+                return res.status(400).json({
+                    success: false,
+                    message: "Cannot modify or re-generate this invoice. It has already been Approved."
+                });
             }
-        });
-        const invoiceNoStr = `SSR/INV/26-27/${String(nextSeq).padStart(4, '0')}`;
+            if (existingApproved.irn) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Cannot modify or re-generate this invoice. E-Invoice IRN has already been generated."
+                });
+            }
+            // If it exists but is rejected or pending, delete it first to overwrite it
+            await knexDB("Invoices").where({ id: existingApproved.id }).delete();
+        }
+
+        const getFinancialYear = (dateStr) => {
+            const d = new Date(dateStr);
+            const year = d.getFullYear();
+            const month = d.getMonth();
+            let startYear, endYear;
+            if (month >= 3) { // April to December
+                startYear = year;
+                endYear = year + 1;
+            } else { // January to March
+                startYear = year - 1;
+                endYear = year;
+            }
+            return `${startYear}-${endYear}`;
+        };
+        const invoiceNoStr = `SSRINV${getFinancialYear(invoiceDate || new Date())}-${jobNo}`;
 
         const payload = {
             invoice_no: invoiceNoStr,
@@ -461,7 +620,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
 
             return {
                 chargeName: item.charge || '—',
-                hsnSac: item.hsn_sac || '996521',
+                hsnSac: item.hsn_sac || item.sac || '996521',
                 ratePerUnit: targetRate.toFixed(2),
                 curr: targetCurrency,
                 quantity: qty.toFixed(2),
@@ -519,6 +678,22 @@ router.post("/save", authenticateJWT, async (req, res) => {
             ? `USD - ${numberToWordsUSD(grandTotalVal)}`
             : `INR - ${numberToWordsINR(roundedINRGrandTotal)}`;
 
+        let polVal = jobRecord?.pol || addDetails?.pol || '—';
+        let podVal = jobRecord?.pod || addDetails?.pod || '—';
+        let fpdVal = jobRecord?.final_pod || addDetails?.fpd || addDetails?.final_pod || '—';
+
+        if (polVal === '—' || podVal === '—' || fpdVal === '—') {
+            let linkedMblNo = jobRecord?.mbl_no || addDetails?.mbl_no;
+            if (linkedMblNo) {
+                const mblRec = await knexDB("MasterBL").where({ mbl_no: linkedMblNo }).first();
+                if (mblRec) {
+                    if (polVal === '—') polVal = mblRec.pol || '—';
+                    if (podVal === '—') podVal = mblRec.pod || '—';
+                    if (fpdVal === '—') fpdVal = mblRec.final_pod || '—';
+                }
+            }
+        }
+
         // Build Payload matching tax_invoice.html expectations
         const fillPayload = {
             partyName: clientName || '—',
@@ -528,7 +703,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
             placeOfSupply: stateInfo.name,
             invoiceNo: invoiceNoStr,
             invoiceDate: formatDate(invoiceDate || new Date()),
-            refNo: addDetails.reference_no || '—',
+            refNo: jobNo,
             irn: addDetails.irn || '',
             narration: addDetails.narration || 'NIL',
             consignee: consigneeName || '—',
@@ -537,7 +712,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
             cargoType: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
             cargoWeight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
             cbm: jobRecord?.net_weight || addDetails.volume || '—',
-            pod: jobRecord?.pod || '—',
+            pod: podVal,
             noOfPkgs: addDetails.no_of_packages || '—',
             etaDate: formatDate(jobRecord?.eta || addDetails.eta_date),
             exRate: effectiveExRate.toFixed(2),
@@ -546,8 +721,8 @@ router.post("/save", authenticateJWT, async (req, res) => {
             mblNo: mblHblType === 'MBL' ? mblHblNo : (jobRecord?.mbl_no || '—'),
             mblDate: formatDate(jobRecord?.mbl_date || jobRecord?.created_at || addDetails.mbl_date),
             vesselVoy: `${jobRecord?.vessel || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
-            pol: jobRecord?.pol || '—',
-            fpd: jobRecord?.final_pod || addDetails.fpd || '—',
+            pol: polVal,
+            fpd: fpdVal,
             igmNo: addDetails.igm_no || '—',
             igmDate: formatDate(addDetails.igm_date || jobRecord?.created_at),
             lineNo: addDetails.item_no || '—',
@@ -615,7 +790,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
         await browser.close();
 
         // Upload generated PDF buffer to S3
-        const filename = `TaxInvoice_${nextSeq}_${Date.now()}.pdf`;
+        const filename = `TaxInvoice_${jobNo}_${Date.now()}.pdf`;
         const uploadRes = await uploadFile({
             fileBuffer: pdfBuffer,
             key: filename,
@@ -668,6 +843,70 @@ router.get("/job/:jobNo", async (req, res) => {
     } catch (error) {
         console.error("Error fetching invoice:", error);
         res.status(500).json({ success: false, message: "Database error" });
+    }
+});
+
+// Delete invoice from database, unlock job sell rates, and reset job status
+router.delete("/delete/:id", authenticateJWT, async (req, res) => {
+    const id = parseInt(req.params.id);
+    try {
+        const invoice = await knexDB("Invoices").where({ id }).first();
+        if (!invoice) {
+            return res.status(404).json({ success: false, message: "Invoice not found" });
+        }
+
+        const { job_no, mbl_hbl_type, mbl_hbl_no } = invoice;
+
+        await knexDB.transaction(async (trx) => {
+            // Delete invoice
+            await trx("Invoices").where({ id }).delete();
+
+            // Reset job details & unlock sell rates
+            let jobRecord = null;
+            if (mbl_hbl_type === 'MBL') {
+                jobRecord = await trx("MasterBL").where({ job_no }).first();
+            } else {
+                jobRecord = await trx("HouseBL").where({ hbl_no: mbl_hbl_no }).first();
+            }
+
+            if (jobRecord) {
+                let addDetails = {};
+                if (jobRecord.additional_details) {
+                    addDetails = typeof jobRecord.additional_details === 'string'
+                        ? JSON.parse(jobRecord.additional_details)
+                        : jobRecord.additional_details;
+                }
+
+                // Unlock sell rates
+                const sellRates = addDetails.sell_rates || [];
+                const unlockedSellRates = sellRates.map(r => ({
+                    ...r,
+                    locked: false
+                }));
+                addDetails.sell_rates = unlockedSellRates;
+
+                if (mbl_hbl_type === 'MBL') {
+                    await trx("MasterBL").where({ job_no }).update({
+                        additional_details: JSON.stringify(addDetails),
+                        status: 'Sell Rate Updated',
+                        invoice_no: null,
+                        invoice_date: null
+                    });
+                } else {
+                    await trx("HouseBL").where({ hbl_no: mbl_hbl_no }).update({
+                        additional_details: JSON.stringify(addDetails),
+                        status: 'Sell Rate Updated',
+                        invoice_no: null,
+                        invoice_date: null
+                    });
+                }
+            }
+        });
+
+        res.json({ success: true, message: "Invoice deleted and status reset successfully" });
+    } catch (error) {
+        console.error("Error deleting tax invoice:", error);
+        res.status(500).json({ success: false, message: "Failed to delete invoice: " + error.message });
     }
 });
 

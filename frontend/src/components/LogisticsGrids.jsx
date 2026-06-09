@@ -30,6 +30,8 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
         } else {
           updated[index].gst = "0%";
         }
+        updated[index].sac = selectedCharge.sac || "";
+        updated[index].hsn_sac = selectedCharge.sac || "";
       }
     }
 
@@ -138,12 +140,15 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
               }
             }
 
+            const defaultSac = selectedCharge?.sac || "";
             const newRow = {
               doc_type: "INV",
               drcr: "DR",
               party: !isBuy && consignee ? consignee : "",
               address: "",
               charge: defaultCharge,
+              sac: defaultSac,
+              hsn_sac: defaultSac,
               gst: defaultGst,
               unit: "--- None ---",
               quantity: "1",
@@ -225,24 +230,25 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
           <thead>
             <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold uppercase tracking-wider">
               <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px]">DRCR</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[150px]">{partyLabel}</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[170px]">Address</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[230px]">Charge</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px] text-center">GST</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[90px]">Unit</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[60px] text-right">Qty</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px] text-right">Rate</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[70px]">Cur.</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[70px] text-right">Ex Rate</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[80px] text-right">Amount</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[85px] text-right">AMT_FC</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 text-center w-[45px]">Act</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[130px]">{partyLabel}</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[140px]">Address</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[200px]">Charge</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[80px] text-center">HSN/SAC</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[65px] text-center">GST</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[80px]">Unit</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[50px] text-right">Qty</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[70px] text-right">Rate</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[60px]">Cur.</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[65px] text-right">Ex Rate</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px] text-right">Amount</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[80px] text-right">AMT_FC</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 p-2 text-center w-[40px]">Act</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700/60">
             {rows.length === 0 ? (
               <tr>
-                <td colSpan="13" className="p-8 text-center text-slate-500 dark:text-slate-400 italic border border-slate-200 dark:border-slate-700/80">
+                <td colSpan="14" className="p-8 text-center text-slate-500 dark:text-slate-400 italic border border-slate-200 dark:border-slate-700/80">
                   No rate rows added yet. Click "Add Rate Row" to start.
                 </td>
               </tr>
@@ -271,7 +277,12 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                     <SearchableDropdown
                       options={customers.map((c) => ({ value: c.customer_id, label: c.name }))}
                       value={row.party}
-                      onChange={(val) => handleRowChange(idx, "party", val)}
+                      onChange={(val) => {
+                        const updated = [...rows];
+                        updated[idx].party = val;
+                        updated[idx].address = "";
+                        onChange(updated);
+                      }}
                       placeholder={`Select ${partyLabel}`}
                       allowCustom={true}
                       variant="grid"
@@ -283,9 +294,25 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       const clientData = customers.find(c => String(c.customer_id) === String(row.party) || c.name === row.party);
                       const addrs = [];
                       if (clientData) {
-                        if (clientData.address && clientData.address.trim()) addrs.push(clientData.address.trim());
-                        if (clientData.office_address && clientData.office_address.trim()) addrs.push(clientData.office_address.trim());
-                        if (clientData.branch_office && clientData.branch_office.trim()) addrs.push(clientData.branch_office.trim());
+                        if (Array.isArray(clientData.addresses) && clientData.addresses.length > 0) {
+                          clientData.addresses.forEach(addr => {
+                            const line1 = addr.address_line1 || addr.address1 || '';
+                            const line2 = addr.address_line2 || addr.address2 || '';
+                            const clean = [line1, line2].map(p => p.trim()).filter(Boolean).join(', ');
+                            if (clean) addrs.push(clean);
+                          });
+                        } else {
+                          const clean = [
+                            clientData.address_line1 || clientData.address1,
+                            clientData.address_line2 || clientData.address2
+                          ].map(p => p && p.trim()).filter(Boolean).join(', ');
+
+                          if (clean) {
+                            addrs.push(clean);
+                          } else if (clientData.address && clientData.address.trim()) {
+                            addrs.push(clientData.address.trim());
+                          }
+                        }
                       }
                       const unique = [...new Set(addrs)].map(addr => ({ value: addr, label: addr }));
                       if (row.address && !unique.some(opt => opt.value === row.address)) {
@@ -312,6 +339,19 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       showOnlyWhenTyping={true}
                       variant="grid"
                       disabled={!!row.locked}
+                    />
+                  </td>
+                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                    <input
+                      type="text"
+                      value={row.sac || row.hsn_sac || ""}
+                      onChange={(e) => {
+                        handleRowChange(idx, "sac", e.target.value);
+                        handleRowChange(idx, "hsn_sac", e.target.value);
+                      }}
+                      disabled={!!row.locked}
+                      placeholder="996521"
+                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-center rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
                   <td className="border border-slate-200 dark:border-slate-700/80 p-2 font-medium text-slate-700 dark:text-slate-350 text-center bg-slate-50/10 dark:bg-slate-800/10 text-xs">
@@ -390,7 +430,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
             {/* 4. Column Totals Row */}
             {rows.length > 0 && (
               <tr className="bg-slate-100 dark:bg-slate-800/40 text-slate-800 dark:text-white font-bold border-t border-slate-200 dark:border-slate-700/80">
-                <td colSpan="10" className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                <td colSpan="11" className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-slate-500 font-semibold uppercase tracking-wider text-xs">
                   Totals:
                 </td>
                 <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-slate-900 dark:text-white font-bold bg-slate-100/30 dark:bg-slate-800/30 text-xs">

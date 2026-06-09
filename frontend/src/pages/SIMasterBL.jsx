@@ -51,6 +51,8 @@ const RequiredStar = () => null; // Removed asterisk indicator completely
    ========================================================================= */
 export function SIMasterBLList() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const directionParam = searchParams.get("direction");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -96,7 +98,11 @@ export function SIMasterBLList() {
   };
 
   const handleCreateJob = () => {
-    navigate('/si-masterbl-form');
+    if (directionParam) {
+      navigate(`/si-masterbl-form?direction=${directionParam}`);
+    } else {
+      navigate('/si-masterbl-form');
+    }
   };
 
   const handleStatusChange = async (jobNo, newStatus) => {
@@ -131,7 +137,25 @@ export function SIMasterBLList() {
     const matchesStatus =
       filterStatus === "all" || job.status === filterStatus;
 
-    return matchesSearch && matchesStatus;
+    let matchesDirection = true;
+    if (directionParam) {
+      let addDetails = {};
+      if (job.additional_details) {
+        try {
+          addDetails = typeof job.additional_details === 'string'
+            ? JSON.parse(job.additional_details)
+            : job.additional_details;
+        } catch (e) { }
+      }
+      const jobService = addDetails.services || "";
+      if (directionParam === "import") {
+        matchesDirection = jobService.toLowerCase().includes("import");
+      } else if (directionParam === "export") {
+        matchesDirection = jobService.toLowerCase().includes("export");
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDirection;
   });
 
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -139,9 +163,15 @@ export function SIMasterBLList() {
   const currentJobs = filteredJobs.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
 
+  const getPageTitle = () => {
+    if (directionParam === "import") return "Sea Import MasterBL (MBL)";
+    if (directionParam === "export") return "Sea Export MasterBL (MBL)";
+    return "SI MasterBL (MBL)";
+  };
+
   if (loading) {
     return (
-      <DashboardLayout title="SI MasterBL">
+      <DashboardLayout title={getPageTitle()}>
         <div className="flex justify-center h-96 items-center">
           <div className="animate-spin h-10 w-10 border-b-2 border-indigo-600 rounded-full" />
         </div>
@@ -150,7 +180,7 @@ export function SIMasterBLList() {
   }
 
   return (
-    <DashboardLayout title="SI MasterBL (MBL)">
+    <DashboardLayout title={getPageTitle()}>
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
@@ -674,7 +704,7 @@ export function SIMasterBLForm() {
 
     enquiry_no: "",
     mbl_date: "",
-    services: "",
+    services: searchParams.get("direction") === "import" ? "Sea Freight Import" : (searchParams.get("direction") === "export" ? "Sea Freight Export" : ""),
     shipment_type: "",
     inco_terms: "",
     sales: "Sentil Kumar",
@@ -1263,8 +1293,17 @@ export function SIMasterBLForm() {
                 </div>
 
                 <div>
-                  <label className={labelStyle}>Shipping Line / Carrier</label>
-                  <input type="text" name="carrier" value={form.carrier} onChange={handleInputChange} placeholder="Carrier" className={inputStyle} />
+                  <PartySelect
+                    label="Shipping Line / Carrier"
+                    name="carrier"
+                    value={form.carrier}
+                    onChange={handleInputChange}
+                    customers={customers}
+                    isHybrid={false}
+                    placeholder="Search Carrier..."
+                    labelClassName={labelStyle}
+                    inputClassName={inputStyle}
+                  />
                 </div>
 
                 <div>

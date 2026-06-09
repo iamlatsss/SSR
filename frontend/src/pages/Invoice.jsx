@@ -172,6 +172,7 @@ export default function Invoice() {
   // Modal State
   const [previewPdfUrl, setPreviewPdfUrl] = useState("");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("generate"); // "generate" or "stored"
 
   useEffect(() => {
     loadInitData();
@@ -550,11 +551,55 @@ export default function Invoice() {
     setShowPreviewModal(true);
   };
 
+  const handleDeleteInvoice = async (id, invoiceNo) => {
+    if (!window.confirm(`Are you sure you want to delete Tax Invoice #${invoiceNo}? This will delete the invoice from the database, unlock job sell rates, and reset the job status.`)) {
+      return;
+    }
+    try {
+      const res = await api.delete(`/invoice/delete/${id}`);
+      if (res.data.success) {
+        toast.success(res.data.message || `Tax Invoice #${invoiceNo} has been deleted.`);
+        loadHistory(); // Reload history
+      } else {
+        toast.error("Deletion failed: " + res.data.message);
+      }
+    } catch (error) {
+      console.error("Error deleting invoice:", error);
+      toast.error("Failed to delete invoice: " + (error.response?.data?.message || error.message));
+    }
+  };
+
   return (
     <DashboardLayout title="Tax Invoice Generator">
-      <div className="space-y-8 max-w-7xl mx-auto p-1 font-poppins">
+      <div className="space-y-6 max-w-7xl mx-auto p-1 font-poppins">
         
-        {/* TOP FILTER CONTROLS */}
+        {/* Tab Selection */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 mb-6">
+          <button
+            onClick={() => setActiveTab("generate")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === "generate"
+                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Generate Invoice
+          </button>
+          <button
+            onClick={() => setActiveTab("stored")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === "stored"
+                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Stored Invoices
+          </button>
+        </div>
+
+        {activeTab === "generate" ? (
+          <>
+            {/* TOP FILTER CONTROLS */}
         <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
           <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <FileText size={20} className="text-indigo-500" /> Filter Billing Context (Tax Invoice)
@@ -846,75 +891,77 @@ export default function Invoice() {
 
           </div>
         )}
+          </>
+        ) : (
+          /* TAX INVOICES ARCHIVE HISTORY */
+          <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
+            <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <FileText size={20} className="text-indigo-500" /> Tax Invoices History Log
+            </h3>
 
-        {/* TAX INVOICES ARCHIVE HISTORY */}
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
-          <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <FileText size={20} className="text-indigo-500" /> Tax Invoices History Log
-          </h3>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse table-auto text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs">
-                  <th className="p-4">Invoice No</th>
-                  <th className="p-4">Job No</th>
-                  <th className="p-4">BL Type</th>
-                  <th className="p-4">BL Number</th>
-                  <th className="p-4">Billing Client</th>
-                  <th className="p-4 text-center">Print Currency</th>
-                  <th className="p-4">Date</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {history.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="p-8 text-center text-slate-500 italic">
-                      No tax invoices generated yet.
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse table-auto text-sm">
+                <thead>
+                  <tr className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs">
+                    <th className="p-4">Invoice No</th>
+                    <th className="p-4">Job No</th>
+                    <th className="p-4">BL Type</th>
+                    <th className="p-4">BL Number</th>
+                    <th className="p-4">Billing Client</th>
+                    <th className="p-4 text-center">Print Currency</th>
+                    <th className="p-4">Date</th>
+                    <th className="p-4 text-right">Actions</th>
                   </tr>
-                ) : (
-                  history.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                      <td className="p-4 font-bold text-slate-900 dark:text-white">#{inv.invoice_no || inv.id}</td>
-                      <td className="p-4 font-mono text-indigo-600 dark:text-indigo-400">#{inv.job_no}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          inv.mbl_hbl_type === 'MBL' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {inv.mbl_hbl_type}
-                        </span>
-                      </td>
-                      <td className="p-4 font-mono font-medium">{inv.mbl_hbl_no}</td>
-                      <td className="p-4 font-semibold">{inv.client_name}</td>
-                      <td className="p-4 text-center font-bold text-teal-600">{inv.print_type === 'USD' ? 'USD' : 'INR'}</td>
-                      <td className="p-4">{new Date(inv.invoice_date || inv.created_at).toLocaleDateString()}</td>
-                      <td className="p-4 text-right flex justify-end gap-3">
-                        <button
-                          onClick={() => openPastPreview(inv.pdf_link)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg text-xs font-bold transition-colors"
-                          disabled={!inv.pdf_link}
-                        >
-                          <Eye size={14} /> Interactive Preview
-                        </button>
-                        <a
-                          href={inv.pdf_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg text-xs font-bold transition-colors"
-                          disabled={!inv.pdf_link}
-                        >
-                          <Download size={14} /> S3 Download
-                        </a>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                  {history.length === 0 ? (
+                    <tr>
+                      <td colSpan="8" className="p-8 text-center text-slate-500 italic">
+                        No tax invoices generated yet.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    history.map((inv) => (
+                      <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
+                        <td className="p-4 font-bold text-slate-900 dark:text-white">#{inv.invoice_no || inv.id}</td>
+                        <td className="p-4 font-mono text-indigo-600 dark:text-indigo-400">#{inv.job_no}</td>
+                        <td className="p-4">
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                            inv.mbl_hbl_type === 'MBL' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                          }`}>
+                            {inv.mbl_hbl_type}
+                          </span>
+                        </td>
+                        <td className="p-4 font-mono font-medium">{inv.mbl_hbl_no}</td>
+                        <td className="p-4 font-semibold">{inv.client_name}</td>
+                        <td className="p-4 text-center font-bold text-teal-600">{inv.print_type === 'USD' ? 'USD' : 'INR'}</td>
+                        <td className="p-4">{new Date(inv.invoice_date || inv.created_at).toLocaleDateString()}</td>
+                        <td className="p-4 text-right flex justify-end gap-3">
+                          <button
+                            onClick={() => openPastPreview(inv.pdf_link)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg text-xs font-bold transition-colors"
+                            disabled={!inv.pdf_link}
+                          >
+                            <Eye size={14} /> Interactive Preview
+                          </button>
+                          <a
+                            href={inv.pdf_link}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg text-xs font-bold transition-colors"
+                            disabled={!inv.pdf_link}
+                          >
+                            <Download size={14} /> S3 Download
+                          </a>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        )}
 
       </div>
 

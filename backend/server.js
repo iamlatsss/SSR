@@ -12,10 +12,12 @@ import KYC from './KYC/KYC.js';
 import Ports from './Data/Ports.js';
 import Invoice from './Invoice/Invoice.js';
 import ProformaInvoice from './Invoice/ProformaInvoice.js';
+import EInvoice from './Invoice/EInvoice.js';
 import Quotation from './Quotation/Quotation.js';
 import S3Routes from './S3/S3Routes.js';
 import MasterBL from './MasterBL/MasterBL.js';
 import HouseBL from './HouseBL/HouseBL.js';
+import Party from './Party/Party.js';
 
 const app = express();
 const PORT = 5001;
@@ -54,8 +56,10 @@ app.use('/kyc', authenticateJWT, requireAdmin, KYC);
 app.use('/ports', Ports);
 app.use('/invoice', authenticateJWT, requireAdmin, Invoice);
 app.use('/proforma', authenticateJWT, requireAdmin, ProformaInvoice);
+app.use('/einvoice', authenticateJWT, requireAdmin, EInvoice);
 app.use('/quotation', Quotation);
 app.use('/s3', authenticateJWT, requireAdmin, S3Routes);
+app.use('/party', authenticateJWT, requireAdmin, Party);
 
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');

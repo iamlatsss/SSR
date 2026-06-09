@@ -10,6 +10,7 @@ import ChargeSelect from "../components/ChargeSelect";
 const INITIAL_ROW = {
     id: Date.now(),
     chargeName: "",
+    hsn_sac: "",
     isGST: false,
     taxType: null, // 'GST' | 'IGST' | null
     taxPercent: 0,
@@ -93,7 +94,8 @@ const InvoiceGenerator = () => {
                             ...item,
                             isGST: foundCharge.gst || foundCharge.igst,
                             taxType: foundCharge.gst ? 'GST' : (foundCharge.igst ? 'IGST' : null),
-                            taxPercent: foundCharge.percentage || 0
+                            taxPercent: foundCharge.percentage || 0,
+                            hsn_sac: item.hsn_sac || foundCharge.sac || ""
                         };
                     }
                     return item;
@@ -215,11 +217,13 @@ const InvoiceGenerator = () => {
                     updated.isGST = foundCharge.gst || foundCharge.igst;
                     updated.taxType = foundCharge.gst ? 'GST' : (foundCharge.igst ? 'IGST' : null);
                     updated.taxPercent = foundCharge.percentage || 0;
+                    updated.hsn_sac = foundCharge.sac || "";
                 } else {
                     // Custom value - no assumptions
                     updated.isGST = false;
                     updated.taxType = null;
                     updated.taxPercent = 0;
+                    updated.hsn_sac = "";
                 }
             }
 
@@ -313,10 +317,11 @@ const InvoiceGenerator = () => {
                 {/* Main Editor Table */}
                 <div className="bg-white dark:bg-dark-card rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm flex-1 flex flex-col overflow-hidden">
                     <div className="flex-1 overflow-auto">
-                        <table className="w-full text-left border-collapse min-w-[1200px]">
+                        <table className="w-full text-left border-collapse min-w-[1300px]">
                             <thead className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-800 text-xs uppercase text-slate-500 dark:text-slate-400 font-semibold shadow-sm">
                                 <tr>
                                     <th className="p-4 w-64 border-b border-slate-200 dark:border-slate-700">Description / Charge</th>
+                                    <th className="p-4 w-28 border-b border-slate-200 dark:border-slate-700">HSN/SAC</th>
                                     <th className="p-4 w-32 border-b border-slate-200 dark:border-slate-700">Unit</th>
                                     <th className="p-4 w-24 border-b border-slate-200 dark:border-slate-700">Qty</th>
                                     <th className="p-4 w-32 border-b border-slate-200 dark:border-slate-700">Rate</th>
@@ -339,6 +344,15 @@ const InvoiceGenerator = () => {
                                                 onChange={(val) => updateRow(item.id, 'chargeName', val)}
                                                 options={chargeOptions}
                                                 placeholder="Select Charge..."
+                                            />
+                                        </td>
+                                        <td className="p-3">
+                                            <input
+                                                type="text"
+                                                value={item.hsn_sac || ""}
+                                                onChange={(e) => updateRow(item.id, 'hsn_sac', e.target.value)}
+                                                placeholder="996521"
+                                                className="w-full bg-slate-50 dark:bg-slate-800 border-none rounded px-2 py-1 text-center font-medium"
                                             />
                                         </td>
                                         <td className="p-3">

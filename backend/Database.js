@@ -1,6 +1,9 @@
 import mysql from 'mysql2';
 import knex from 'knex';
 import './config.js';
+import { STANDARD_CHARGES } from './StandardCharges.js';
+import { STANDARD_PARTIES } from './StandardParties.js';
+
 
 // Create a MySQL pool for connection reuse
 const pool = mysql.createPool({
@@ -635,7 +638,18 @@ export async function deleteQuotationsByIds(ids) {
       { name: 'client_gstin', type: 'VARCHAR(100)' },
       { name: 'client_state', type: 'VARCHAR(100)' },
       { name: 'print_type', type: "VARCHAR(50) DEFAULT 'Invoice'" },
-      { name: 'pdf_link', type: 'VARCHAR(1000)' }
+      { name: 'pdf_link', type: 'VARCHAR(1000)' },
+      { name: 'approval_status', type: "VARCHAR(20) DEFAULT 'Pending'" },
+      { name: 'einvoice_status', type: "VARCHAR(30) DEFAULT 'Pending'" },
+      { name: 'rejection_reason', type: 'VARCHAR(255) DEFAULT NULL' },
+      { name: 'rejection_remarks', type: 'TEXT DEFAULT NULL' },
+      { name: 'irn', type: 'VARCHAR(255) DEFAULT NULL' },
+      { name: 'ack_no', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'ack_date', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'signed_qr_code', type: 'LONGTEXT DEFAULT NULL' },
+      { name: 'signed_invoice', type: 'LONGTEXT DEFAULT NULL' },
+      { name: 'einvoice_response', type: 'JSON DEFAULT NULL' },
+      { name: 'einvoice_logs', type: 'JSON DEFAULT NULL' }
     ];
     for (const col of columnsToAdd) {
       try {
@@ -658,5 +672,375 @@ export async function deleteQuotationsByIds(ids) {
   }
 })();
 
+(async function initEInvoiceAuditLogsTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS EInvoiceAuditLogs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      invoice_id INT NOT NULL,
+      invoice_no VARCHAR(100) NOT NULL,
+      action VARCHAR(50) NOT NULL,
+      user_id INT,
+      user_name VARCHAR(255),
+      user_email VARCHAR(255),
+      details TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  try {
+    await pool.query(query);
+    console.log("EInvoiceAuditLogs table initialized");
+  } catch (err) {
+    console.error("Error creating EInvoiceAuditLogs table:", err);
+  }
+})();
+
+(async function initChargesTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS Charges (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(255) UNIQUE NOT NULL,
+      gst BOOLEAN DEFAULT FALSE,
+      igst BOOLEAN DEFAULT FALSE,
+      percentage DECIMAL(5, 2) DEFAULT 0,
+      gst_charge_type VARCHAR(50) DEFAULT 'Taxable',
+      short_name VARCHAR(100) DEFAULT '',
+      charge_type VARCHAR(50) DEFAULT 'Taxable',
+      income_type VARCHAR(50) DEFAULT 'Both',
+      tax_type VARCHAR(100) DEFAULT 'Standard GST',
+      unit VARCHAR(50) DEFAULT '--- None ---',
+      currency VARCHAR(50) DEFAULT 'INR',
+      rcm VARCHAR(10) DEFAULT 'No',
+      tds_applicable VARCHAR(10) DEFAULT 'No',
+      reimbursement_applicable VARCHAR(10) DEFAULT 'No',
+      status VARCHAR(50) DEFAULT 'Enabled',
+      sac VARCHAR(50) DEFAULT '',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `;
+  try {
+    await pool.query(query);
+    console.log("Charges table initialized in MySQL");
+    
+    // Seed/Upsert charges from STANDARD_CHARGES
+    console.log("Upserting standard charges...");
+    for (const item of STANDARD_CHARGES) {
+      const payload = {
+        name: item.name,
+        gst: item.gst ? 1 : 0,
+        igst: item.igst ? 1 : 0,
+        percentage: item.percentage || 0,
+        gst_charge_type: item.gst_charge_type || 'Taxable',
+        short_name: item.short_name || item.name,
+        charge_type: item.charge_type || 'Taxable',
+        income_type: item.income_type || 'Both',
+        tax_type: item.tax_type || 'Standard GST',
+        unit: item.unit || '--- None ---',
+        currency: item.currency || 'INR',
+        rcm: item.rcm || 'No',
+        tds_applicable: item.tds_applicable || 'No',
+        reimbursement_applicable: item.reimbursement_applicable || 'No',
+        status: item.status || 'Enabled',
+        sac: item.sac || ''
+      };
+
+      const existing = await knexDB("Charges").where({ name: item.name }).first();
+      if (existing) {
+        await knexDB("Charges").where({ id: existing.id }).update(payload);
+      } else {
+        await knexDB("Charges").insert(payload);
+      }
+    }
+    console.log("Charges table seeding/upserting completed successfully.");
+  } catch (e) {
+    console.error("Error creating/populating Charges table:", e);
+  }
+})();
+
+(async function initPartiesTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS Parties (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      category_type VARCHAR(50) DEFAULT '',
+      party_type VARCHAR(50) DEFAULT '',
+      name VARCHAR(255) UNIQUE NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      pan_no VARCHAR(20) DEFAULT '',
+      cin_no VARCHAR(50) DEFAULT '',
+      entity_type VARCHAR(100) DEFAULT '',
+      web_url VARCHAR(255) DEFAULT '',
+      director_name VARCHAR(255) DEFAULT '',
+      turnover VARCHAR(100) DEFAULT '',
+      group_companies VARCHAR(255) DEFAULT '',
+      business_type VARCHAR(100) DEFAULT '',
+      incorporation_year VARCHAR(50) DEFAULT '',
+      gst_reg_type VARCHAR(100) DEFAULT '',
+      referred_by VARCHAR(255) DEFAULT '',
+      fac VARCHAR(10) DEFAULT '',
+      iata_code VARCHAR(50) DEFAULT '',
+      is_iata_agent VARCHAR(10) DEFAULT '',
+      is_airline VARCHAR(10) DEFAULT '',
+      is_msme VARCHAR(10) DEFAULT '',
+      msme_type VARCHAR(50) DEFAULT '',
+      msme_no VARCHAR(50) DEFAULT '',
+      tds_rate VARCHAR(50) DEFAULT '',
+      rcm VARCHAR(10) DEFAULT '',
+      usd_party VARCHAR(10) DEFAULT '',
+      os_active VARCHAR(10) DEFAULT '',
+      commodity TEXT,
+      special_instruction TEXT,
+      info_by_sales TEXT,
+      hod_feedback TEXT,
+      no_of_employees VARCHAR(50) DEFAULT '',
+      marketing VARCHAR(100) DEFAULT '',
+      party_status VARCHAR(50) DEFAULT 'Draft',
+      status VARCHAR(20) DEFAULT 'Enabled',
+      addresses JSON,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `;
+  try {
+    await pool.query(query);
+    console.log("Parties table initialized in MySQL");
+    
+    // Seed/Upsert parties from STANDARD_PARTIES
+    console.log("Upserting standard parties...");
+    for (const item of STANDARD_PARTIES) {
+      const addresses = [];
+      if (item.gst_no) {
+        addresses.push({
+          email: item.email || '',
+          telephone: '',
+          fax: '',
+          tan_no: '',
+          gst_no: item.gst_no,
+          address_line1: 'Default Address',
+          address_line2: '',
+          city: '',
+          pin_code: '',
+          country: 'India',
+          gst_state: '',
+          is_head_office: 'Yes',
+          is_sez: 'No',
+          status: 'Enabled',
+          is_default: true
+        });
+      }
+
+      const payload = {
+        name: item.name,
+        email: item.email || '',
+        pan_no: item.pan_no || '',
+        marketing: item.marketing || '',
+        party_status: item.party_status || 'Draft',
+        status: item.status || 'Enabled',
+        addresses: JSON.stringify(addresses),
+        created_at: item.created_at || knexDB.fn.now()
+      };
+
+      const existing = await knexDB("Parties").where({ name: item.name }).first();
+      if (existing) {
+        // Check if existing addresses have real data (not just "Default Address")
+        let existingAddresses = [];
+        try {
+          existingAddresses = typeof existing.addresses === 'string'
+            ? JSON.parse(existing.addresses)
+            : (existing.addresses || []);
+        } catch (e) { /* ignore parse errors */ }
+
+        const hasRealAddress = existingAddresses.some(a =>
+          a.address_line1 && a.address_line1 !== 'Default Address'
+        );
+
+        // Preserve existing extra fields but update basic info
+        const updatePayload = {
+          email: payload.email,
+          pan_no: payload.pan_no,
+          marketing: payload.marketing,
+          party_status: payload.party_status,
+          status: payload.status,
+        };
+
+        // Only overwrite addresses if existing ones don't have real data
+        if (!hasRealAddress) {
+          updatePayload.addresses = payload.addresses;
+        }
+
+        await knexDB("Parties").where({ id: existing.id }).update(updatePayload);
+      } else {
+        await knexDB("Parties").insert(payload);
+      }
+    }
+    console.log("Parties table seeding/upserting completed successfully.");
+
+    // Dynamic schema update for KYC Document uploads & details in Parties table
+    const docColumns = [
+      "ADD COLUMN gstin_doc VARCHAR(255)",
+      "ADD COLUMN pan_doc VARCHAR(255)",
+      "ADD COLUMN iec_doc VARCHAR(255)",
+      "ADD COLUMN kyc_letterhead_doc VARCHAR(255)",
+      "ADD COLUMN branch VARCHAR(255)",
+      "ADD COLUMN aadhar VARCHAR(50)",
+      "ADD COLUMN gst_remarks TEXT",
+      "ADD COLUMN mto_iec_cha_validity VARCHAR(255)",
+      "ADD COLUMN aeo_validity VARCHAR(255)",
+      "ADD COLUMN export_commodities TEXT",
+      "ADD COLUMN email_export VARCHAR(255)",
+      "ADD COLUMN email_import VARCHAR(255)",
+      "ADD COLUMN bank_details TEXT",
+      "ADD COLUMN contact_person_export VARCHAR(255)",
+      "ADD COLUMN contact_person_import VARCHAR(255)",
+      "ADD COLUMN kyc_date VARCHAR(50)",
+      "ADD COLUMN legal_name VARCHAR(255) DEFAULT ''",
+      "ADD COLUMN gst_no VARCHAR(50) DEFAULT ''"
+    ];
+    for (const col of docColumns) {
+      try {
+        await pool.query(`ALTER TABLE Parties ${col}`);
+      } catch (e) {
+        // Column already exists, safe to ignore
+      }
+    }
+    console.log("Parties table document & KYC columns verified/added.");
+
+    // One-time reference mapping migration by matching names
+    try {
+      console.log("Running legacy KYC reference migration...");
+      const legacyCustomers = await knexDB("Customers").select("customer_id", "name");
+      
+      for (const cust of legacyCustomers) {
+        const party = await knexDB("Parties").where({ name: cust.name }).first();
+        if (party) {
+          console.log(`Mapping legacy customer ID ${cust.customer_id} to Party ID ${party.id} for "${cust.name}"`);
+          await knexDB("Booking").where({ shipper: cust.customer_id }).update({ shipper: party.id });
+          await knexDB("Booking").where({ consignee: cust.customer_id }).update({ consignee: party.id });
+          await knexDB("Booking").where({ agent: cust.customer_id }).update({ agent: party.id });
+          await knexDB("Booking").where({ cha: cust.customer_id }).update({ cha: party.id });
+          await knexDB("Booking").where({ cfs: cust.customer_id }).update({ cfs: party.id });
+          
+          await knexDB("MasterBL").where({ shipper: cust.customer_id }).update({ shipper: party.id });
+          await knexDB("MasterBL").where({ consignee: cust.customer_id }).update({ consignee: party.id });
+          await knexDB("MasterBL").where({ agent: cust.customer_id }).update({ agent: party.id });
+          
+          await knexDB("HouseBL").where({ shipper: cust.customer_id }).update({ shipper: party.id });
+          await knexDB("HouseBL").where({ consignee: cust.customer_id }).update({ consignee: party.id });
+          
+          await knexDB("ProformaInvoices").where({ client_id: cust.customer_id }).update({ client_id: party.id });
+          await knexDB("Invoices").where({ client_id: cust.customer_id }).update({ client_id: party.id });
+        }
+      }
+      console.log("Legacy KYC reference migration completed.");
+    } catch (migErr) {
+      console.error("Error running legacy KYC reference migration:", migErr);
+    }
+  } catch (e) {
+    console.error("Error creating/populating Parties table:", e);
+  }
+})();
+
+(async function initHBLDocumentsTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS HBLDocuments (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      job_no INT NOT NULL,
+      document_type VARCHAR(50) NOT NULL,
+      bl_no VARCHAR(50) UNIQUE NOT NULL,
+      doc_data JSON NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_job_doc (job_no, document_type)
+    )
+  `;
+  try {
+    await pool.query(query);
+    console.log("HBLDocuments table initialized in MySQL");
+  } catch (err) {
+    console.error("Error creating HBLDocuments table:", err);
+  }
+})();
+
+export function mapPartyToCustomer(party) {
+  if (!party) return null;
+
+  let defaultAddress = {
+    address_line1: '',
+    address_line2: '',
+    city: '',
+    pin_code: '',
+    gst_state: '',
+    country: 'India',
+    gst_no: '',
+    email: '',
+    telephone: '',
+    tan_no: '',
+    contact_person: ''
+  };
+
+  let parsedAddresses = [];
+  if (party.addresses) {
+    try {
+      const addrs = typeof party.addresses === 'string' ? JSON.parse(party.addresses) : party.addresses;
+      if (Array.isArray(addrs)) {
+        parsedAddresses = addrs;
+        if (addrs.length > 0) {
+          const found = addrs.find(a => a.is_default) || addrs[0];
+          if (found) {
+            defaultAddress = { ...defaultAddress, ...found };
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Error parsing addresses for party mapping:", e);
+    }
+  }
+
+  const addressParts = [
+    defaultAddress.address_line1,
+    defaultAddress.address_line2,
+    defaultAddress.city,
+    defaultAddress.pin_code,
+    defaultAddress.gst_state,
+    defaultAddress.country
+  ].filter(part => part && String(part).trim() !== '');
+
+  const addressStr = addressParts.join(', ');
+
+  return {
+    customer_id: party.id,
+    date: party.kyc_date || party.created_at,
+    branch: party.branch || 'Navi Mumbai',
+    name: party.name,
+    address: addressStr,
+    office_address: addressStr,
+    branch_office: defaultAddress.city || '',
+    customer_type: party.entity_type || party.category_type || 'Customer',
+    status: party.status || 'Enabled',
+    year_of_establishment: party.incorporation_year || '',
+    pan: party.pan_no || '',
+    director: party.director_name || '',
+    aadhar: party.aadhar || '',
+    state: defaultAddress.gst_state || '',
+    gstin: defaultAddress.gst_no || '',
+    gst_remarks: party.gst_remarks || '',
+    annual_turnover: party.turnover || '',
+    mto_iec_cha_validity: party.mto_iec_cha_validity || '',
+    aeo_validity: party.aeo_validity || '',
+    export_commodities: party.export_commodities || '',
+    email_export: party.email_export || party.email || defaultAddress.email || '',
+    email_import: party.email_import || party.email || defaultAddress.email || '',
+    bank_details: party.bank_details || '',
+    contact_person_export: party.contact_person_export || defaultAddress.contact_person || '',
+    contact_person_import: party.contact_person_import || defaultAddress.contact_person || '',
+    gstin_doc: party.gstin_doc || null,
+    pan_doc: party.pan_doc || null,
+    iec_doc: party.iec_doc || null,
+    kyc_letterhead_doc: party.kyc_letterhead_doc || null,
+    created_at: party.created_at,
+    addresses: parsedAddresses
+  };
+}
+
 // #endregion
+
 

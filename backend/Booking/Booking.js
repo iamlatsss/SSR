@@ -1,6 +1,6 @@
 import express from 'express';
 import { authenticateJWT } from "../AuthAPI/Auth.js"
-import { knexDB } from "../Database.js";
+import { knexDB, mapPartyToCustomer } from "../Database.js";
 
 const router = express.Router();
 
@@ -72,7 +72,8 @@ router.get("/init", authenticateJWT, async (req, res) => {
     const nextJobNo = Math.max(autoIncrementVal, maxJobNo + 1);
 
     // 3. Get Customers (id, name, type)
-    const customers = await knexDB("Customers").select("customer_id", "name", "customer_type");
+    const parties = await knexDB("Parties").select("*");
+    const customers = parties.map(mapPartyToCustomer);
 
     const responseData = { success: true, nextJobNo, customers };
 
@@ -90,30 +91,21 @@ router.get("/init", authenticateJWT, async (req, res) => {
 });
 
 
-// Helper to get or create customer/agent
+// Helper to get or create customer/agent in Parties
 async function getOrCreateParty(name, type = 'Customer') {
   if (!name) return null;
 
-  // 1. Try to find existing by Name
-  // Assuming 'Customers' table holds shippers and consignees
-  // Assuming 'Agents' table holds agents? Or all in Customers?
-  // Based on error "REFERENCES Customers", shipper is in Customers.
-  // We'll assume consignee is also Customer.
-  // Agent might be in Customers or Agents table. 
-  // Let's assume Customers for now based on typical single-party-table designs, 
-  // OR check if 'Agents' table exists. 
-  // Given I can't check schema easily, I'll assume Customers for shipper/consignee.
-
-  const tableName = 'Customers'; // Default
-  // Check if we need to switch table for Agent?
-  // For safety, let's just handle Shipper/Consignee first which we know are Customers.
-
-  const [existing] = await knexDB(tableName).where('name', name).select('customer_id');
-  if (existing) return existing.customer_id;
+  const [existing] = await knexDB('Parties').where('name', name).select('id');
+  if (existing) return existing.id;
 
   // 2. Create if not exists
-  const [newId] = await knexDB(tableName).insert({ name: name /*, type: type */ }); // Add type if schema has it
-  console.log(`Created new ${tableName}: ${name} (ID: ${newId})`);
+  const [newId] = await knexDB('Parties').insert({
+    name: name,
+    email: '',
+    category_type: type,
+    addresses: JSON.stringify([])
+  });
+  console.log(`Created new Party: ${name} (ID: ${newId})`);
   return newId;
 }
 
@@ -210,10 +202,10 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
     if (jobNo >= 9000) {
       // HouseBL
       const booking = await knexDB('HouseBL')
-        .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
-        .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+        .leftJoin('Parties as S', 'HouseBL.shipper', 'S.id')
+        .leftJoin('Parties as C', 'HouseBL.consignee', 'C.id')
         .leftJoin('MasterBL as M', 'HouseBL.mbl_no', 'M.mbl_no')
-        .leftJoin('Customers as A', 'M.agent', 'A.customer_id')
+        .leftJoin('Parties as A', 'M.agent', 'A.id')
         .select(
           'HouseBL.*',
           knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -241,9 +233,9 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
     } else if (jobNo >= 8000) {
       // MasterBL
       const booking = await knexDB('MasterBL')
-        .leftJoin('Customers as S', 'MasterBL.shipper', 'S.customer_id')
-        .leftJoin('Customers as C', 'MasterBL.consignee', 'C.customer_id')
-        .leftJoin('Customers as A', 'MasterBL.agent', 'A.customer_id')
+        .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+        .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+        .leftJoin('Parties as A', 'MasterBL.agent', 'A.id')
         .select(
           'MasterBL.*',
           knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -261,11 +253,11 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
     } else {
       // Standard Booking
       const booking = await knexDB('Booking')
-        .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
-        .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
-        .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
-        .leftJoin('Customers as CHA', 'Booking.cha', 'CHA.customer_id')
-        .leftJoin('Customers as CFS', 'Booking.cfs', 'CFS.customer_id')
+        .leftJoin('Parties as S', 'Booking.shipper', 'S.id')
+        .leftJoin('Parties as C', 'Booking.consignee', 'C.id')
+        .leftJoin('Parties as A', 'Booking.agent', 'A.id')
+        .leftJoin('Parties as CHA', 'Booking.cha', 'CHA.id')
+        .leftJoin('Parties as CFS', 'Booking.cfs', 'CFS.id')
         .select(
           'Booking.*',
           knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -295,11 +287,11 @@ router.get("/get", authenticateJWT, async (req, res) => {
   try {
     // 1. Get standard bookings
     const bookings = await knexDB('Booking')
-      .leftJoin('Customers as S', 'Booking.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'Booking.consignee', 'C.customer_id')
-      .leftJoin('Customers as A', 'Booking.agent', 'A.customer_id')
-      .leftJoin('Customers as CHA', 'Booking.cha', 'CHA.customer_id')
-      .leftJoin('Customers as CFS', 'Booking.cfs', 'CFS.customer_id')
+      .leftJoin('Parties as S', 'Booking.shipper', 'S.id')
+      .leftJoin('Parties as C', 'Booking.consignee', 'C.id')
+      .leftJoin('Parties as A', 'Booking.agent', 'A.id')
+      .leftJoin('Parties as CHA', 'Booking.cha', 'CHA.id')
+      .leftJoin('Parties as CFS', 'Booking.cfs', 'CFS.id')
       .select(
         'Booking.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(Booking.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -312,9 +304,9 @@ router.get("/get", authenticateJWT, async (req, res) => {
 
     // 2. Get MasterBLs
     const masterBLs = await knexDB('MasterBL')
-      .leftJoin('Customers as S', 'MasterBL.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'MasterBL.consignee', 'C.customer_id')
-      .leftJoin('Customers as A', 'MasterBL.agent', 'A.customer_id')
+      .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+      .leftJoin('Parties as A', 'MasterBL.agent', 'A.id')
       .select(
         'MasterBL.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
@@ -329,10 +321,10 @@ router.get("/get", authenticateJWT, async (req, res) => {
 
     // 3. Get HouseBLs
     const houseBLs = await knexDB('HouseBL')
-      .leftJoin('Customers as S', 'HouseBL.shipper', 'S.customer_id')
-      .leftJoin('Customers as C', 'HouseBL.consignee', 'C.customer_id')
+      .leftJoin('Parties as S', 'HouseBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'HouseBL.consignee', 'C.id')
       .leftJoin('MasterBL as M', 'HouseBL.mbl_no', 'M.mbl_no')
-      .leftJoin('Customers as A', 'M.agent', 'A.customer_id')
+      .leftJoin('Parties as A', 'M.agent', 'A.id')
       .select(
         'HouseBL.*',
         knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),

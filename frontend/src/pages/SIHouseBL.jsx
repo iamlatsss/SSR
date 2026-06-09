@@ -50,6 +50,8 @@ const RequiredStar = () => null; // Removed asterisk indicator completely
    ========================================================================= */
 export function SIHouseBLList() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const directionParam = searchParams.get("direction");
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -89,7 +91,11 @@ export function SIHouseBLList() {
   };
 
   const handleCreateJob = () => {
-    navigate('/si-housebl-form');
+    if (directionParam) {
+      navigate(`/si-housebl-form?direction=${directionParam}`);
+    } else {
+      navigate('/si-housebl-form');
+    }
   };
 
   const handleStatusChange = async (id, newStatus) => {
@@ -125,7 +131,25 @@ export function SIHouseBLList() {
     const matchesStatus =
       filterStatus === "all" || job.status === filterStatus;
 
-    return matchesSearch && matchesStatus;
+    let matchesDirection = true;
+    if (directionParam) {
+      let addDetails = {};
+      if (job.additional_details) {
+        try {
+          addDetails = typeof job.additional_details === 'string'
+            ? JSON.parse(job.additional_details)
+            : job.additional_details;
+        } catch (e) { }
+      }
+      const jobService = addDetails.services || job.services || "";
+      if (directionParam === "import") {
+        matchesDirection = jobService.toLowerCase().includes("import");
+      } else if (directionParam === "export") {
+        matchesDirection = jobService.toLowerCase().includes("export");
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesDirection;
   });
 
   // Pagination
@@ -134,9 +158,15 @@ export function SIHouseBLList() {
   const currentJobs = filteredJobs.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredJobs.length / itemsPerPage);
 
+  const getPageTitle = () => {
+    if (directionParam === "import") return "Sea Import HouseBL (HBL)";
+    if (directionParam === "export") return "Sea Export HouseBL (HBL)";
+    return "SI HouseBL (HBL)";
+  };
+
   if (loading) {
     return (
-      <DashboardLayout title="SI HouseBL">
+      <DashboardLayout title={getPageTitle()}>
         <div className="flex justify-center h-96 items-center">
           <div className="animate-spin h-10 w-10 border-b-2 border-indigo-600 rounded-full" />
         </div>
@@ -145,7 +175,7 @@ export function SIHouseBLList() {
   }
 
   return (
-    <DashboardLayout title="SI HouseBL (HBL)">
+    <DashboardLayout title={getPageTitle()}>
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
         <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
@@ -667,7 +697,7 @@ export function SIHouseBLForm() {
     eta: "",
     etd: "",
     voyage: "",
-    services: "",
+    services: searchParams.get("direction") === "import" ? "Sea Freight Import" : (searchParams.get("direction") === "export" ? "Sea Freight Export" : ""),
     agent: "",
     agent_name: "",
     mbl_date: "",
@@ -1326,8 +1356,17 @@ export function SIHouseBLForm() {
                 </div>
 
                 <div>
-                  <label className={labelStyle}>Shipping Line / Carrier</label>
-                  <input type="text" name="carrier" value={form.carrier} onChange={handleInputChange} placeholder="Carrier" className={inputStyle} />
+                  <PartySelect
+                    label="Shipping Line / Carrier"
+                    name="carrier"
+                    value={form.carrier}
+                    onChange={handleInputChange}
+                    customers={customers}
+                    isHybrid={false}
+                    placeholder="Search Carrier..."
+                    labelClassName={labelStyle}
+                    inputClassName={inputStyle}
+                  />
                 </div>
 
                 <div>

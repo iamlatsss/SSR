@@ -133,7 +133,7 @@ const InvoicePreview = ({ data, onClose }) => {
                                     {items.map((item, i) => (
                                         <tr key={i} className="border-b border-slate-300">
                                             <td className="border-r border-slate-900 p-1 px-2 font-bold uppercase">{item.chargeName}</td>
-                                            <td className="border-r border-slate-900 p-1 text-center">9967</td>
+                                            <td className="border-r border-slate-900 p-1 text-center">{item.hsn_sac || item.sac || "996521"}</td>
                                             <td className="border-r border-slate-900 p-1 text-right">{Number(item.rate).toFixed(2)}</td>
                                             <td className="border-r border-slate-900 p-1 text-center">{item.qty}</td>
                                             <td className="border-r border-slate-900 p-1 text-center">{item.currency}</td>

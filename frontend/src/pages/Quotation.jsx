@@ -228,8 +228,88 @@ const Quotation = () => {
         }
     };
 
+    const [partiesList, setPartiesList] = useState([]);
+
+    const fetchParties = async () => {
+        try {
+            const res = await api.get("/party");
+            if (res.data.success && Array.isArray(res.data.parties)) {
+                setPartiesList(res.data.parties);
+            }
+        } catch (error) {
+            console.error("Failed to fetch parties list in Quotation:", error);
+        }
+    };
+
+    const partyOptions = useMemo(() => {
+        return partiesList.map(p => ({
+            value: p.id,
+            label: p.name
+        }));
+    }, [partiesList]);
+
+    const handlePartySelect = (qIndex, selectedValue) => {
+        const party = partiesList.find(p => String(p.id) === String(selectedValue));
+        if (!party) {
+            // Custom string typed
+            handleQuotationChange(qIndex, 'client_name', selectedValue);
+            return;
+        }
+
+        let defaultAddr = {
+            address_line1: '',
+            address_line2: '',
+            city: '',
+            pin_code: '',
+            gst_state: '',
+            country: 'India',
+            email: '',
+            telephone: ''
+        };
+
+        if (party.addresses) {
+            try {
+                const addrs = typeof party.addresses === 'string' ? JSON.parse(party.addresses) : party.addresses;
+                if (Array.isArray(addrs) && addrs.length > 0) {
+                    const found = addrs.find(a => a.is_default) || addrs[0];
+                    if (found) {
+                        defaultAddr = { ...defaultAddr, ...found };
+                    }
+                }
+            } catch (e) {
+                console.error("Error parsing addresses for party select:", e);
+            }
+        }
+
+        const addressParts = [
+            defaultAddr.address_line1,
+            defaultAddr.address_line2,
+            defaultAddr.city,
+            defaultAddr.pin_code,
+            defaultAddr.gst_state,
+            defaultAddr.country
+        ].filter(part => part && String(part).trim() !== '');
+
+        const addressStr = addressParts.join(', ');
+        const emailVal = party.email || defaultAddr.email || '';
+        const phoneVal = defaultAddr.telephone || '';
+
+        setQuotationItems((prev) => {
+            const newItems = [...prev];
+            newItems[qIndex] = {
+                ...newItems[qIndex],
+                client_name: party.name,
+                address: addressStr,
+                email: emailVal,
+                phone_number: phoneVal
+            };
+            return newItems;
+        });
+    };
+
     useEffect(() => {
         fetchCharges();
+        fetchParties();
     }, []);
 
     useEffect(() => {
@@ -436,9 +516,16 @@ const Quotation = () => {
                                 
                                 {/* Row 1: Client Info */}
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                    <div>
+                                    <div className="flex flex-col gap-0.5">
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider">Client Name</label>
-                                        <input type="text" value={formData.client_name} onChange={(e) => handleQuotationChange(qIndex, 'client_name', e.target.value)} placeholder="e.g. SENTIL KUMAR" className="w-full px-3 py-1.5 text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all" />
+                                        <SearchableDropdown
+                                            options={partyOptions}
+                                            value={partiesList.find(p => p.name === formData.client_name)?.id || formData.client_name || ""}
+                                            onChange={(val) => handlePartySelect(qIndex, val)}
+                                            placeholder="Search client..."
+                                            allowCustom={true}
+                                            className="!rounded-lg !py-1.5"
+                                        />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-0.5 uppercase tracking-wider">WhatsApp No.</label>

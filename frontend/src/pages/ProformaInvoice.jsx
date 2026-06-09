@@ -172,6 +172,7 @@ export default function ProformaInvoice() {
   // Modal State
   const [previewPdfUrl, setPreviewPdfUrl] = useState("");
   const [showPreviewModal, setShowPreviewModal] = useState(false);
+  const [activeTab, setActiveTab] = useState("generate"); // "generate" or "stored"
 
   useEffect(() => {
     loadInitData();
@@ -542,12 +543,56 @@ export default function ProformaInvoice() {
     setShowPreviewModal(true);
   };
 
+  const handleDeleteProforma = async (id, proformaNo) => {
+    if (!window.confirm(`Are you sure you want to delete Proforma Invoice #${proformaNo}? This will delete the proforma from the database and reset the job status.`)) {
+      return;
+    }
+    try {
+      const res = await api.delete(`/proforma/delete/${id}`);
+      if (res.data.success) {
+        toast.success(res.data.message || `Proforma Invoice #${proformaNo} has been deleted.`);
+        loadHistory(); // Reload history
+      } else {
+        toast.error("Deletion failed: " + res.data.message);
+      }
+    } catch (error) {
+      console.error("Error deleting proforma invoice:", error);
+      toast.error("Failed to delete proforma invoice: " + (error.response?.data?.message || error.message));
+    }
+  };
+
   return (
     <DashboardLayout title="Proforma Invoice Generator">
       <div className="space-y-8 max-w-7xl mx-auto p-1 font-poppins">
         
-        {/* TOP FILTER CONTROLS */}
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
+        {/* Tab Selection */}
+        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 mb-6">
+          <button
+            onClick={() => setActiveTab("generate")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === "generate"
+                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Generate Proforma
+          </button>
+          <button
+            onClick={() => setActiveTab("stored")}
+            className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
+              activeTab === "stored"
+                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
+                : "border-transparent text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            Stored Proformas
+          </button>
+        </div>
+
+        {activeTab === "generate" ? (
+          <>
+            {/* TOP FILTER CONTROLS */}
+            <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
           <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <FileText size={20} className="text-indigo-500" /> Filter Billing Context
           </h3>
@@ -695,7 +740,8 @@ export default function ProformaInvoice() {
                       />
                     </th>
                     <th className="p-3.5 w-[180px]">Party (Client/Vendor)</th>
-                    <th className="p-3.5 w-[320px]">Charge Name</th>
+                    <th className="p-3.5 w-[240px]">Charge Name</th>
+                    <th className="p-3.5 w-[90px] text-center">HSN/SAC</th>
                     <th className="p-3.5 text-center w-[70px]">GST Rate</th>
                     <th className="p-3.5 w-[100px]">Unit</th>
                     <th className="p-3.5 text-center w-[50px]">Qty</th>
@@ -709,7 +755,7 @@ export default function ProformaInvoice() {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                   {allCharges.length === 0 ? (
                     <tr>
-                      <td colSpan="11" className="p-8 text-center text-slate-500 italic">
+                      <td colSpan="12" className="p-8 text-center text-slate-500 italic">
                         No Sell Rates found for this BL number.
                       </td>
                     </tr>
@@ -744,6 +790,9 @@ export default function ProformaInvoice() {
                           </td>
                           <td className="p-3 font-mono font-medium text-indigo-600 dark:text-indigo-400">
                             <span className="block truncate" title={row.charge}>{row.charge}</span>
+                          </td>
+                          <td className="p-3 text-center font-mono text-slate-500">
+                            {row.sac || row.hsn_sac || "—"}
                           </td>
                           <td className="p-3 text-center font-bold text-teal-600 dark:text-teal-400">
                             {row.gst || '0%'}
@@ -838,9 +887,10 @@ export default function ProformaInvoice() {
 
           </div>
         )}
-
-        {/* PROFORMA INVOICES ARCHIVE HISTORY */}
-        <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
+          </>
+        ) : (
+          /* PROFORMA INVOICES ARCHIVE HISTORY */
+          <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
           <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <FileText size={20} className="text-indigo-500" /> Proforma Invoices History Log
           </h3>
@@ -907,6 +957,7 @@ export default function ProformaInvoice() {
             </table>
           </div>
         </div>
+        )}
 
       </div>
 

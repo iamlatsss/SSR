@@ -21,6 +21,14 @@ import Profile from './pages/Profile.jsx';
 import { SIMasterBLList, SIMasterBLForm } from './pages/SIMasterBL';
 import { SIHouseBLList, SIHouseBLForm } from './pages/SIHouseBL';
 import ProformaInvoice from './pages/ProformaInvoice';
+import Placeholder from './pages/Placeholder';
+import Charges from './pages/Charges';
+import Parties from './pages/Parties';
+import EInvoiceApproval from './pages/EInvoiceApproval';
+import EInvoicePosting from './pages/EInvoicePosting';
+import HBLConfirmation from './pages/HBLConfirmation';
+import HBLFinal from './pages/HBLFinal';
+import HBLTelexRelease from './pages/HBLTelexRelease';
 
 // Placeholder for now
 const Settings = () => (
@@ -62,6 +70,13 @@ function App() {
               <Route path="/invoice/edit/:jobNo" element={<InvoiceGenerator />} />
               <Route path="/proforma-invoice" element={<ProformaInvoice />} />
               <Route path="/users" element={<Admin />} />
+              <Route path="/charges" element={<Charges />} />
+              <Route path="/parties" element={<Parties />} />
+              <Route path="/e-invoice-approval" element={<EInvoiceApproval />} />
+              <Route path="/e-invoice-posting" element={<EInvoicePosting />} />
+              <Route path="/hbl-confirmation" element={<HBLConfirmation />} />
+              <Route path="/hbl-final" element={<HBLFinal />} />
+              <Route path="/hbl-telex-release" element={<HBLTelexRelease />} />
             </Route>
           </Route>
 
