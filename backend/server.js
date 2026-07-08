@@ -19,6 +19,8 @@ import S3Routes from './S3/S3Routes.js';
 import MasterBL from './MasterBL/MasterBL.js';
 import HouseBL from './HouseBL/HouseBL.js';
 import Party from './Party/Party.js';
+import PackageTypes from './Data/PackageTypes.js';
+import CFS from './CFS/CFS.js';
 
 const app = express();
 const PORT = 5001;
@@ -49,18 +51,20 @@ app.use(express.json());
 app.use('/auth', Auth);
 app.use('/forgot-password', ForgotPasswordAPI);
 app.use('/admin', authenticateJWT, requireAdmin, Admin);
-app.use('/booking', authenticateJWT, requireAdmin, Booking);
-app.use('/masterbl', authenticateJWT, requireAdmin, MasterBL);
-app.use('/housebl', authenticateJWT, requireAdmin, HouseBL);
+app.use('/booking', authenticateJWT, Booking);
+app.use('/masterbl', authenticateJWT, MasterBL);
+app.use('/housebl', authenticateJWT, HouseBL);
 app.use('/mail', Mail);
 app.use('/kyc', authenticateJWT, requireAdmin, KYC);
 app.use('/ports', Ports);
-app.use('/invoice', authenticateJWT, requireAdmin, Invoice);
-app.use('/proforma', authenticateJWT, requireAdmin, ProformaInvoice);
-app.use('/einvoice', authenticateJWT, requireAdmin, EInvoice);
+app.use('/invoice', authenticateJWT, Invoice);
+app.use('/proforma', authenticateJWT, ProformaInvoice);
+app.use('/einvoice', authenticateJWT, EInvoice);
 app.use('/quotation', Quotation);
-app.use('/s3', authenticateJWT, requireAdmin, S3Routes);
-app.use('/party', authenticateJWT, requireAdmin, Party);
+app.use('/s3', authenticateJWT, S3Routes);
+app.use('/party', authenticateJWT, Party);
+app.use('/package-types', PackageTypes);
+app.use('/cfs', authenticateJWT, CFS);
 
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');

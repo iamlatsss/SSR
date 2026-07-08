@@ -177,20 +177,21 @@ const DOFC = () => {
                 data = {
                     'KYCList.shipper_name': selectedJob.shipper_name || "-",
                     'KYCList.shipper_address': selectedJob.shipper_address || "-",
-                    'IGM.cfs_name': selectedJob.cfs_name || "-",
+                    'IGM.cfs_name': selectedJob.cfs_name || selectedJob.cfs || "-",
                     'KYCList.consignee_name': selectedJob.consignee_name || "-",
                     'KYCList.consignee_address': selectedJob.consignee_address || "-",
-                    'IGM.vessel_name': selectedJob.vessel_name || "-",
+                    'IGM.vessel_name': selectedJob.shipping_line_name || selectedJob.vessel_name || "-",
                     'IGM.vessel_voyage': selectedJob.voyage || "-",
                     'BookingList.hbl_no': selectedJob.hbl_no || "-",
                     'IGM.igm_no': selectedJob.igm_no || "-",
                     'BookingList.mbl_no': selectedJob.mbl_no || "-",
                     'BookingList.eta': selectedJob.eta ? new Date(selectedJob.eta).toLocaleDateString() : "-",
                     'BookingList.mode': selectedJob.booking_type || "FCL",
-                    'BookingList.container_type': selectedJob.container_type || "-",
+                    'BookingList.container_type': selectedJob.container_type || selectedJob.container_size || "-",
                     'BookingList.pol': selectedJob.pol || "-",
                     'BookingList.pod': selectedJob.pod || "-",
                     'BookingList.container_count': String(selectedJob.container_count || "1"),
+                    'booking.exchange_rate': selectedJob.exchange_rate || "—",
                     'cargo.weight': String(selectedJob.gross_weight || "-"),
                     'user.name': "System User",
                 };
@@ -199,26 +200,26 @@ const DOFC = () => {
                 data = {
                     'mbl.shipper_name': selectedJob.shipper_name || "-",
                     'mbl.shipper_address': selectedJob.shipper_address || "-",
-                    'mbl.consignee_name': selectedJob.consignee_name || "-", // Added
-                    'mbl.consignee_address': selectedJob.consignee_address || "-", // Added
-                    'igm.cfs_name': selectedJob.cfs_name || "-", // Added
-                    'other.date': todayStr, // Added
-                    'vessel.name': selectedJob.vessel_name || "-",
+                    'mbl.consignee_name': selectedJob.consignee_name || "-",
+                    'mbl.consignee_address': selectedJob.consignee_address || "-",
+                    'igm.cfs_name': selectedJob.cfs_name || selectedJob.cfs || "-",
+                    'other.date': todayStr,
+                    'vessel.name': selectedJob.shipping_line_name || selectedJob.vessel_name || "-",
                     'vessel.voyage': selectedJob.voyage || "-",
-                    'booking.hbl_no': selectedJob.hbl_no || "-", // Added
+                    'booking.hbl_no': selectedJob.hbl_no || "-",
                     'igm.no': selectedJob.igm_no || "-",
                     'booking.mbl_no': selectedJob.mbl_no || "-",
-                    'igm.date': selectedJob.igm_on ? new Date(selectedJob.igm_on).toLocaleDateString() : "-", // Added
-                    'booking.bl_date': selectedJob.bl_date ? new Date(selectedJob.bl_date).toLocaleDateString() : (selectedJob.hbl_date ? new Date(selectedJob.hbl_date).toLocaleDateString() : "-"), // Added
-                    'igm.line_no': "252", // Hardcoded per user image/request or map if available
-                    'booking.mode': "FCL", // selectedJob.booking_type || "FCL",
+                    'igm.date': selectedJob.igm_on ? new Date(selectedJob.igm_on).toLocaleDateString() : "-",
+                    'booking.bl_date': selectedJob.bl_date ? new Date(selectedJob.bl_date).toLocaleDateString() : (selectedJob.hbl_date ? new Date(selectedJob.hbl_date).toLocaleDateString() : "-"),
+                    'igm.line_no': selectedJob.line || "252",
+                    'booking.mode': "FCL",
                     'booking.eta': selectedJob.eta ? new Date(selectedJob.eta).toLocaleDateString() : "-",
-                    'booking.container_size': selectedJob.container_size || "-", // Added
-                    'booking.pol': selectedJob.pol || "-", // Added
-                    'carrier.name': selectedJob.shipping_line_name || "-",
-                    'booking.pod': selectedJob.pod || "-", // Added
-                    'booking.no_containers': String(selectedJob.container_count || "1"), // Added
-                    'booking.exchange_rate': "???", // Placeholder as per request
+                    'booking.container_size': selectedJob.container_size || "-",
+                    'booking.pol': selectedJob.pol || "-",
+                    'carrier.name': selectedJob.carrier || selectedJob.shipping_line_name || "-",
+                    'booking.pod': selectedJob.pod || "-",
+                    'booking.no_containers': String(selectedJob.container_count || "1"),
+                    'booking.exchange_rate': selectedJob.exchange_rate || "—",
                     'cargo.weight': String(selectedJob.gross_weight || "-")
                 };
             }

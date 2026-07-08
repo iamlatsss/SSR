@@ -906,31 +906,36 @@ export async function deleteQuotationsByIds(ids) {
 
     // One-time reference mapping migration by matching names
     try {
-      console.log("Running legacy KYC reference migration...");
-      const legacyCustomers = await knexDB("Customers").select("customer_id", "name");
-      
-      for (const cust of legacyCustomers) {
-        const party = await knexDB("Parties").where({ name: cust.name }).first();
-        if (party) {
-          console.log(`Mapping legacy customer ID ${cust.customer_id} to Party ID ${party.id} for "${cust.name}"`);
-          await knexDB("Booking").where({ shipper: cust.customer_id }).update({ shipper: party.id });
-          await knexDB("Booking").where({ consignee: cust.customer_id }).update({ consignee: party.id });
-          await knexDB("Booking").where({ agent: cust.customer_id }).update({ agent: party.id });
-          await knexDB("Booking").where({ cha: cust.customer_id }).update({ cha: party.id });
-          await knexDB("Booking").where({ cfs: cust.customer_id }).update({ cfs: party.id });
-          
-          await knexDB("MasterBL").where({ shipper: cust.customer_id }).update({ shipper: party.id });
-          await knexDB("MasterBL").where({ consignee: cust.customer_id }).update({ consignee: party.id });
-          await knexDB("MasterBL").where({ agent: cust.customer_id }).update({ agent: party.id });
-          
-          await knexDB("HouseBL").where({ shipper: cust.customer_id }).update({ shipper: party.id });
-          await knexDB("HouseBL").where({ consignee: cust.customer_id }).update({ consignee: party.id });
-          
-          await knexDB("ProformaInvoices").where({ client_id: cust.customer_id }).update({ client_id: party.id });
-          await knexDB("Invoices").where({ client_id: cust.customer_id }).update({ client_id: party.id });
+      const hasCustomers = await knexDB.schema.hasTable("Customers");
+      if (hasCustomers) {
+        console.log("Running legacy KYC reference migration...");
+        const legacyCustomers = await knexDB("Customers").select("customer_id", "name");
+        
+        for (const cust of legacyCustomers) {
+          const party = await knexDB("Parties").where({ name: cust.name }).first();
+          if (party) {
+            console.log(`Mapping legacy customer ID ${cust.customer_id} to Party ID ${party.id} for "${cust.name}"`);
+            await knexDB("Booking").where({ shipper: cust.customer_id }).update({ shipper: party.id });
+            await knexDB("Booking").where({ consignee: cust.customer_id }).update({ consignee: party.id });
+            await knexDB("Booking").where({ agent: cust.customer_id }).update({ agent: party.id });
+            await knexDB("Booking").where({ cha: cust.customer_id }).update({ cha: party.id });
+            await knexDB("Booking").where({ cfs: cust.customer_id }).update({ cfs: party.id });
+            
+            await knexDB("MasterBL").where({ shipper: cust.customer_id }).update({ shipper: party.id });
+            await knexDB("MasterBL").where({ consignee: cust.customer_id }).update({ consignee: party.id });
+            await knexDB("MasterBL").where({ agent: cust.customer_id }).update({ agent: party.id });
+            
+            await knexDB("HouseBL").where({ shipper: cust.customer_id }).update({ shipper: party.id });
+            await knexDB("HouseBL").where({ consignee: cust.customer_id }).update({ consignee: party.id });
+            
+            await knexDB("ProformaInvoices").where({ client_id: cust.customer_id }).update({ client_id: party.id });
+            await knexDB("Invoices").where({ client_id: cust.customer_id }).update({ client_id: party.id });
+          }
         }
+        console.log("Legacy KYC reference migration completed.");
+      } else {
+        console.log("Legacy Customers table does not exist. Skipping migration.");
       }
-      console.log("Legacy KYC reference migration completed.");
     } catch (migErr) {
       console.error("Error running legacy KYC reference migration:", migErr);
     }
@@ -1042,5 +1047,61 @@ export function mapPartyToCustomer(party) {
 }
 
 // #endregion
+
+(async function seedCFSParties() {
+  try {
+    const STANDARD_CFS = [
+      "All Cargo Logistics CFS",
+      "AMEYA CFS",
+      "APOLLO CFS",
+      "Ashte Logistics Private Limited",
+      "BUDGET CFS TERMINALS PRIVATE LIMITED",
+      "CWC DISTRI PARK",
+      "Cwc Logistics Park",
+      "DRT",
+      "Efc Logistics India P Ltd",
+      "GATEWAY DISTRIPARK",
+      "GDL",
+      "GLOBICON CFS",
+      "HIND CFS",
+      "Icd Faridabad Actl",
+      "Icd Piyala, Faridabad",
+      "INDEV CFS",
+      "INNSA EGPSD",
+      "JWC LOGISTICS PARK PVT LTD",
+      "Jwr Logistics Pvt Ltd",
+      "Landmark Cfs",
+      "NAVKAR",
+      "NINE",
+      "PUNJAB CONWARE",
+      "SANCO",
+      "Saurashtra Cfs",
+      "SEA BIRD",
+      "SPEEDY MALIMODEL CFS"
+    ];
+
+    for (const cfsName of STANDARD_CFS) {
+      const existing = await knexDB("Parties").where({ name: cfsName }).first();
+      if (!existing) {
+        const payload = {
+          name: cfsName,
+          category_type: 'CFS',
+          email: '',
+          status: 'Enabled',
+          party_status: 'Draft',
+          addresses: JSON.stringify([])
+        };
+        await knexDB("Parties").insert(payload);
+      } else {
+        if (!existing.category_type || existing.category_type === '--- None ---' || existing.category_type === '') {
+          await knexDB("Parties").where({ id: existing.id }).update({ category_type: 'CFS' });
+        }
+      }
+    }
+    console.log("CFS standard parties seeded successfully.");
+  } catch (err) {
+    console.error("Error seeding CFS standard parties:", err);
+  }
+})();
 
 

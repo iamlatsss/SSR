@@ -316,7 +316,14 @@ router.get("/get", authenticateJWT, async (req, res) => {
     masterBLs.forEach(m => {
       m.job_type = 'MasterBL';
       m.cha_name = null;
-      m.cfs_name = null;
+      let addDetails = {};
+      try {
+        addDetails = typeof m.additional_details === 'string' ? JSON.parse(m.additional_details) : (m.additional_details || {});
+      } catch (e) {}
+      m.cfs_name = addDetails.cfs || null;
+      m.voyage = addDetails.voyage || null;
+      m.igm_no = addDetails.igm_no || null;
+      m.igm_on = addDetails.igm_date || null;
     });
 
     // 3. Get HouseBLs
@@ -344,10 +351,72 @@ router.get("/get", authenticateJWT, async (req, res) => {
     houseBLs.forEach(h => {
       h.job_type = 'HouseBL';
       h.cha_name = null;
-      h.cfs_name = null;
+      let addDetails = {};
+      try {
+        addDetails = typeof h.additional_details === 'string' ? JSON.parse(h.additional_details) : (h.additional_details || {});
+      } catch (e) {}
+      h.cfs_name = addDetails.cfs || null;
+      h.voyage = addDetails.voyage || null;
+      h.igm_no = addDetails.igm_no || null;
+      h.igm_on = addDetails.igm_date || null;
     });
 
     const allJobs = [...bookings, ...masterBLs, ...houseBLs];
+    
+    // Address & Exchange rate helper
+    for (const job of allJobs) {
+      // 1. Resolve Shipper Address
+      let shipperParty = null;
+      if (job.shipper) {
+        shipperParty = await knexDB("Parties").where({ id: job.shipper }).first();
+      }
+      if (!shipperParty && job.shipper_name) {
+        shipperParty = await knexDB("Parties").where({ name: job.shipper_name }).first();
+      }
+      if (shipperParty && shipperParty.addresses) {
+        try {
+          const addrs = typeof shipperParty.addresses === 'string' ? JSON.parse(shipperParty.addresses) : shipperParty.addresses;
+          if (Array.isArray(addrs) && addrs.length > 0) {
+            const addr = addrs.find(a => a.is_default) || addrs[0];
+            job.shipper_address = [addr.address_line1, addr.address_line2, addr.city, addr.pin_code, addr.state, addr.country]
+              .filter(p => p && String(p).trim() !== '' && String(p).trim() !== 'Default Address')
+              .join(", ");
+          }
+        } catch (e) {}
+      }
+      if (!job.shipper_address) job.shipper_address = "-";
+
+      // 2. Resolve Consignee Address
+      let consigneeParty = null;
+      if (job.consignee) {
+        consigneeParty = await knexDB("Parties").where({ id: job.consignee }).first();
+      }
+      if (!consigneeParty && job.consignee_name) {
+        consigneeParty = await knexDB("Parties").where({ name: job.consignee_name }).first();
+      }
+      if (consigneeParty && consigneeParty.addresses) {
+        try {
+          const addrs = typeof consigneeParty.addresses === 'string' ? JSON.parse(consigneeParty.addresses) : consigneeParty.addresses;
+          if (Array.isArray(addrs) && addrs.length > 0) {
+            const addr = addrs.find(a => a.is_default) || addrs[0];
+            job.consignee_address = [addr.address_line1, addr.address_line2, addr.city, addr.pin_code, addr.state, addr.country]
+              .filter(p => p && String(p).trim() !== '' && String(p).trim() !== 'Default Address')
+              .join(", ");
+          }
+        } catch (e) {}
+      }
+      if (!job.consignee_address) job.consignee_address = "-";
+
+      // 3. Resolve Exchange Rate from Sell Rates
+      let addDetails = {};
+      try {
+        addDetails = typeof job.additional_details === 'string' ? JSON.parse(job.additional_details) : (job.additional_details || {});
+      } catch (e) {}
+      const sellRates = addDetails.sell_rates || [];
+      const rateWithEx = sellRates.find(r => r.exchange_rate && parseFloat(r.exchange_rate) > 0);
+      job.exchange_rate = rateWithEx ? rateWithEx.exchange_rate : "—";
+    }
+
     allJobs.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
     res.json({ success: true, bookings: allJobs });

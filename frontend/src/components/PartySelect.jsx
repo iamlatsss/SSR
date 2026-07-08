@@ -104,8 +104,7 @@ const PartySelect = ({
     <div className="relative w-full" ref={wrapperRef}>
       {label && (
         <label className={labelClassName || "block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1"}>
-          {required && RequiredStar && <RequiredStar />}
-          {label}
+          {label} {required && <span className="text-red-500 font-bold ml-1">*</span>}
         </label>
       )}
       <div className="relative">

@@ -9,6 +9,7 @@ import { toast } from "react-toastify";
 import PortSelect from "../components/PortSelect";
 import PartySelect from "../components/PartySelect";
 import { RateGrid, ContainerGrid, VehicleGrid } from "../components/LogisticsGrids";
+import SearchableSelect from "../components/SearchableSelect";
 
 const formatDate = (dateStr) => {
   if (!dateStr) return "—";
@@ -255,7 +256,6 @@ export function SIMasterBLList() {
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-[10px] uppercase font-bold select-none whitespace-nowrap">
                 <th className="p-2 border border-slate-200 dark:border-slate-700">Action</th>
-                <th className="p-2 border border-slate-200 dark:border-slate-700"></th>
                 <th className="p-2 border border-slate-200 dark:border-slate-700">History</th>
                 <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">Job_No</th>
                 <th className="p-2 border border-slate-200 dark:border-slate-700">Job_Date</th>
@@ -267,7 +267,6 @@ export function SIMasterBLList() {
                 <th className="p-2 border border-slate-200 dark:border-slate-700">Agent</th>
                 <th className="p-2 border border-slate-200 dark:border-slate-700">Line</th>
                 <th className="p-2 border border-slate-200 dark:border-slate-700">ETD/ETA Date</th>
-                <th className="p-2 border border-slate-200 dark:border-slate-700">Manifest</th>
                 <th className="p-2 border border-slate-200 dark:border-slate-700">CFS Name</th>
                 <th className="p-2 border border-slate-200 dark:border-slate-700">Sales</th>
                 <th className="p-2 border border-slate-200 dark:border-slate-700 text-sky-600">Status</th>
@@ -312,16 +311,6 @@ export function SIMasterBLList() {
                           title="Edit Job"
                         >
                           <Edit2 size={13} />
-                        </button>
-                      </td>
-
-                      {/* Star */}
-                      <td className="p-2 border border-slate-100 dark:border-slate-800 text-center">
-                        <button
-                          className="text-[#1d82f5] hover:text-blue-700 p-1 rounded flex items-center justify-center mx-auto"
-                          title="Favorite/Nominated"
-                        >
-                          <Star size={15} />
                         </button>
                       </td>
 
@@ -414,11 +403,6 @@ export function SIMasterBLList() {
                       <td className="p-2 border border-slate-100 dark:border-slate-800 text-red-600 dark:text-red-400 font-semibold whitespace-nowrap text-center">
                         <div>{job.etd ? formatDate(job.etd) : "—"}</div>
                         {job.eta && <div className="mt-0.5 text-red-500/80">{formatDate(job.eta)}</div>}
-                      </td>
-
-                      {/* Manifest */}
-                      <td className="p-2 border border-slate-100 dark:border-slate-800 font-semibold">
-                        {manifestVal}
                       </td>
 
                       {/* CFS Name */}
@@ -675,6 +659,11 @@ export function SIMasterBLForm() {
   const [chargeOptions, setChargeOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Main");
+  const [saveError, setSaveError] = useState(null);
+  const [packageTypes, setPackageTypes] = useState(PACKAGE_TYPES_LIST);
+  const [cfsOptions, setCfsOptions] = useState([]);
+  const [valErrors, setValErrors] = useState({});
+  const [validationModalErrors, setValidationModalErrors] = useState(null);
 
   // Form State containing both main columns and additional JSON fields
   const [form, setForm] = useState({
@@ -744,6 +733,7 @@ export function SIMasterBLForm() {
     inv_csize: "",
     containers: [],
     description: "",
+    remarks: "",
 
     buy_rates: [],
     sell_rates: [],
@@ -757,6 +747,49 @@ export function SIMasterBLForm() {
     initForm();
   }, [jobNoParam, cloneJobNoParam]);
 
+  useEffect(() => {
+    if (loading) return;
+    const count = parseInt(form.container_count) || 0;
+    if (count >= 0) {
+      setForm(prev => {
+        const currentContainers = prev.containers || [];
+        if (currentContainers.length === count) return prev;
+        
+        let newContainers = [...currentContainers];
+        if (currentContainers.length < count) {
+          const diff = count - currentContainers.length;
+          for (let i = 0; i < diff; i++) {
+            newContainers.push({
+              container_no: "",
+              container_type: prev.container_size || "40 HC",
+              seal_no: "",
+              no_of_packages: "",
+              package_type: "Pallet",
+              gross_weight: ""
+            });
+          }
+        } else {
+          newContainers = newContainers.slice(0, count);
+        }
+        return { ...prev, containers: newContainers };
+      });
+    }
+  }, [form.container_count, loading]);
+
+  useEffect(() => {
+    if (loading) return;
+    setForm(prev => {
+      if (!prev.container_size) return prev;
+      const updated = (prev.containers || []).map(c => ({
+        ...c,
+        container_type: prev.container_size
+      }));
+      const changed = updated.some((c, idx) => c.container_type !== prev.containers[idx]?.container_type);
+      if (!changed) return prev;
+      return { ...prev, containers: updated };
+    });
+  }, [form.container_size, loading]);
+
   const initForm = async () => {
     try {
       setLoading(true);
@@ -767,6 +800,22 @@ export function SIMasterBLForm() {
         }
       } catch (err) {
         console.error("Error loading charges:", err);
+      }
+      try {
+        const pkgRes = await api.get("/package-types");
+        if (pkgRes.data.success) {
+          setPackageTypes(pkgRes.data.packageTypes || []);
+        }
+      } catch (err) {
+        console.error("Error loading package types:", err);
+      }
+      try {
+        const cfsRes = await api.get("/cfs");
+        if (cfsRes.data.success) {
+          setCfsOptions((cfsRes.data.parties || []).map(p => p.name));
+        }
+      } catch (err) {
+        console.error("Error loading CFS list:", err);
       }
       const initRes = await api.get("/masterbl/init");
       let nextJobNumber = 8000;
@@ -878,6 +927,7 @@ export function SIMasterBLForm() {
             inv_csize: addDetails.inv_csize || "",
             containers: addDetails.containers || [],
             description: addDetails.description || b.marks_and_numbers || "",
+            remarks: addDetails.remarks || "",
 
             buy_rates: addDetails.buy_rates || [],
             sell_rates: addDetails.sell_rates || [],
@@ -897,13 +947,119 @@ export function SIMasterBLForm() {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setForm(prev => ({ ...prev, [name]: value }));
+    if (valErrors[name]) {
+      setValErrors(prev => {
+        const copy = { ...prev };
+        delete copy[name];
+        return copy;
+      });
+    }
+  };
+
+  const getInputClass = (fieldName) => {
+    const isError = valErrors[fieldName];
+    const base = "w-full px-2 py-1 bg-white dark:bg-slate-900 rounded text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none transition-all";
+    if (isError) {
+      return `${base} border-2 border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500`;
+    }
+    return `${base} border border-slate-300 dark:border-slate-700/80 focus:ring-1 focus:ring-slate-400 focus:border-slate-400`;
   };
 
   const handleSave = async () => {
+    const errors = {};
+    const messages = [];
+    if (!form.services || form.services === "" || form.services === "Select Service") {
+      errors.services = true;
+      messages.push("Services is required");
+    }
+    if (!form.shipment_type || form.shipment_type.trim() === "" || form.shipment_type === "Select Shipment Type") {
+      errors.shipment_type = true;
+      messages.push("Shipment Type is required");
+    }
     if (!form.mbl_no || form.mbl_no.trim() === "") {
-      toast.error("Master Bill of Lading (MBL) number is required");
+      errors.mbl_no = true;
+      messages.push("MBL No. is required");
+    }
+    if (!form.mbl_date || form.mbl_date === "") {
+      errors.mbl_date = true;
+      messages.push("MBL Date is required");
+    }
+    if (!form.inco_terms || form.inco_terms === "" || form.inco_terms === "Select Inco Term") {
+      errors.inco_terms = true;
+      messages.push("INCO Terms is required");
+    }
+    if (!form.client || form.client === "") {
+      errors.client = true;
+      messages.push("Client is required");
+    }
+    if (!form.sales || form.sales === "" || form.sales === "Select Sales") {
+      errors.sales = true;
+      messages.push("Sales is required");
+    }
+    if (!form.bl_type || form.bl_type === "" || form.bl_type === "Select BL Type") {
+      errors.bl_type = true;
+      messages.push("BL Type is required");
+    }
+
+    const buyRatesErrors = [];
+    const buyRatesRowErrors = [];
+    (form.buy_rates || []).forEach((row, idx) => {
+      const rowNum = idx + 1;
+      const missing = [];
+      const rowErr = {};
+      if (!row.drcr || row.drcr.trim() === "") { missing.push("DRCR"); rowErr.drcr = true; }
+      if (!row.party || String(row.party).trim() === "") { missing.push("Vendor"); rowErr.party = true; }
+      if (!row.address || String(row.address).trim() === "") { missing.push("Address"); rowErr.address = true; }
+      if (!row.charge || String(row.charge).trim() === "") { missing.push("Charge"); rowErr.charge = true; }
+      if (!row.hsn_sac || String(row.hsn_sac).trim() === "") { missing.push("HSN/SAC"); rowErr.hsn_sac = true; }
+      if (!row.gst || String(row.gst).trim() === "") { missing.push("GST"); rowErr.gst = true; }
+      if (!row.unit || String(row.unit).trim() === "" || row.unit === "--- None ---") { missing.push("Unit"); rowErr.unit = true; }
+      if (!row.quantity || String(row.quantity).trim() === "" || parseFloat(row.quantity) === 0) { missing.push("Qty"); rowErr.quantity = true; }
+      if (!row.rate || String(row.rate).trim() === "" || parseFloat(row.rate) === 0) { missing.push("Rate"); rowErr.rate = true; }
+      if (!row.currency || String(row.currency).trim() === "") { missing.push("Cur."); rowErr.currency = true; }
+      if (!row.ex_rate || String(row.ex_rate).trim() === "" || parseFloat(row.ex_rate) === 0) { missing.push("Ex Rate"); rowErr.ex_rate = true; }
+
+      if (missing.length > 0) {
+        buyRatesErrors.push(`Buy Rate - Row ${rowNum}: ${missing.join(", ")} are required.`);
+        buyRatesRowErrors[idx] = rowErr;
+      }
+    });
+
+    const sellRatesErrors = [];
+    const sellRatesRowErrors = [];
+    (form.sell_rates || []).forEach((row, idx) => {
+      const rowNum = idx + 1;
+      const missing = [];
+      const rowErr = {};
+      if (!row.drcr || row.drcr.trim() === "") { missing.push("DRCR"); rowErr.drcr = true; }
+      if (!row.party || String(row.party).trim() === "") { missing.push("Client"); rowErr.party = true; }
+      if (!row.address || String(row.address).trim() === "") { missing.push("Address"); rowErr.address = true; }
+      if (!row.charge || String(row.charge).trim() === "") { missing.push("Charge"); rowErr.charge = true; }
+      if (!row.hsn_sac || String(row.hsn_sac).trim() === "") { missing.push("HSN/SAC"); rowErr.hsn_sac = true; }
+      if (!row.gst || String(row.gst).trim() === "") { missing.push("GST"); rowErr.gst = true; }
+      if (!row.unit || String(row.unit).trim() === "" || row.unit === "--- None ---") { missing.push("Unit"); rowErr.unit = true; }
+      if (!row.quantity || String(row.quantity).trim() === "" || parseFloat(row.quantity) === 0) { missing.push("Qty"); rowErr.quantity = true; }
+      if (!row.rate || String(row.rate).trim() === "" || parseFloat(row.rate) === 0) { missing.push("Rate"); rowErr.rate = true; }
+      if (!row.currency || String(row.currency).trim() === "") { missing.push("Cur."); rowErr.currency = true; }
+      if (!row.ex_rate || String(row.ex_rate).trim() === "" || parseFloat(row.ex_rate) === 0) { missing.push("Ex Rate"); rowErr.ex_rate = true; }
+
+      if (missing.length > 0) {
+        sellRatesErrors.push(`Sell Rate - Row ${rowNum}: ${missing.join(", ")} are required.`);
+        sellRatesRowErrors[idx] = rowErr;
+      }
+    });
+
+    if (buyRatesErrors.length > 0 || sellRatesErrors.length > 0 || messages.length > 0) {
+      errors.buy_rates = buyRatesRowErrors;
+      errors.sell_rates = sellRatesRowErrors;
+      setValErrors(errors);
+      setValidationModalErrors([...messages, ...buyRatesErrors, ...sellRatesErrors]);
+      toast.error("Please fill all mandatory fields.");
       return;
     }
+
+    setValErrors({});
+    setValidationModalErrors(null);
 
     try {
       const firstSellRate = form.sell_rates?.find(r => r.amount && parseFloat(r.amount) > 0);
@@ -959,6 +1115,7 @@ export function SIMasterBLForm() {
         containers: form.containers,
 
         description: form.description,
+        remarks: form.remarks,
 
         buy_rates: form.buy_rates,
         sell_rates: form.sell_rates,
@@ -984,13 +1141,15 @@ export function SIMasterBLForm() {
       navigate("/si-masterbl");
     } catch (error) {
       console.error("Save error:", error);
-      toast.error(error.response?.data?.message || "Failed to save MasterBL");
+      const errMsg = error.response?.data?.message || error.message || "Failed to save MasterBL";
+      setSaveError(errMsg);
+      toast.error(errMsg);
     }
   };
 
   const tabs = jobNoParam
-    ? ["Main", "Party", "Packages", "Container", "Description", "BuyRates", "SellRates", "Vehicle", "Linked HBLs"]
-    : ["Main", "Party", "Packages", "Container", "Description", "BuyRates", "SellRates", "Vehicle"];
+    ? ["Main", "Party", "Packages", "Container", "Description", "BuyRates", "SellRates", "Linked HBLs"]
+    : ["Main", "Party", "Packages", "Container", "Description", "BuyRates", "SellRates"];
 
   const labelStyle = "block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1 flex items-center gap-1 select-none";
   const inputStyle = "w-full px-2 py-1 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700/80 rounded text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 focus:border-slate-400 transition-all";
@@ -1055,35 +1214,32 @@ export function SIMasterBLForm() {
               <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Main Shipment Route & Invoicing Info</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className={labelStyle}>MBL_No</label>
-                  <input type="text" name="mbl_no" value={form.mbl_no} onChange={handleInputChange} placeholder="Enter MBL No" className={inputStyle + " font-mono font-semibold"} />
+                  <label className={labelStyle}>MBL_No <span className="text-red-500 font-bold">*</span></label>
+                  <input type="text" name="mbl_no" value={form.mbl_no} onChange={handleInputChange} placeholder="Enter MBL No" className={getInputClass('mbl_no') + " font-mono font-semibold"} />
                 </div>
                 <div>
-                  <label className={labelStyle}>MBL Date</label>
-                  <input type="date" name="mbl_date" value={form.mbl_date} onChange={handleInputChange} className={inputStyle} />
+                  <label className={labelStyle}>MBL Date <span className="text-red-500 font-bold">*</span></label>
+                  <input type="date" name="mbl_date" value={form.mbl_date} onChange={handleInputChange} className={getInputClass('mbl_date')} />
                 </div>
                 <div>
                   <label className={labelStyle}>Job Date</label>
                   <input type="date" name="date_of_nomination" value={form.date_of_nomination} onChange={handleInputChange} className={inputStyle} />
                 </div>
+
                 <div>
-                  <label className={labelStyle}>Enquiry No</label>
-                  <input type="text" name="enquiry_no" value={form.enquiry_no} onChange={handleInputChange} placeholder="Enquiry No" className={inputStyle} />
-                </div>
-                <div>
-                  <label className={labelStyle}>Services</label>
-                  <select name="services" value={form.services} onChange={handleInputChange} className={inputStyle}>
+                  <label className={labelStyle}>Services <span className="text-red-500 font-bold">*</span></label>
+                  <select name="services" value={form.services} onChange={handleInputChange} className={getInputClass('services')}>
                     <option value="">Select Service</option>
                     {SERVICES_LIST.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label className={labelStyle}>Shipment Type</label>
-                  <input type="text" name="shipment_type" value={form.shipment_type} onChange={handleInputChange} placeholder="e.g. FCL / LCL" className={inputStyle} />
+                  <label className={labelStyle}>Shipment Type <span className="text-red-500 font-bold">*</span></label>
+                  <input type="text" name="shipment_type" value={form.shipment_type} onChange={handleInputChange} placeholder="e.g. FCL / LCL" className={getInputClass('shipment_type')} />
                 </div>
                 <div>
-                  <label className={labelStyle}>INCO Terms</label>
-                  <select name="inco_terms" value={form.inco_terms} onChange={handleInputChange} className={inputStyle}>
+                  <label className={labelStyle}>INCO Terms <span className="text-red-500 font-bold">*</span></label>
+                  <select name="inco_terms" value={form.inco_terms} onChange={handleInputChange} className={getInputClass('inco_terms')}>
                     <option value="">Select INCO Term</option>
                     {INCO_TERMS_LIST.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
@@ -1098,12 +1254,13 @@ export function SIMasterBLForm() {
                     isHybrid={true}
                     placeholder="Search client..."
                     labelClassName={labelStyle}
-                    inputClassName={inputStyle}
+                    inputClassName={getInputClass('client')}
+                    required={true}
                   />
                 </div>
                 <div>
-                  <label className={labelStyle}>Sales</label>
-                  <input type="text" name="sales" value={form.sales} onChange={handleInputChange} className={inputStyle} />
+                  <label className={labelStyle}>Sales <span className="text-red-500 font-bold">*</span></label>
+                  <input type="text" name="sales" value={form.sales} onChange={handleInputChange} className={getInputClass('sales')} />
                 </div>
                 <div>
                   <label className={labelStyle}>CS</label>
@@ -1117,8 +1274,8 @@ export function SIMasterBLForm() {
                   </select>
                 </div>
                 <div>
-                  <label className={labelStyle}>BL Type</label>
-                  <select name="bl_type" value={form.bl_type} onChange={handleInputChange} className={inputStyle}>
+                  <label className={labelStyle}>BL Type <span className="text-red-500 font-bold">*</span></label>
+                  <select name="bl_type" value={form.bl_type} onChange={handleInputChange} className={getInputClass('bl_type')}>
                     <option value="">Select BL Type</option>
                     {BL_TYPES.map(v => <option key={v} value={v}>{v}</option>)}
                   </select>
@@ -1172,8 +1329,16 @@ export function SIMasterBLForm() {
                   />
                 </div>
                 <div>
-                  <label className={labelStyle}>C.F.S.</label>
-                  <input type="text" name="cfs" value={form.cfs} onChange={handleInputChange} placeholder="CFS Name" className={inputStyle} />
+                  <SearchableSelect
+                    label="C.F.S."
+                    name="cfs"
+                    value={form.cfs}
+                    onChange={handleInputChange}
+                    options={cfsOptions}
+                    placeholder="Search CFS..."
+                    labelClassName={labelStyle}
+                    inputClassName={inputStyle}
+                  />
                 </div>
                 <div>
                   <label className={labelStyle}>Item No.</label>
@@ -1198,26 +1363,6 @@ export function SIMasterBLForm() {
                 <div>
                   <label className={labelStyle}>ETD Date</label>
                   <input type="date" name="etd" value={form.etd} onChange={handleInputChange} className={inputStyle} />
-                </div>
-                <div>
-                  <label className={labelStyle}>Reference No.</label>
-                  <input type="text" name="reference_no" value={form.reference_no} onChange={handleInputChange} placeholder="Ref No" className={inputStyle} />
-                </div>
-                <div>
-                  <label className={labelStyle}>BOE No</label>
-                  <input type="text" name="boe_no" value={form.boe_no} onChange={handleInputChange} placeholder="BOE No" className={inputStyle} />
-                </div>
-                <div>
-                  <label className={labelStyle}>Manifest Filing</label>
-                  <input type="text" name="manifest_filing" value={form.manifest_filing} onChange={handleInputChange} placeholder="Manifest Filing" className={inputStyle} />
-                </div>
-                <div>
-                  <label className={labelStyle}>CFS Filing</label>
-                  <input type="text" name="cfs_filing" value={form.cfs_filing} onChange={handleInputChange} placeholder="CFS Filing" className={inputStyle} />
-                </div>
-                <div>
-                  <label className={labelStyle}>Branch Code</label>
-                  <input type="text" name="branch_code" value={form.branch_code} onChange={handleInputChange} className={inputStyle} />
                 </div>
                 <div>
                   <label className={labelStyle}>Execution Branch</label>
@@ -1306,10 +1451,7 @@ export function SIMasterBLForm() {
                   />
                 </div>
 
-                <div>
-                  <label className={labelStyle}>Line Code</label>
-                  <input type="text" name="line" value={form.line} onChange={handleInputChange} placeholder="Line Code" className={inputStyle} />
-                </div>
+
 
                 <div>
                   <PartySelect
@@ -1339,15 +1481,9 @@ export function SIMasterBLForm() {
                   />
                 </div>
 
-                <div>
-                  <label className={labelStyle}>Delivery Order (DO) Date</label>
-                  <input type="date" name="do_date" value={form.do_date} onChange={handleInputChange} className={inputStyle} />
-                </div>
 
-                <div>
-                  <label className={labelStyle}>Delivery Date</label>
-                  <input type="date" name="delivery_date" value={form.delivery_date} onChange={handleInputChange} className={inputStyle} />
-                </div>
+
+
               </div>
             </div>
           )}
@@ -1362,15 +1498,18 @@ export function SIMasterBLForm() {
                   <input type="number" name="no_of_packages" value={form.no_of_packages} onChange={handleInputChange} placeholder="e.g. 50" className={inputStyle} />
                 </div>
                 <div>
-                  <label className={labelStyle}>Package Type</label>
-                  <select name="package_type" value={form.package_type} onChange={handleInputChange} className={inputStyle}>
-                    {PACKAGE_TYPES_LIST.map(v => <option key={v} value={v}>{v}</option>)}
-                  </select>
+                  <SearchableSelect
+                    label="Package Type"
+                    name="package_type"
+                    value={form.package_type}
+                    onChange={handleInputChange}
+                    options={packageTypes}
+                    placeholder="Search package type..."
+                    labelClassName={labelStyle}
+                    inputClassName={inputStyle}
+                  />
                 </div>
-                <div>
-                  <label className={labelStyle}>No Of Pallets</label>
-                  <input type="number" name="no_of_pallets" value={form.no_of_pallets} onChange={handleInputChange} placeholder="e.g. 10" className={inputStyle} />
-                </div>
+
                 <div>
                   <label className={labelStyle}>Gross Weight (kg)</label>
                   <input type="number" name="gross_weight" value={form.gross_weight} onChange={handleInputChange} placeholder="Gross Weight in kg" className={inputStyle} />
@@ -1433,17 +1572,41 @@ export function SIMasterBLForm() {
           {/* TAB 5: DESCRIPTION */}
           {activeTab === "Description" && (
             <div className="space-y-6">
-              <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Cargo Description / Marks & Numbers</h3>
-              <div>
-                <label className={labelStyle}>Detailed Cargo Description</label>
-                <textarea
-                  name="description"
-                  value={form.description}
-                  onChange={handleInputChange}
-                  rows={10}
-                  placeholder="Enter details of shipping cargo, marks, labels, specific handling requirements..."
-                  className={inputStyle + " resize-none font-mono text-sm leading-relaxed p-4"}
-                />
+              <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Cargo Description / Marks & Numbers / Remarks</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                  <label className={labelStyle}>Marks Nos</label>
+                  <textarea
+                    name="marks_and_numbers"
+                    value={form.marks_and_numbers}
+                    onChange={handleInputChange}
+                    rows={8}
+                    placeholder="Marks & Numbers"
+                    className={inputStyle + " resize-none font-mono text-sm leading-relaxed p-4"}
+                  />
+                </div>
+                <div>
+                  <label className={labelStyle}>Description</label>
+                  <textarea
+                    name="description"
+                    value={form.description}
+                    onChange={handleInputChange}
+                    rows={8}
+                    placeholder="Description"
+                    className={inputStyle + " resize-none font-mono text-sm leading-relaxed p-4"}
+                  />
+                </div>
+                <div>
+                  <label className={labelStyle}>Remarks</label>
+                  <textarea
+                    name="remarks"
+                    value={form.remarks}
+                    onChange={handleInputChange}
+                    rows={8}
+                    placeholder="Remarks"
+                    className={inputStyle + " resize-none font-mono text-sm leading-relaxed p-4"}
+                  />
+                </div>
               </div>
             </div>
           )}
@@ -1456,6 +1619,7 @@ export function SIMasterBLForm() {
                 customers={customers}
                 isBuy={true}
                 chargeOptions={chargeOptions}
+                errors={valErrors.buy_rates || []}
                 onChange={(updated) => setForm(prev => ({ ...prev, buy_rates: updated }))}
                 onAddRow={(newRow) => setForm(prev => ({ ...prev, buy_rates: [...prev.buy_rates, newRow] }))}
                 onDeleteRow={(idx) => setForm(prev => ({
@@ -1475,6 +1639,7 @@ export function SIMasterBLForm() {
                 isBuy={false}
                 consignee={form.consignee}
                 chargeOptions={chargeOptions}
+                errors={valErrors.sell_rates || []}
                 onChange={(updated) => setForm(prev => ({ ...prev, sell_rates: updated }))}
                 onAddRow={(newRow) => setForm(prev => ({ ...prev, sell_rates: [...prev.sell_rates, newRow] }))}
                 onDeleteRow={(idx) => setForm(prev => ({
@@ -1570,6 +1735,68 @@ export function SIMasterBLForm() {
               <Save size={16} /> Save MasterBL Job
             </button>
           </div>
+
+          {/* Save Error Overlay */}
+          {saveError && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-red-100 dark:border-red-950/30 transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+                  <span className="p-2 bg-red-50 dark:bg-red-950/30 rounded-xl">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white">Unable to Save MasterBL Job</h3>
+                </div>
+                <div className="bg-red-50/50 dark:bg-red-950/10 border border-red-100 dark:border-red-950/20 rounded-xl p-4 mb-6">
+                  <p className="text-sm font-mono text-red-700 dark:text-red-400 leading-relaxed whitespace-pre-wrap">
+                    {saveError}
+                  </p>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setSaveError(null)}
+                    className="px-5 py-2 bg-slate-850 hover:bg-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Validation Error Overlay */}
+          {validationModalErrors && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-red-100 dark:border-red-950/30 transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200">
+                <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+                  <span className="p-2 bg-red-50 dark:bg-red-950/30 rounded-xl">
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                  </span>
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-white">Validation Errors</h3>
+                </div>
+                <div className="bg-red-50/50 dark:bg-red-950/10 border border-red-100 dark:border-red-950/20 rounded-xl p-4 mb-6">
+                  <ul className="list-disc pl-5 text-sm text-red-700 dark:text-red-400 space-y-1">
+                    {validationModalErrors.map((msg, index) => (
+                      <li key={index}>{msg}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setValidationModalErrors(null)}
+                    className="px-5 py-2 bg-red-600 hover:bg-red-750 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
         </div>
       </div>

@@ -7,16 +7,32 @@ const UNITS = ["--- None ---", "20", "20 DC", "20 F/R", "20 OT", "40", "40 F/R",
 const CURRENCIES = ["USD", "INR", "EUR", "AED"];
 const GST_PERCENTAGES = ["0%", "5%", "12%", "18%"];
 const CONTAINER_GRID_TYPES = ["20 GP", "40 GP", "40 HC", "20 RF", "40 RF", "20 OT", "40 OT", "20 FR", "40 FR"];
-const PACKAGE_TYPES = ["Pallet", "Carton", "Box", "Crate", "Drum", "Roll", "Bag", "Loose"];
+const PACKAGE_TYPES = [
+  "BAGS", "BAILS", "BALES", "BARREL", "BOXES", "BULK", "BUNDLE", "CANS", "CARBOYS",
+  "CARTONS", "CASES", "CHEST", "COILS", "COLLIES", "CONTAINER", "CRATES", "CYLINDER",
+  "DRUMS", "FLASK", "FLEXITANKS", "FUTS", "HABBUCK", "IBC TOTES", "INGOT", "JOTTA",
+  "JUMBLE BALE", "KEGGS", "LIFT", "LOGS", "PACKAGES", "PALLETS", "PALLS", "QUADS",
+  "REELS", "ROLLS", "ROOLS", "SHIPPERS", "SKID & SKIDDED PKGS", "SLABS", "STEEL BLOCKS",
+  "STEEL BULKS", "STEEL ENVELOPES", "TABLE", "TINS", "TRUNK", "UNITS", "WOODEN BOXES",
+  "WOODEN CASES"
+];
 
 /* =========================================================================
    1. RATE GRID COMPONENT (Used for both Buy Rates and Sell Rates)
    ========================================================================= */
-export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true, consignee = "", chargeOptions = [] }) {
+export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true, consignee = "", chargeOptions = [], errors = [] }) {
   const partyLabel = isBuy ? "Vendor" : "Client";
   const finalCharges = chargeOptions && chargeOptions.length > 0 ? chargeOptions.map(c => c.name) : CHARGE_TYPES;
 
   const [activeRowIdx, setActiveRowIdx] = React.useState(0);
+
+  const getCellClass = (idx, fieldName) => {
+    const hasError = errors && errors[idx] && errors[idx][fieldName];
+    if (hasError) {
+      return "border-2 border-red-500 bg-red-50/10 dark:bg-red-950/10 focus-within:ring-2 focus-within:ring-red-500";
+    }
+    return "border border-slate-200 dark:border-slate-700/80";
+  };
 
   const handleRowChange = (index, field, value) => {
     const updated = [...rows];
@@ -259,7 +275,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                   onClick={() => setActiveRowIdx(idx)}
                   className={`hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${activeRowIdx === idx ? 'bg-indigo-50/10 dark:bg-indigo-950/10' : ''}`}
                 >
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "drcr")} p-0`}>
                     <select
                       value={row.doc_type || row.drcr || "INV"}
                       disabled={!!row.locked}
@@ -273,7 +289,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       <option value="DR">DR</option>
                     </select>
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "party")} p-0`}>
                     <SearchableDropdown
                       options={customers.map((c) => ({ value: c.customer_id, label: c.name }))}
                       value={row.party}
@@ -289,7 +305,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       disabled={!!row.locked}
                     />
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "address")} p-0`}>
                     {(() => {
                       const clientData = customers.find(c => String(c.customer_id) === String(row.party) || c.name === row.party);
                       const addrs = [];
@@ -331,7 +347,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       );
                     })()}
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "charge")} p-0`}>
                     <SearchableDropdown
                       options={finalCharges.map(ch => ({ value: ch, label: ch }))}
                       value={row.charge}
@@ -341,7 +357,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       disabled={!!row.locked}
                     />
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "hsn_sac")} p-0`}>
                     <input
                       type="text"
                       value={row.sac || row.hsn_sac || ""}
@@ -354,10 +370,10 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-center rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-2 font-medium text-slate-700 dark:text-slate-350 text-center bg-slate-50/10 dark:bg-slate-800/10 text-xs">
+                  <td className={`${getCellClass(idx, "gst")} p-2 font-medium text-slate-700 dark:text-slate-350 text-center bg-slate-50/10 dark:bg-slate-800/10 text-xs`}>
                     {row.gst || "0%"}
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "unit")} p-0`}>
                     <SearchableDropdown
                       options={UNITS.map(u => ({ value: u, label: u }))}
                       value={row.unit}
@@ -366,7 +382,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       disabled={!!row.locked}
                     />
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "quantity")} p-0`}>
                     <input
                       type="number"
                       value={row.quantity || "1"}
@@ -375,7 +391,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "rate")} p-0`}>
                     <input
                       type="number"
                       value={row.rate || "0"}
@@ -384,7 +400,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "currency")} p-0`}>
                     <SearchableDropdown
                       options={CURRENCIES.map(curr => ({ value: curr, label: curr }))}
                       value={row.currency}
@@ -393,7 +409,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       disabled={!!row.locked}
                     />
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-0">
+                  <td className={`${getCellClass(idx, "ex_rate")} p-0`}>
                     <input
                       type="number"
                       value={row.ex_rate || "1"}

@@ -151,9 +151,10 @@ router.get("/get/:id", authenticateJWT, async (req, res) => {
         'M.shipping_line_name as shipping_line_name',
         'M.cargo_type as cargo_type',
         'M.container_size as container_size',
-        'M.container_count as container_count',
         'M.agent as agent',
-        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(M.manual_party_details, '$.agent'))) as agent_name")
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(M.manual_party_details, '$.agent'))) as agent_name"),
+        'S.addresses as shipper_addresses',
+        'C.addresses as consignee_addresses'
       )
       .where({ 'HouseBL.id': req.params.id })
       .first();
@@ -161,6 +162,21 @@ router.get("/get/:id", authenticateJWT, async (req, res) => {
     if (!job) {
       return res.status(404).json({ success: false, message: "HouseBL not found" });
     }
+
+    const formatAddress = (addressesJson) => {
+      if (!addressesJson) return "";
+      try {
+        const addrs = typeof addressesJson === 'string' ? JSON.parse(addressesJson) : addressesJson;
+        if (Array.isArray(addrs) && addrs.length > 0) {
+          const addr = addrs.find(a => a.is_default) || addrs[0];
+          return [addr.address_line1, addr.address_line2, addr.city, addr.pin_code, addr.state, addr.country].filter(Boolean).join(", ");
+        }
+      } catch (e) {}
+      return "";
+    };
+
+    job.shipper_address = formatAddress(job.shipper_addresses);
+    job.consignee_address = formatAddress(job.consignee_addresses);
 
     res.json({ success: true, job });
   } catch (error) {
@@ -189,11 +205,29 @@ router.get("/get", authenticateJWT, async (req, res) => {
         'M.shipping_line_name as shipping_line_name',
         'M.cargo_type as cargo_type',
         'M.container_size as container_size',
-        'M.container_count as container_count',
         'M.agent as agent',
-        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(M.manual_party_details, '$.agent'))) as agent_name")
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(M.manual_party_details, '$.agent'))) as agent_name"),
+        'S.addresses as shipper_addresses',
+        'C.addresses as consignee_addresses'
       )
       .orderBy('HouseBL.created_at', 'desc');
+
+    const formatAddress = (addressesJson) => {
+      if (!addressesJson) return "";
+      try {
+        const addrs = typeof addressesJson === 'string' ? JSON.parse(addressesJson) : addressesJson;
+        if (Array.isArray(addrs) && addrs.length > 0) {
+          const addr = addrs.find(a => a.is_default) || addrs[0];
+          return [addr.address_line1, addr.address_line2, addr.city, addr.pin_code, addr.state, addr.country].filter(Boolean).join(", ");
+        }
+      } catch (e) {}
+      return "";
+    };
+
+    jobs.forEach(job => {
+      job.shipper_address = formatAddress(job.shipper_addresses);
+      job.consignee_address = formatAddress(job.consignee_addresses);
+    });
 
     res.json({ success: true, jobs });
   } catch (error) {

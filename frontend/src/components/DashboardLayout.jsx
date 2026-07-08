@@ -70,8 +70,9 @@ const SidebarItem = ({ icon, text, to, isCollapsed, queryParam }) => {
             
             {/* Tooltip in collapsed mode */}
             {isCollapsed && (
-                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 hidden group-hover:flex items-center z-50">
-                    <div className="bg-slate-900 dark:bg-slate-800 text-white text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-md whitespace-nowrap">
+                <div className="absolute left-full top-1/2 -translate-y-1/2 ml-3 hidden group-hover:flex items-center z-50 pointer-events-none transition-all duration-150 ease-out">
+                    <div className="w-1.5 h-1.5 bg-slate-900 dark:bg-slate-800 rotate-45 -mr-0.5 z-10 relative left-[1px]"></div>
+                    <div className="bg-slate-900 dark:bg-slate-800 text-white text-xs font-semibold px-3 py-1.5 rounded-lg shadow-lg whitespace-nowrap tracking-wide border border-slate-800 dark:border-slate-700">
                         {text}
                     </div>
                 </div>
@@ -128,7 +129,7 @@ const SidebarGroup = ({ icon, text, children, isCollapsed, isExpanded, onToggle,
                 </div>
             ) : (
                 /* Collapsed Sidebar: Hover Popover */
-                <div className="absolute left-full top-0 ml-2 hidden group-hover/parent:block w-52 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-xl shadow-xl py-2 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+                <div className="absolute left-full top-0 ml-2 hidden group-hover/parent:block w-52 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl dark:shadow-slate-950/50 py-2 z-50 animate-in fade-in slide-in-from-left-2 duration-150 before:absolute before:-left-2 before:top-0 before:w-2 before:h-full before:content-['']">
                     <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                         {text}
                     </div>
@@ -153,8 +154,9 @@ const menuConfig = [
         children: [
             { text: 'KYC', to: '/kyc', adminOnly: true, icon: <ShieldCheck size={18} /> },
             { text: 'Users', to: '/users', adminOnly: true, icon: <Users size={18} /> },
-            { text: 'Charge', to: '/charges', adminOnly: true, icon: <DollarSign size={18} /> },
-            { text: 'Party', to: '/parties', adminOnly: true, icon: <Briefcase size={18} /> }
+            { text: 'Charge', to: '/charges', icon: <DollarSign size={18} /> },
+            { text: 'Party', to: '/parties', icon: <Briefcase size={18} /> },
+            { text: 'CFS', to: '/cfs', icon: <Compass size={18} /> }
         ]
     },
     {
@@ -168,7 +170,6 @@ const menuConfig = [
         text: 'Sea Import',
         icon: <Ship size={20} />,
         groupKey: 'seaImport',
-        adminOnly: true,
         children: [
             { text: 'SI MasterBL', to: '/si-masterbl', queryParam: { direction: 'import' }, icon: <Anchor size={18} /> },
             { text: 'SI HouseBL', to: '/si-housebl', queryParam: { direction: 'import' }, icon: <Compass size={18} /> }
@@ -179,7 +180,6 @@ const menuConfig = [
         text: 'Sea Export',
         icon: <Globe size={20} />,
         groupKey: 'seaExport',
-        adminOnly: true,
         children: [
             { text: 'SI MasterBL', to: '/si-masterbl', queryParam: { direction: 'export' }, icon: <Anchor size={18} /> },
             { text: 'SI HouseBL', to: '/si-housebl', queryParam: { direction: 'export' }, icon: <Compass size={18} /> }
@@ -189,7 +189,6 @@ const menuConfig = [
         type: 'item',
         text: 'DO & FC',
         to: '/do-fc',
-        adminOnly: true,
         icon: <FileText size={20} />
     },
     {
@@ -204,7 +203,6 @@ const menuConfig = [
         text: 'Invoice',
         icon: <FileCheck2 size={20} />,
         groupKey: 'invoice',
-        adminOnly: true,
         children: [
             { text: 'Tax Invoice', to: '/invoice', icon: <FileText size={18} /> },
             { text: 'Proforma Invoice', to: '/proforma-invoice', icon: <FileText size={18} /> },
@@ -217,7 +215,6 @@ const menuConfig = [
         text: 'HBL Documents',
         icon: <Scroll size={20} />,
         groupKey: 'hblDocuments',
-        adminOnly: true,
         children: [
             { text: 'HBL Confirmation', to: '/hbl-confirmation', icon: <FileText size={18} /> },
             { text: 'HBL Final', to: '/hbl-final', icon: <FileCheck2 size={18} /> },
@@ -382,7 +379,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                         </button>
                     </div>
                 )}
-                <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800">
+                <nav className={`flex-1 py-6 px-3 space-y-1 ${isSidebarCollapsed ? 'overflow-visible' : 'overflow-y-auto'} scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-slate-800`}>
                     {filteredMenu.map((menu, idx) => {
                         if (menu.type === 'item') {
                             return (
@@ -480,15 +477,13 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                                         <p className="text-sm font-semibold text-slate-800 dark:text-white">{user?.user_name || 'Guest'}</p>
                                         <p className="text-xs text-slate-500 truncate">{user?.email}</p>
                                     </div>
-                                    {user?.role?.toLowerCase() === 'admin' && (
-                                        <Link
-                                            to="/profile"
-                                            className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
-                                        >
-                                            <UserCircle size={16} />
-                                            My Profile
-                                        </Link>
-                                    )}
+                                    <Link
+                                        to="/profile"
+                                        className="flex items-center gap-2 px-4 py-2.5 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                                    >
+                                        <UserCircle size={16} />
+                                        My Profile
+                                    </Link>
                                     <button
                                         onClick={(e) => {
                                             e.stopPropagation(); // Prevent re-triggering parent click

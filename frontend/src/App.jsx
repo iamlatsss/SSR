@@ -24,6 +24,7 @@ import ProformaInvoice from './pages/ProformaInvoice';
 import Placeholder from './pages/Placeholder';
 import Charges from './pages/Charges';
 import Parties from './pages/Parties';
+import CFS from './pages/CFS';
 import EInvoiceApproval from './pages/EInvoiceApproval';
 import EInvoicePosting from './pages/EInvoicePosting';
 import HBLConfirmation from './pages/HBLConfirmation';
@@ -52,31 +53,32 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Home />} />
             <Route path="/quotation" element={<Quotation />} />
+            <Route path="/bookings" element={<BookingList />} />
+            <Route path="/booking-form" element={<BookingForm />} />
+            <Route path="/si-masterbl" element={<SIMasterBLList />} />
+            <Route path="/si-masterbl-form" element={<SIMasterBLForm />} />
+            <Route path="/si-housebl" element={<SIHouseBLList />} />
+            <Route path="/si-housebl-form" element={<SIHouseBLForm />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/do-fc" element={<DOFC />} />
+            <Route path="/invoice" element={<Invoice />} />
+            <Route path="/invoice/edit/:jobNo" element={<InvoiceGenerator />} />
+            <Route path="/proforma-invoice" element={<ProformaInvoice />} />
+            <Route path="/charges" element={<Charges />} />
+            <Route path="/parties" element={<Parties />} />
+            <Route path="/cfs" element={<CFS />} />
+            <Route path="/e-invoice-approval" element={<EInvoiceApproval />} />
+            <Route path="/e-invoice-posting" element={<EInvoicePosting />} />
+            <Route path="/hbl-confirmation" element={<HBLConfirmation />} />
+            <Route path="/hbl-final" element={<HBLFinal />} />
+            <Route path="/hbl-telex-release" element={<HBLTelexRelease />} />
 
             {/* Restricted to Admin */}
             <Route element={<ProtectedRoute allowedRoles={['Admin', 'admin']} />}>
-              <Route path="/bookings" element={<BookingList />} />
-              <Route path="/booking-form" element={<BookingForm />} />
-              <Route path="/si-masterbl" element={<SIMasterBLList />} />
-              <Route path="/si-masterbl-form" element={<SIMasterBLForm />} />
-              <Route path="/si-housebl" element={<SIHouseBLList />} />
-              <Route path="/si-housebl-form" element={<SIHouseBLForm />} />
               <Route path="/igm" element={<IGM />} />
               <Route path="/kyc" element={<KYCList />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/do-fc" element={<DOFC />} />
-              <Route path="/invoice" element={<Invoice />} />
-              <Route path="/invoice/edit/:jobNo" element={<InvoiceGenerator />} />
-              <Route path="/proforma-invoice" element={<ProformaInvoice />} />
               <Route path="/users" element={<Admin />} />
-              <Route path="/charges" element={<Charges />} />
-              <Route path="/parties" element={<Parties />} />
-              <Route path="/e-invoice-approval" element={<EInvoiceApproval />} />
-              <Route path="/e-invoice-posting" element={<EInvoicePosting />} />
-              <Route path="/hbl-confirmation" element={<HBLConfirmation />} />
-              <Route path="/hbl-final" element={<HBLFinal />} />
-              <Route path="/hbl-telex-release" element={<HBLTelexRelease />} />
             </Route>
           </Route>
 
