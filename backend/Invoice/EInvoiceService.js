@@ -1,6 +1,14 @@
 import { knexDB } from '../Database.js';
 import { MastersIndiaProvider } from './providers/MastersIndia.js';
 import { MockEInvoiceProvider } from './providers/MockProvider.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 
 // Resolve configured provider from environment
 function getEInvoiceProvider() {
@@ -70,6 +78,7 @@ export async function validateInvoiceDetails(invoice) {
 
   // 2. Resolve Job details for extra validation
   let jobRecord = null;
+  let addDetails = {};
   if (invoice.job_no) {
     if (invoice.mbl_hbl_type === 'MBL') {
       jobRecord = await knexDB("MasterBL").where({ job_no: invoice.job_no }).first();
@@ -78,24 +87,73 @@ export async function validateInvoiceDetails(invoice) {
     }
   }
 
-  // 3. Customer validations
+  if (jobRecord && jobRecord.additional_details) {
+    try {
+      addDetails = typeof jobRecord.additional_details === 'string'
+        ? JSON.parse(jobRecord.additional_details)
+        : jobRecord.additional_details;
+    } catch (e) {}
+  }
+
+  // Fetch linked MasterBL for HouseBL to get MBL date, POL, POD etc if not present
+  let linkedMblNo = jobRecord?.mbl_no || addDetails?.mbl_no;
+  let mblRec = null;
+  if (linkedMblNo) {
+    mblRec = await knexDB("MasterBL").where({ mbl_no: linkedMblNo }).first();
+  }
+
+  // 3. Resolve numbers, dates, POL, POD, container details
+  const hblNo = invoice.mbl_hbl_type === 'HBL' ? invoice.mbl_hbl_no : (addDetails?.hbl_no || jobRecord?.hbl_no);
+  const mblNo = invoice.mbl_hbl_type === 'MBL' ? invoice.mbl_hbl_no : (jobRecord?.mbl_no || addDetails?.mbl_no || (mblRec ? mblRec.mbl_no : null));
+
+  const hblDate = jobRecord?.hbl_date || addDetails?.hbl_date || (invoice.mbl_hbl_type === 'HBL' ? jobRecord?.created_at : null);
+  const mblDate = mblRec?.mbl_date || mblRec?.created_at || (invoice.mbl_hbl_type === 'MBL' ? (jobRecord?.mbl_date || jobRecord?.created_at) : null) || addDetails?.mbl_date;
+
+  let polVal = jobRecord?.pol || addDetails?.pol || '—';
+  let podVal = jobRecord?.pod || addDetails?.pod || '—';
+
+  if (polVal === '—' && mblRec) polVal = mblRec.pol || '—';
+  if (podVal === '—' && mblRec) podVal = mblRec.pod || '—';
+
+  const containerSize = jobRecord?.container_size || addDetails?.inv_csize || jobRecord?.container_type || (mblRec ? (mblRec.container_size || mblRec.container_type) : null);
+  const containerCount = jobRecord?.container_count || addDetails?.inv_no_of_units || jobRecord?.no_of_containers || (mblRec ? (mblRec.container_count || mblRec.no_of_containers) : null);
+
+  // Apply validations for numbers and dates
+  if (invoice.mbl_hbl_type === 'HBL') {
+    if (!hblNo) errors.push("HBL Number is missing.");
+    if (!hblDate) errors.push("HBL Date is missing.");
+  }
+  if (!mblNo) errors.push("MBL Number is missing.");
+  if (!mblDate) errors.push("MBL Date is missing.");
+
+  // POL and POD
+  if (!polVal || polVal === '—') errors.push("POL (Port of Loading) is missing.");
+  if (!podVal || podVal === '—') errors.push("POD (Port of Discharge) is missing.");
+
+  // Container details
+  if (!containerSize || !containerCount) {
+    errors.push("Container details (size/type and count) are missing.");
+  }
+
+  // 4. Customer validations
+  const clientName = (invoice.client_name || '').trim();
+  const clientAddress = (invoice.client_address || '').trim();
   const clientGstin = (invoice.client_gstin || '').trim();
   const clientState = (invoice.client_state || '').trim();
-  const clientAddress = (invoice.client_address || '').trim();
 
-  if (!invoice.client_name) {
-    errors.push("Client Name is missing.");
+  if (!clientName) {
+    errors.push("Customer Name is missing.");
   }
-
   if (!clientAddress) {
-    errors.push("Client Address is missing.");
+    errors.push("Customer Address is missing.");
   }
 
-  // GSTIN formats validation
-  const isExport = invoice.print_type === 'USD';
+  const printType = invoice.print_type || 'Invoice';
+  const isExport = printType === 'USD';
+
   if (!isExport) {
     if (!clientGstin) {
-      errors.push("GSTIN is required for domestic tax invoices.");
+      errors.push("GST Number is missing.");
     } else if (!isValidGstin(clientGstin)) {
       errors.push(`Customer GSTIN '${clientGstin}' format is invalid. Must be standard 15-char format.`);
     }
@@ -114,7 +172,7 @@ export async function validateInvoiceDetails(invoice) {
     errors.push(`Branch GSTIN '${branchGstin}' is invalid.`);
   }
 
-  // 4. Line Items validations
+  // 5. Line Items validations
   let items = [];
   try {
     items = typeof invoice.items === 'string' ? JSON.parse(invoice.items) : (invoice.items || []);
@@ -123,11 +181,23 @@ export async function validateInvoiceDetails(invoice) {
   }
 
   if (items.length === 0) {
-    errors.push("Invoice must contain at least one billing charge row.");
+    errors.push("Charge entries are missing (invoice must contain at least one billing charge row).");
   }
 
-  let calculatedTax = 0;
-  let subtotalVal = 0;
+  let totals = {};
+  try {
+    totals = typeof invoice.totals === 'string' ? JSON.parse(invoice.totals) : (invoice.totals || {});
+  } catch (e) {
+    errors.push("Invoice totals are corrupted or invalid JSON format.");
+  }
+
+  let recalcSubtotal = 0;
+  let recalcCgst = 0;
+  let recalcSgst = 0;
+  let recalcIgst = 0;
+
+  const isIntraState = !isExport && (clientGstin ? clientGstin.startsWith('27') : (clientState === '27'));
+  const effectiveExRate = parseFloat(invoice.exRate || totals.exRate || 85.00);
 
   items.forEach((item, index) => {
     const rowNo = index + 1;
@@ -143,46 +213,71 @@ export async function validateInvoiceDetails(invoice) {
 
     const qty = parseFloat(item.quantity) || 0;
     const rate = parseFloat(item.rate) || 0;
-    const exRate = parseFloat(item.ex_rate) || 1;
+    const exRateVal = parseFloat(item.ex_rate) || parseFloat(item.exRate) || effectiveExRate || 1;
     const currency = item.currency || 'INR';
 
-    let itemTotal = qty * rate;
-    if (currency === 'USD' && !isExport) {
-      itemTotal = itemTotal * exRate;
+    if (!item.currency) {
+      errors.push(`Row #${rowNo}: Currency is missing.`);
+    }
+    if (exRateVal <= 0) {
+      errors.push(`Row #${rowNo}: Exchange rate must be greater than zero.`);
     }
 
-    subtotalVal += itemTotal;
+    let itemAmount = qty * rate;
+    if (printType === 'USD') {
+      if (currency === 'INR') {
+        itemAmount = itemAmount / exRateVal;
+      }
+    } else {
+      if (currency === 'USD') {
+        itemAmount = itemAmount * exRateVal;
+      }
+    }
+
+    recalcSubtotal += itemAmount;
+
     const gstRate = parseFloat(item.gst || 0);
-    calculatedTax += itemTotal * (gstRate / 100);
+    const taxAmt = itemAmount * (gstRate / 100);
+
+    if (gstRate > 0) {
+      if (isIntraState) {
+        recalcCgst += taxAmt / 2;
+        recalcSgst += taxAmt / 2;
+      } else {
+        recalcIgst += taxAmt;
+      }
+    }
   });
 
-  // Totals validation
-  let totals = {};
-  try {
-    totals = typeof invoice.totals === 'string' ? JSON.parse(invoice.totals) : (invoice.totals || {});
-  } catch (e) {}
-
+  const recalcGrandTotal = recalcSubtotal + recalcCgst + recalcSgst + recalcIgst;
   const grandTotal = parseFloat(totals.grandTotal || totals.inrTotal || 0);
+
   if (grandTotal <= 0) {
     errors.push("Grand total amount must be greater than zero.");
   }
 
-  // 5. Export validations
-  if (isExport) {
-    let addDetails = {};
-    if (jobRecord && jobRecord.additional_details) {
-      try {
-        addDetails = typeof jobRecord.additional_details === 'string'
-          ? JSON.parse(jobRecord.additional_details)
-          : jobRecord.additional_details;
-      } catch (e) {}
-    }
+  // Math calculations verification
+  const tolerance = 1.0;
+  if (Math.abs(recalcSubtotal - parseFloat(totals.subtotal || totals.amount || 0)) > tolerance) {
+    errors.push(`Subtotal calculation mismatch. Recalculated: ${recalcSubtotal.toFixed(2)}, Stored: ${parseFloat(totals.subtotal || totals.amount || 0).toFixed(2)}`);
+  }
+  if (Math.abs(recalcCgst - parseFloat(totals.cgst || 0)) > tolerance) {
+    errors.push(`CGST calculation mismatch. Recalculated: ${recalcCgst.toFixed(2)}, Stored: ${parseFloat(totals.cgst || 0).toFixed(2)}`);
+  }
+  if (Math.abs(recalcSgst - parseFloat(totals.sgst || 0)) > tolerance) {
+    errors.push(`SGST calculation mismatch. Recalculated: ${recalcSgst.toFixed(2)}, Stored: ${parseFloat(totals.sgst || 0).toFixed(2)}`);
+  }
+  if (Math.abs(recalcIgst - parseFloat(totals.igst || 0)) > tolerance) {
+    errors.push(`IGST calculation mismatch. Recalculated: ${recalcIgst.toFixed(2)}, Stored: ${parseFloat(totals.igst || 0).toFixed(2)}`);
+  }
+  if (Math.abs(recalcGrandTotal - grandTotal) > tolerance) {
+    errors.push(`Grand total calculation mismatch. Recalculated: ${recalcGrandTotal.toFixed(2)}, Stored: ${grandTotal.toFixed(2)}`);
+  }
 
-    const pol = (jobRecord?.pol || addDetails.pol || '').trim();
-    const portCode = (addDetails.port_code || 'INBOM6').trim(); // Default port code if missing for testing
+  // 6. Export validations
+  if (isExport) {
+    const portCode = (addDetails.port_code || 'INBOM6').trim();
     const country = (addDetails.country || 'Overseas').trim();
-    const currency = (invoice.print_type || 'USD').trim();
-    const exRate = parseFloat(invoice.exRate || totals.exRate || 85.00);
 
     if (!isValidPortCode(portCode)) {
       errors.push(`Export Port Code '${portCode}' is invalid. Must be exactly 6 characters alphanumeric (e.g. INBOM6).`);
@@ -192,9 +287,17 @@ export async function validateInvoiceDetails(invoice) {
       errors.push("Export destination country is required.");
     }
 
-    if (exRate <= 0) {
+    if (effectiveExRate <= 0) {
       errors.push("Export exchange rate must be greater than zero.");
     }
+  }
+
+  // 7. PDF template file access validation
+  const templatePath = path.join(__dirname, '..', '..', 'frontend', 'public', 'pdf-static', 'tax_invoice.html');
+  try {
+    await fs.promises.access(templatePath, fs.constants.R_OK);
+  } catch (err) {
+    errors.push(`Invoice template file is not accessible: ${templatePath}`);
   }
 
   return {
@@ -366,7 +469,19 @@ export async function approveInvoice(invoiceId, user) {
   // Perform validation
   const validation = await validateInvoiceDetails(invoice);
   if (!validation.valid) {
-    throw new Error("Validation failed:\n" + validation.errors.join("\n"));
+    const errorMsg = validation.errors.join("; ");
+    await knexDB("Invoices").where({ id: invoiceId }).update({
+      approval_status: 'Pending Correction',
+      rejection_reason: errorMsg,
+      rejection_remarks: 'Failed automated validation checks before approval.'
+    });
+    
+    await logEInvoiceAction(invoiceId, invoice.invoice_no, 'Validation Failed', user, {
+      errors: validation.errors,
+      status: 'Pending Correction'
+    });
+
+    throw new Error("Validation failed: " + errorMsg);
   }
 
   // Update status in db

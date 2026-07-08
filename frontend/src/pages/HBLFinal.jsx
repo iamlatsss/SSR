@@ -440,7 +440,7 @@ export default function HBLFinal() {
 
   return (
     <DashboardLayout title="HBL Final">
-      <div className="space-y-6 max-w-7xl mx-auto font-poppins">
+      <div className="space-y-6 w-full font-poppins">
 
         {/* Tab Selection */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 mb-6">

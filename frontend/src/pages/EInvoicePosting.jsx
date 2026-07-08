@@ -201,7 +201,7 @@ export default function EInvoicePosting() {
 
   return (
     <DashboardLayout title="E-Invoice Posting">
-      <div className="space-y-6 max-w-7xl mx-auto p-1 font-poppins">
+      <div className="space-y-6 w-full p-1 font-poppins">
         
         {/* ACTION BAR / SEARCH */}
         <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl flex flex-wrap gap-4 justify-between items-center transition-all duration-300">
@@ -324,55 +324,56 @@ export default function EInvoicePosting() {
                           {!hasIrn ? (
                             <button
                               onClick={() => handlePostSingle(inv.id)}
-                              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-lg transition-colors text-xs shadow-md"
+                              title="Post IRN"
+                              className="p-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors shadow-md inline-flex items-center justify-center"
                             >
-                              <Play size={12} /> Post IRN
+                              <Play size={16} />
                             </button>
                           ) : (
                             <>
                               <button
                                 onClick={() => triggerCancelModal(inv.id)}
                                 title="Cancel E-Invoice IRN"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:hover:bg-rose-900/30 dark:text-rose-400 rounded-lg text-xs font-bold transition-colors"
+                                className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:hover:bg-rose-900/30 dark:text-rose-400 rounded-lg transition-colors inline-flex items-center justify-center"
                               >
-                                <Ban size={12} /> Cancel
+                                <Ban size={16} />
                               </button>
                               <button
                                 onClick={() => handleViewResponse(inv)}
                                 title="View GSP Response JSON"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg text-xs font-bold transition-colors"
+                                className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg transition-colors inline-flex items-center justify-center"
                               >
-                                <FileJson size={12} /> Response
+                                <FileJson size={16} />
                               </button>
                               <button
                                 onClick={() => handleDownloadQr(inv)}
                                 title="Download QR Code Token"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:hover:bg-slate-800/30 dark:text-slate-350 rounded-lg text-xs font-bold transition-colors"
+                                className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:hover:bg-slate-800/30 dark:text-slate-350 rounded-lg transition-colors inline-flex items-center justify-center"
                               >
-                                <QrCode size={12} /> QR
+                                <QrCode size={16} />
                               </button>
                               <button
                                 onClick={() => handleDownloadSigned(inv)}
                                 title="Download Signed Invoice Token"
-                                className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:hover:bg-slate-800/30 dark:text-slate-350 rounded-lg text-xs font-bold transition-colors"
+                                className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:hover:bg-slate-800/30 dark:text-slate-350 rounded-lg transition-colors inline-flex items-center justify-center"
                               >
-                                <FileText size={12} /> Token
+                                <FileText size={16} />
                               </button>
                             </>
                           )}
                           <button
                             onClick={() => handleViewLogs(inv)}
                             title="Audit Timeline Logs"
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:hover:bg-slate-800/30 dark:text-slate-350 rounded-lg text-xs font-bold transition-colors"
+                            className="p-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:hover:bg-slate-800/30 dark:text-slate-350 rounded-lg transition-colors inline-flex items-center justify-center"
                           >
-                            <History size={12} /> Logs
+                            <History size={16} />
                           </button>
                           <button
                             onClick={() => openPdfPreview(inv.pdf_link)}
                             title="View PDF Invoice"
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg text-xs font-bold transition-colors"
+                            className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg transition-colors inline-flex items-center justify-center"
                           >
-                            <Eye size={12} /> Preview
+                            <Eye size={16} />
                           </button>
                         </td>
                       </tr>

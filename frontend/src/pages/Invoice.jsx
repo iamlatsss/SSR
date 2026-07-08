@@ -174,6 +174,155 @@ export default function Invoice() {
   const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [activeTab, setActiveTab] = useState("generate"); // "generate" or "stored"
 
+  // Edit Modal State
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingInvoice, setEditingInvoice] = useState(null);
+  const [editActiveTab, setEditActiveTab] = useState("main"); // "main" or "detail"
+  const [editItems, setEditItems] = useState([]);
+  const [editTotals, setEditTotals] = useState({ subtotal: 0, cgst: 0, sgst: 0, igst: 0, grandTotal: 0 });
+  const [editInvoiceDate, setEditInvoiceDate] = useState("");
+  const [editRemarks, setEditRemarks] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const calculateEditTotals = (items, printType, clientGstin, clientAddress) => {
+    let subtotal = 0;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+
+    const isMaharashtra = clientGstin 
+      ? String(clientGstin).startsWith('27') 
+      : String(clientAddress || '').toLowerCase().includes('maharashtra');
+
+    const firstItem = items[0] || {};
+    const effectiveExRate = parseFloat(firstItem.ex_rate || firstItem.exRate || 85.00);
+
+    items.forEach((item) => {
+      const qty = parseFloat(item.quantity || item.qty || 1);
+      const rate = parseFloat(item.rate || 0);
+      const itemCurrency = item.currency || 'USD';
+      const rowExRate = parseFloat(item.ex_rate || item.exRate || effectiveExRate);
+
+      let baseAmount = qty * rate;
+
+      if (printType === 'USD') {
+        let amountUSD = baseAmount;
+        if (itemCurrency === 'INR') {
+          amountUSD = baseAmount / rowExRate;
+        }
+        subtotal += amountUSD;
+
+        const gstRate = parseFloat(item.gst || item.taxPercent || 0);
+        const taxValUSD = amountUSD * (gstRate / 100);
+
+        if (gstRate > 0) {
+          if (isMaharashtra) {
+            cgst += taxValUSD / 2;
+            sgst += taxValUSD / 2;
+          } else {
+            igst += taxValUSD;
+          }
+        }
+      } else {
+        let amountINR = baseAmount;
+        if (itemCurrency === 'USD') {
+          amountINR = baseAmount * rowExRate;
+        }
+        subtotal += amountINR;
+
+        const gstRate = parseFloat(item.gst || item.taxPercent || 0);
+        const taxValINR = amountINR * (gstRate / 100);
+
+        if (gstRate > 0) {
+          if (isMaharashtra) {
+            cgst += taxValINR / 2;
+            sgst += taxValINR / 2;
+          } else {
+            igst += taxValINR;
+          }
+        }
+      }
+    });
+
+    const grandTotal = subtotal + cgst + sgst + igst;
+    return { subtotal, cgst, sgst, igst, grandTotal };
+  };
+
+  const openEditModal = (inv) => {
+    setEditingInvoice(inv);
+    let items = [];
+    try {
+      items = typeof inv.items === 'string' ? JSON.parse(inv.items) : (inv.items || []);
+    } catch (e) {
+      items = [];
+    }
+    setEditItems(items);
+    
+    let totals = { subtotal: 0, cgst: 0, sgst: 0, igst: 0, grandTotal: 0 };
+    try {
+      totals = typeof inv.totals === 'string' ? JSON.parse(inv.totals) : (inv.totals || totals);
+    } catch(e) {}
+    setEditTotals(totals);
+
+    setEditInvoiceDate(inv.invoice_date ? inv.invoice_date.split('T')[0] : "");
+    
+    let remarks = "NIL";
+    try {
+      const parsedTotals = typeof inv.totals === 'string' ? JSON.parse(inv.totals) : (inv.totals || {});
+      remarks = parsedTotals.narration || "NIL";
+    } catch (e) {}
+    setEditRemarks(remarks);
+
+    setEditActiveTab("main");
+    setShowEditModal(true);
+  };
+
+  const handleDeleteEditItem = (index) => {
+    const updated = editItems.filter((_, idx) => idx !== index);
+    setEditItems(updated);
+    
+    const newTotals = calculateEditTotals(
+      updated,
+      editingInvoice.print_type,
+      editingInvoice.client_gstin,
+      editingInvoice.client_address
+    );
+    setEditTotals(newTotals);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editItems.length === 0) {
+      toast.error("Invoice must have at least one charge item!");
+      return;
+    }
+    try {
+      setSavingEdit(true);
+      const payload = {
+        items: editItems,
+        totals: {
+          ...editTotals,
+          narration: editRemarks
+        },
+        invoiceDate: editInvoiceDate,
+        remarks: editRemarks
+      };
+
+      const res = await api.put(`/invoice/update/${editingInvoice.id}`, payload);
+      if (res.data.success) {
+        toast.success("Tax Invoice updated successfully!");
+        setShowEditModal(false);
+        loadHistory();
+      } else {
+        toast.error("Failed to update invoice: " + res.data.message);
+      }
+    } catch (error) {
+      console.error("Error updating invoice:", error);
+      toast.error("Error: " + (error.response?.data?.message || error.message));
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   useEffect(() => {
     loadInitData();
     loadHistory();
@@ -571,7 +720,7 @@ export default function Invoice() {
 
   return (
     <DashboardLayout title="Tax Invoice Generator">
-      <div className="space-y-6 max-w-7xl mx-auto p-1 font-poppins">
+      <div className="space-y-6 w-full p-1 font-poppins">
         
         {/* Tab Selection */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 mb-6">
@@ -938,20 +1087,29 @@ export default function Invoice() {
                         <td className="p-4">{new Date(inv.invoice_date || inv.created_at).toLocaleDateString()}</td>
                         <td className="p-4 text-right flex justify-end gap-3">
                           <button
+                            onClick={() => openEditModal(inv)}
+                            title="Edit Details"
+                            className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:hover:bg-blue-900/30 dark:text-blue-400 rounded-lg transition-colors inline-flex items-center justify-center"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                          </button>
+                          <button
                             onClick={() => openPastPreview(inv.pdf_link)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg text-xs font-bold transition-colors"
+                            title="Interactive Preview"
+                            className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg transition-colors inline-flex items-center justify-center"
                             disabled={!inv.pdf_link}
                           >
-                            <Eye size={14} /> Interactive Preview
+                            <Eye size={16} />
                           </button>
                           <a
                             href={inv.pdf_link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg text-xs font-bold transition-colors"
+                            title="S3 Download"
+                            className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg transition-colors inline-flex items-center justify-center"
                             disabled={!inv.pdf_link}
                           >
-                            <Download size={14} /> S3 Download
+                            <Download size={16} />
                           </a>
                         </td>
                       </tr>
@@ -1018,6 +1176,327 @@ export default function Invoice() {
                 className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 px-5 py-2 rounded-xl text-sm font-semibold transition-all"
               >
                 Close Preview
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL FOR STORED INVOICE */}
+      {showEditModal && editingInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition-all duration-300">
+          <div className="relative bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2">
+                <FileText className="text-indigo-500" />
+                <h3 className="text-md font-bold text-slate-800 dark:text-white font-poppins">
+                  Edit Invoice - #{editingInvoice.invoice_no}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-1.5 text-slate-500 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-all"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Tabs Selector */}
+            <div className="px-6 pt-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 flex gap-4 text-sm font-semibold">
+              <button
+                onClick={() => setEditActiveTab("main")}
+                className={`pb-2.5 border-b-2 transition-all ${
+                  editActiveTab === "main"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-bold"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Main
+              </button>
+              <button
+                onClick={() => setEditActiveTab("detail")}
+                className={`pb-2.5 border-b-2 transition-all ${
+                  editActiveTab === "detail"
+                    ? "border-indigo-600 text-indigo-600 dark:text-indigo-400 font-bold"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                Detail
+              </button>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6 bg-white dark:bg-dark-card space-y-6">
+              {editActiveTab === "main" ? (
+                /* MAIN TAB CONTENT */
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 text-sm">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Job No</label>
+                    <input
+                      type="text"
+                      value={editingInvoice.job_no}
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">JobType</label>
+                    <input
+                      type="text"
+                      value={editingInvoice.mbl_hbl_type}
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Party Type</label>
+                    <input
+                      type="text"
+                      value="Client"
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">DRCR Type</label>
+                    <input
+                      type="text"
+                      value="Inv"
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Invoice No</label>
+                    <input
+                      type="text"
+                      value={editingInvoice.invoice_no}
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed font-bold"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Invoice Date</label>
+                    <input
+                      type="date"
+                      value={editInvoiceDate}
+                      onChange={(e) => setEditInvoiceDate(e.target.value)}
+                      className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 md:col-span-2 lg:col-span-3">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Party</label>
+                    <input
+                      type="text"
+                      value={editingInvoice.client_name}
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed font-semibold"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 md:col-span-2 lg:col-span-3">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Address</label>
+                    <textarea
+                      value={editingInvoice.client_address}
+                      disabled
+                      rows="2"
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed resize-none"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Currency</label>
+                    <input
+                      type="text"
+                      value={editingInvoice.print_type === 'USD' ? 'USD' : 'INR'}
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Ex Rate</label>
+                    <input
+                      type="number"
+                      value={editItems[0]?.ex_rate || editItems[0]?.exRate || 1.00}
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">GST State From</label>
+                    <input
+                      type="text"
+                      value={editingInvoice.client_state === '27' ? 'Maharashtra' : `State Code: ${editingInvoice.client_state || 'N/A'}`}
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 md:col-span-2 lg:col-span-3">
+                    <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Remarks / Narration</label>
+                    <textarea
+                      value={editRemarks}
+                      onChange={(e) => setEditRemarks(e.target.value)}
+                      rows="3"
+                      className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                      placeholder="Enter remarks..."
+                    />
+                  </div>
+                </div>
+              ) : (
+                /* DETAIL TAB CONTENT */
+                <div className="space-y-6">
+                  <div className="overflow-x-auto border border-slate-200 dark:border-slate-700/80 rounded-xl">
+                    <table className="w-full text-left border-collapse min-w-[1100px] text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs">
+                          <th className="p-3">Charge</th>
+                          <th className="p-3 text-center">GST</th>
+                          <th className="p-3 text-center">Unit</th>
+                          <th className="p-3 text-center">Qty</th>
+                          <th className="p-3 text-right">Rate</th>
+                          <th className="p-3 text-center">Cur</th>
+                          <th className="p-3 text-right">Ex Rate</th>
+                          <th className="p-3 text-right">Amount</th>
+                          <th className="p-3 text-right">Amount FC</th>
+                          <th className="p-3">Narration</th>
+                          <th className="p-3 text-center w-[60px]">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                        {editItems.map((item, idx) => {
+                          const qty = parseFloat(item.quantity || item.qty || 1);
+                          const rate = parseFloat(item.rate || 0);
+                          const currency = item.currency || 'USD';
+                          const ex = parseFloat(item.ex_rate || item.exRate || 1);
+                          const fcAmt = qty * rate;
+                          
+                          let printedAmt = fcAmt;
+                          if (editingInvoice.print_type === 'USD') {
+                            if (currency === 'INR') printedAmt = fcAmt / ex;
+                          } else {
+                            if (currency === 'USD') printedAmt = fcAmt * ex;
+                          }
+
+                          return (
+                            <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/10">
+                              <td className="p-3 font-semibold text-slate-800 dark:text-slate-200">
+                                {item.charge || item.chargeName || '—'}
+                              </td>
+                              <td className="p-3 text-center font-bold text-teal-600">
+                                {item.gst || item.taxPercent || '0'}%
+                              </td>
+                              <td className="p-3 text-center text-slate-500">
+                                {item.unit || '—'}
+                              </td>
+                              <td className="p-3 text-center font-semibold">
+                                {qty}
+                              </td>
+                              <td className="p-3 text-right">
+                                {rate.toFixed(2)}
+                              </td>
+                              <td className="p-3 text-center font-bold text-slate-400">
+                                {currency}
+                              </td>
+                              <td className="p-3 text-right text-slate-500">
+                                {ex.toFixed(2)}
+                              </td>
+                              <td className="p-3 text-right font-bold text-indigo-600 dark:text-indigo-400">
+                                {printedAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="p-3 text-right text-slate-500">
+                                {fcAmt.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </td>
+                              <td className="p-3 text-xs text-slate-500 max-w-[150px] truncate" title={item.narration || ''}>
+                                {item.narration || '—'}
+                              </td>
+                              <td className="p-3 text-center">
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteEditItem(idx)}
+                                  className="p-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-lg transition-all"
+                                  title="Delete Charge Row"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Totals Panel */}
+                  <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl p-5 space-y-3 font-mono text-sm max-w-md ml-auto">
+                    <div className="flex justify-between">
+                      <span className="text-slate-500 font-semibold">Subtotal:</span>
+                      <span className="font-bold">
+                        {editingInvoice.print_type === 'USD' ? '$' : '₹'} {editTotals.subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    {editTotals.cgst > 0 && (
+                      <div className="flex justify-between text-amber-600">
+                        <span>CGST split:</span>
+                        <span className="font-bold">
+                          {editingInvoice.print_type === 'USD' ? '$' : '₹'} {editTotals.cgst.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                    {editTotals.sgst > 0 && (
+                      <div className="flex justify-between text-amber-600">
+                        <span>SGST split:</span>
+                        <span className="font-bold">
+                          {editingInvoice.print_type === 'USD' ? '$' : '₹'} {editTotals.sgst.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                    {editTotals.igst > 0 && (
+                      <div className="flex justify-between text-teal-600 dark:text-teal-400 border-b border-slate-200 dark:border-slate-700 pb-2">
+                        <span>IGST Component:</span>
+                        <span className="font-bold">
+                          {editingInvoice.print_type === 'USD' ? '$' : '₹'} {editTotals.igst.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between text-md font-bold text-slate-800 dark:text-white pt-1">
+                      <span>Grand Total:</span>
+                      <span className="font-extrabold text-indigo-600 dark:text-indigo-400 text-lg">
+                        {editingInvoice.print_type === 'USD' ? '$' : '₹'} {editTotals.grandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-slate-50 dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 flex justify-end gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleSaveEdit}
+                disabled={savingEdit || editItems.length === 0}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold shadow-md disabled:opacity-50 transition-all"
+              >
+                {savingEdit ? "Saving Details..." : "Save Details"}
               </button>
             </div>
 

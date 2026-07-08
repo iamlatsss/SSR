@@ -3,6 +3,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser';
 import './config.js';
 
+// reload nodemon
 import Auth, { authenticateJWT, requireAdmin } from './AuthAPI/Auth.js';
 import ForgotPasswordAPI from './AuthAPI/ForgotPasswordAPI.js';
 import Admin from './Admin/admin.js';

@@ -1,6 +1,7 @@
 import express from 'express';
 import { authenticateJWT } from "../AuthAPI/Auth.js"
 import { knexDB, mapPartyToCustomer } from "../Database.js";
+import { syncBLToInvoices } from "../Invoice/InvoiceSyncHelper.js";
 
 const router = express.Router();
 
@@ -322,6 +323,22 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
     const affectedRows = await knexDB('MasterBL').where({ job_no: req.params.jobNo }).update(updateData);
     if (affectedRows === 0) {
       return res.status(404).json({ success: false, message: "MasterBL job not found" });
+    }
+
+    // Auto-sync sell_rates to linked Proforma & Tax Invoices
+    try {
+      const updatedJob = await knexDB('MasterBL').where({ job_no: req.params.jobNo }).first();
+      if (updatedJob && updatedJob.additional_details) {
+        let addDetails = {};
+        try {
+          addDetails = typeof updatedJob.additional_details === 'string'
+            ? JSON.parse(updatedJob.additional_details)
+            : updatedJob.additional_details;
+        } catch (e) {}
+        await syncBLToInvoices(updatedJob.job_no, 'MBL', updatedJob.mbl_no, addDetails);
+      }
+    } catch (syncErr) {
+      console.error("[MasterBL] Invoice sync error (non-blocking):", syncErr.message);
     }
 
     res.json({ success: true, message: "MasterBL job updated successfully" });

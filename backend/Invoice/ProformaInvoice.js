@@ -199,9 +199,56 @@ router.get("/search-charges", authenticateJWT, async (req, res) => {
         }
 
         const sellRates = additionalDetails.sell_rates || [];
+
+        // Check if there is an existing Tax Invoice for this job/BL
+        const existingInvoice = await knexDB("Invoices")
+            .where({ job_no: parseInt(job_no) })
+            .first();
+
+        let filteredSellRates = sellRates;
+        if (existingInvoice) {
+            let invoiceItems = [];
+            try {
+                invoiceItems = typeof existingInvoice.items === 'string'
+                    ? JSON.parse(existingInvoice.items)
+                    : (existingInvoice.items || []);
+            } catch (e) {
+                invoiceItems = [];
+            }
+
+            const pool = [...invoiceItems];
+            filteredSellRates = sellRates.filter(r => {
+                // If it is not locked, it is a new charge. Always keep it!
+                if (!r.locked) {
+                    return true;
+                }
+
+                // If it is locked, it must be present in the Tax Invoice items pool to be visible
+                const matchIndex = pool.findIndex(item => {
+                    const chargeNameMatch = (r.charge || r.chargeName || '').toLowerCase().trim() === 
+                                            (item.charge || item.chargeName || '').toLowerCase().trim();
+                    const partyMatch = String(r.party || r.clientId || r.clientName || '').trim() === 
+                                       String(item.party || item.clientId || item.clientName || '').trim();
+                    const rateMatch = Math.abs(parseFloat(r.rate || 0) - parseFloat(item.rate || 0)) < 0.01;
+                    const qtyMatch = Math.abs(parseFloat(r.quantity || r.qty || 0) - parseFloat(item.quantity || item.qty || 0)) < 0.01;
+                    const currencyMatch = (r.currency || '').toLowerCase().trim() === 
+                                          (item.currency || '').toLowerCase().trim();
+                    const gstMatch = Math.abs(parseFloat(r.gst || r.taxPercent || 0) - parseFloat(item.gst || item.taxPercent || 0)) < 0.01;
+
+                    return chargeNameMatch && partyMatch && rateMatch && qtyMatch && currencyMatch && gstMatch;
+                });
+
+                if (matchIndex !== -1) {
+                    pool.splice(matchIndex, 1);
+                    return true;
+                }
+                return false;
+            });
+        }
+
         res.json({
             success: true,
-            sellRates,
+            sellRates: filteredSellRates,
             additionalDetails
         });
     } catch (error) {
@@ -627,6 +674,302 @@ router.delete("/delete/:id", authenticateJWT, async (req, res) => {
     } catch (error) {
         console.error("Error deleting proforma invoice:", error);
         res.status(500).json({ success: false, message: "Failed to delete proforma invoice: " + error.message });
+    }
+});
+
+// Update Proforma Invoice details (e.g. delete a charge) and re-render PDF
+router.put("/update/:id", authenticateJWT, async (req, res) => {
+    const id = parseInt(req.params.id);
+    const { items, totals, proformaDate } = req.body;
+
+    if (!items || items.length === 0) {
+        return res.status(400).json({ success: false, message: "Missing required details: items" });
+    }
+
+    try {
+        const proforma = await knexDB("ProformaInvoices").where({ id }).first();
+        if (!proforma) {
+            return res.status(404).json({ success: false, message: "Proforma not found" });
+        }
+
+        // 1. Update database
+        const updatedDate = proformaDate || proforma.proforma_date;
+        await knexDB("ProformaInvoices").where({ id }).update({
+            items: JSON.stringify(items),
+            totals: JSON.stringify(totals),
+            proforma_date: updatedDate
+        });
+
+        // 2. Fetch details for PDF re-rendering
+        const { job_no, mbl_hbl_type, mbl_hbl_no, client_name, client_address, client_gstin, client_state, print_type } = proforma;
+        let jobRecord = null;
+        if (mbl_hbl_type === 'MBL') {
+            jobRecord = await knexDB("MasterBL").where({ job_no }).first();
+        } else {
+            jobRecord = await knexDB("HouseBL").where({ hbl_no: mbl_hbl_no }).first();
+        }
+
+        let addDetails = {};
+        if (jobRecord && jobRecord.additional_details) {
+            addDetails = typeof jobRecord.additional_details === 'string'
+                ? JSON.parse(jobRecord.additional_details)
+                : jobRecord.additional_details;
+        }
+
+        let consigneeName = '';
+        let shipperName = '';
+        if (jobRecord) {
+            consigneeName = jobRecord.consignee_name || '';
+            shipperName = jobRecord.shipper_name || '';
+            if (!consigneeName && jobRecord.manual_party_details) {
+                try {
+                    const mp = typeof jobRecord.manual_party_details === 'string'
+                        ? JSON.parse(jobRecord.manual_party_details)
+                        : jobRecord.manual_party_details;
+                    consigneeName = mp.consignee || '';
+                    shipperName = mp.shipper || '';
+                } catch(e){}
+            }
+        }
+
+        const formatDate = (dateStr) => {
+            if (!dateStr) return '—';
+            try {
+                const d = new Date(dateStr);
+                return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+            } catch (e) { return dateStr; }
+        };
+
+        const stateInfo = getStateByGstin(client_gstin, client_address);
+        const isIntraState = stateInfo.code === '27';
+        const firstItem = items[0] || {};
+        const effectiveExRate = parseFloat(firstItem.ex_rate || firstItem.exRate || 85.00);
+        const targetCurrency = print_type === 'USD' ? 'USD' : 'INR';
+
+        const chargesList = items.map((item) => {
+            const qty = parseFloat(item.quantity || item.qty || 1);
+            const baseRate = parseFloat(item.rate || 0);
+            const itemCurrency = item.currency || 'USD';
+            const rowExRate = parseFloat(item.ex_rate || item.exRate || effectiveExRate);
+
+            let amount = qty * baseRate;
+            let targetRate = baseRate;
+
+            if (print_type === 'USD') {
+                if (itemCurrency === 'INR') {
+                    amount = (qty * baseRate) / rowExRate;
+                    targetRate = baseRate / rowExRate;
+                }
+            } else {
+                if (itemCurrency === 'USD') {
+                    amount = qty * baseRate * rowExRate;
+                    targetRate = baseRate * rowExRate;
+                }
+            }
+
+            const gstRate = parseFloat(item.gst || item.taxPercent || 0);
+            const gstAmount = amount * (gstRate / 100);
+            const totalAmount = amount + gstAmount;
+
+            const isFreight = String(item.charge || item.chargeName || '').toLowerCase().includes('freight') || gstRate === 5;
+
+            return {
+                charge_name: item.charge || item.chargeName || '—',
+                hsn_sac: item.hsn_sac || item.sac || '996521',
+                rate: targetRate.toFixed(2),
+                currency: targetCurrency,
+                qty: qty,
+                amount: amount.toFixed(2),
+                gst_rate: gstRate.toFixed(1),
+                gst_amount: gstAmount.toFixed(2),
+                total_amount: totalAmount.toFixed(2),
+                is_freight: isFreight,
+                taxable_amount: amount,
+                gst_rate_num: gstRate,
+                gst_amount_num: gstAmount
+            };
+        });
+
+        let taxableTotalVal = 0;
+        let gstTotalVal = 0;
+        let grandTotalVal = 0;
+
+        let cgstVal = 0;
+        let sgstVal = 0;
+        let cgstFreightVal = 0;
+        let sgstFreightVal = 0;
+        let igstVal = 0;
+        let igstFreightVal = 0;
+
+        chargesList.forEach((c) => {
+            taxableTotalVal += c.taxable_amount;
+            gstTotalVal += c.gst_amount_num;
+            grandTotalVal += c.taxable_amount + c.gst_amount_num;
+
+            if (c.gst_rate_num > 0) {
+                if (isIntraState) {
+                    if (c.is_freight) {
+                        cgstFreightVal += c.gst_amount_num / 2;
+                        sgstFreightVal += c.gst_amount_num / 2;
+                    } else {
+                        cgstVal += c.gst_amount_num / 2;
+                        sgstVal += c.gst_amount_num / 2;
+                    }
+                } else {
+                    if (c.is_freight) {
+                        igstFreightVal += c.gst_amount_num;
+                    } else {
+                        igstVal += c.gst_amount_num;
+                    }
+                }
+            }
+        });
+
+        const formatNum = (val) => val > 0 ? val.toFixed(2) : '0.00';
+        const roundedGrandTotal = Math.round(grandTotalVal);
+        const amountInWords = print_type === 'USD'
+            ? numberToWordsUSD(grandTotalVal)
+            : numberToWordsINR(roundedGrandTotal);
+
+        const termsConditions = `1) Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.
+2) Interest would be charged @ 24% p.a. on delayed payment.
+3) In case of any objection / reservation in the billed Invoice / Debit Note, the same must be lodged within 5 days from the issue date and a written receipt taken from our Accounts Manager.
+4) Payment to be made at Mumbai by A/c payee Cheque / NEFT / RTGS only and receipt for the same must be insisted.
+5) Any dispute subject to Mumbai Jurisdiction only.`;
+
+        let polVal = jobRecord?.pol || addDetails?.pol || '—';
+        let podVal = jobRecord?.pod || addDetails?.pod || '—';
+        let fpdVal = jobRecord?.final_pod || addDetails?.fpd || addDetails?.final_pod || '—';
+
+        if (polVal === '—' || podVal === '—' || fpdVal === '—') {
+            let linkedMblNo = jobRecord?.mbl_no || addDetails?.mbl_no;
+            if (linkedMblNo) {
+                const mblRec = await knexDB("MasterBL").where({ mbl_no: linkedMblNo }).first();
+                if (mblRec) {
+                    if (polVal === '—') polVal = mblRec.pol || '—';
+                    if (podVal === '—') podVal = mblRec.pod || '—';
+                    if (fpdVal === '—') fpdVal = mblRec.final_pod || '—';
+                }
+            }
+        }
+
+        const contextData = {
+            company_logo: "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg",
+            company_name: "SSR LOGISTIC SOLUTIONS PRIVATE LIMITED",
+            company_address: "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai - 400703, Maharashtra, India",
+            website: "www.ssrlogistic.net",
+            state: "Maharashtra",
+            state_code: "27",
+            company_gst: "27ABMCS1941A1ZI",
+            company_pan: "ABMCS1941A",
+            company_stamp: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", // transparent spacer
+
+            party_name: client_name || '—',
+            party_address: client_address || '—',
+            party_gst: client_gstin || 'N/A',
+            place_of_supply: stateInfo.name,
+
+            proforma_no: proforma.proforma_no,
+            proforma_date: formatDate(updatedDate),
+            ref_no: job_no,
+
+            hbl_no: mbl_hbl_type === 'HBL' ? mbl_hbl_no : (addDetails.hbl_no || '—'),
+            hbl_date: formatDate(jobRecord?.hbl_date || jobRecord?.created_at || addDetails.hbl_date),
+            mbl_no: mbl_hbl_type === 'MBL' ? mbl_hbl_no : (jobRecord?.mbl_no || '—'),
+            mbl_date: formatDate(jobRecord?.mbl_date || jobRecord?.created_at || addDetails.mbl_date),
+            vessel_voy: `${jobRecord?.vessel || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
+            pol: polVal,
+            fpd: fpdVal,
+            igm_no: addDetails.igm_no || '—',
+            line_no: addDetails.item_no || '—',
+            line_date: formatDate(addDetails.igm_date || jobRecord?.created_at),
+            sub_line_no: addDetails.sub_no || '—',
+            etd_date: formatDate(jobRecord?.etd || addDetails.etd_date),
+            container_type_count: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'}`,
+            consignee: consigneeName || '—',
+            shipper: shipperName || '—',
+            cargo_type: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
+            shipper_line: jobRecord?.shipping_line_name || addDetails.carrier || '—',
+            cargo_weight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
+            cbm: jobRecord?.net_weight || addDetails.volume || '—',
+            pod: podVal,
+            no_of_pkgs: addDetails.no_of_packages || '—',
+            eta_date: formatDate(jobRecord?.eta || addDetails.eta_date),
+            ex_rate: effectiveExRate.toFixed(2),
+            container_numbers: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.containerNo).join(', ')) || '—',
+
+            charges: chargesList,
+
+            taxable_total: taxableTotalVal.toFixed(2),
+            gst_total: gstTotalVal.toFixed(2),
+            grand_total: print_type === 'USD' ? grandTotalVal.toFixed(2) : roundedGrandTotal.toFixed(2),
+
+            is_intra_state: isIntraState,
+            cgst: formatNum(cgstVal),
+            sgst: formatNum(sgstVal),
+            cgst_freight: formatNum(cgstFreightVal),
+            sgst_freight: formatNum(sgstFreightVal),
+
+            igst: formatNum(igstVal),
+            igst_freight: formatNum(igstFreightVal),
+
+            amount_in_words: amountInWords,
+            currency_label: targetCurrency,
+            reverse_charge: 'No',
+            terms_conditions: termsConditions,
+            bank_name: 'KOTAK MAHINDRA BANK LTD',
+            account_number: '1050002555',
+            ifsc: 'KKBK0001370'
+        };
+
+        const templatePath = path.join(__dirname, '..', 'Mail', 'proforma_pdf.html');
+        const templateSource = await fs.readFile(templatePath, 'utf-8');
+        const template = handlebars.compile(templateSource);
+        const html = template(contextData);
+
+        const browser = await puppeteer.launch({
+            headless: 'new',
+            args: ['--no-sandbox', '--disable-setuid-sandbox']
+        });
+        const page = await browser.newPage();
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        const pdfBuffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '0.4in', bottom: '0.4in', left: '0.4in', right: '0.4in' }
+        });
+        await browser.close();
+
+        let filename = `Proforma_${proforma.proforma_no}_${Date.now()}.pdf`;
+        if (proforma.pdf_link) {
+            try {
+                const urlObj = new URL(proforma.pdf_link);
+                const pathParts = urlObj.pathname.split('/');
+                filename = pathParts[pathParts.length - 1];
+            } catch(e){}
+        }
+
+        const uploadRes = await uploadFile({
+            fileBuffer: pdfBuffer,
+            key: filename,
+            directory: 'proformas',
+            contentType: 'application/pdf'
+        });
+
+        if (!uploadRes.success) {
+            return res.status(500).json({ success: false, message: "Failed to upload updated Proforma Invoice PDF to S3" });
+        }
+
+        await knexDB("ProformaInvoices").where({ id }).update({ pdf_link: uploadRes.url });
+
+        res.json({
+            success: true,
+            message: "Proforma invoice updated and PDF re-generated successfully!",
+            pdfUrl: uploadRes.url
+        });
+    } catch (error) {
+        console.error("Error updating Proforma invoice:", error);
+        res.status(500).json({ success: false, message: "Failed to update proforma invoice: " + error.message });
     }
 });
 

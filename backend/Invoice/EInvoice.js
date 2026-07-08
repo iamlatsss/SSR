@@ -6,7 +6,8 @@ import {
   rejectInvoice,
   postInvoiceToPortal,
   cancelInvoiceIRN,
-  logEInvoiceAction
+  logEInvoiceAction,
+  validateInvoiceDetails
 } from './EInvoiceService.js';
 
 const router = express.Router();
@@ -76,7 +77,15 @@ router.get("/approval/list", authenticateJWT, async (req, res) => {
     }
 
     const invoices = await query;
-    res.json({ success: true, invoices });
+    const invoicesWithValidation = await Promise.all(invoices.map(async (inv) => {
+      const validation = await validateInvoiceDetails(inv);
+      return {
+        ...inv,
+        validation_valid: validation.valid,
+        validation_errors: validation.errors
+      };
+    }));
+    res.json({ success: true, invoices: invoicesWithValidation });
   } catch (error) {
     console.error("Error fetching E-Invoice approval list:", error);
     res.status(500).json({ success: false, message: "Database query error: " + error.message });

@@ -36,6 +36,17 @@ export default function EInvoiceApproval() {
   const [previewPdfUrl, setPreviewPdfUrl] = useState('');
   const [showPreviewModal, setShowPreviewModal] = useState(false);
 
+  // Validation errors modal states
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
+  const [validationInvoiceNo, setValidationInvoiceNo] = useState('');
+
+  const handleShowValidationErrors = (inv) => {
+    setValidationErrors(inv.validation_errors || []);
+    setValidationInvoiceNo(inv.invoice_no);
+    setShowValidationModal(true);
+  };
+
   useEffect(() => {
     fetchInvoices();
   }, []);
@@ -194,7 +205,7 @@ export default function EInvoiceApproval() {
 
   return (
     <DashboardLayout title="E-Invoice Approval">
-      <div className="space-y-6 max-w-7xl mx-auto p-1 font-poppins">
+      <div className="space-y-6 w-full p-1 font-poppins">
         
         {/* FILTERS PANEL */}
         <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
@@ -351,10 +362,10 @@ export default function EInvoiceApproval() {
         {/* DATA TABLE */}
         <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-md overflow-hidden transition-all duration-300">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse table-auto text-sm">
+            <table className="w-full text-left border-collapse table-auto text-xs">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs">
-                  <th className="p-4 text-center w-[50px]">
+                <tr className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[11px] tracking-wider border-b border-slate-200 dark:border-slate-700">
+                  <th className="p-2.5 py-3 text-center w-[40px]">
                     <input
                       type="checkbox"
                       checked={invoices.length > 0 && invoices.filter(i => i.approval_status !== 'Approved').every(i => selectedIds.includes(i.id))}
@@ -362,31 +373,30 @@ export default function EInvoiceApproval() {
                       className="accent-indigo-600 cursor-pointer w-4 h-4 rounded"
                     />
                   </th>
-                  <th className="p-4">JobNo</th>
-                  <th className="p-4">Party</th>
-                  <th className="p-4">Type</th>
-                  <th className="p-4">Job</th>
-                  <th className="p-4">INVNo</th>
-                  <th className="p-4">Invoice_Date</th>
-                  <th className="p-4">GSTNo</th>
-                  <th className="p-4 text-center">Approval</th>
-                  <th className="p-4 text-center">E-Invoice</th>
-                  <th className="p-4 text-right">Amount</th>
-                  <th className="p-4 text-right">USDAmt</th>
-                  <th className="p-4 text-right">Actions</th>
+                  <th className="p-2.5 py-3">JobNo</th>
+                  <th className="p-2.5 py-3">Party</th>
+                  <th className="p-2.5 py-3">Job</th>
+                  <th className="p-2.5 py-3">INVNo</th>
+                  <th className="p-2.5 py-3">Invoice Date</th>
+                  <th className="p-2.5 py-3">GSTNo</th>
+                  <th className="p-2.5 py-3">Validation</th>
+                  <th className="p-2.5 py-3 text-center">Approval</th>
+                  <th className="p-2.5 py-3 text-center">E-Invoice</th>
+                  <th className="p-2.5 py-3 text-right">Amount</th>
+                  <th className="p-2.5 py-3 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {loading ? (
                   <tr>
-                    <td colSpan="13" className="p-10 text-center font-bold text-slate-500">
+                    <td colSpan="12" className="p-10 text-center font-bold text-slate-500">
                       <RefreshCw size={24} className="animate-spin mx-auto mb-2 text-indigo-500" />
                       Fetching records from database...
                     </td>
                   </tr>
                 ) : invoices.length === 0 ? (
                   <tr>
-                    <td colSpan="13" className="p-10 text-center text-slate-500 italic">
+                    <td colSpan="12" className="p-10 text-center text-slate-500 italic">
                       No invoices found matching criteria.
                     </td>
                   </tr>
@@ -399,14 +409,15 @@ export default function EInvoiceApproval() {
                     } catch(e){}
 
                     const isUSD = inv.print_type === 'USD';
-                    const amountINR = isUSD ? '—' : `₹ ${totalVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
-                    const amountUSD = isUSD ? `$ ${totalVal.toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—';
+                    const amountDisplay = isUSD 
+                      ? `$ ${totalVal.toLocaleString('en-US', { minimumFractionDigits: 2 })}` 
+                      : `₹ ${totalVal.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
                     
                     const eligibleForCheck = inv.approval_status !== 'Approved' && !inv.irn;
 
                     return (
-                      <tr key={inv.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors ${selectedIds.includes(inv.id) ? 'bg-indigo-50/10 dark:bg-indigo-950/10' : ''}`}>
-                        <td className="p-4 text-center">
+                      <tr key={inv.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors ${selectedIds.includes(inv.id) ? 'bg-indigo-50/10 dark:bg-indigo-950/10' : ''} text-slate-700 dark:text-slate-350`}>
+                        <td className="p-2.5 py-3 text-center">
                           {eligibleForCheck ? (
                             <input
                               type="checkbox"
@@ -418,51 +429,79 @@ export default function EInvoiceApproval() {
                             <span className="text-slate-350 dark:text-slate-600">-</span>
                           )}
                         </td>
-                        <td className="p-4 font-mono font-bold text-slate-900 dark:text-white">#{inv.job_no}</td>
-                        <td className="p-4 font-semibold max-w-[150px] truncate" title={inv.client_name}>{inv.client_name}</td>
-                        <td className="p-4 text-slate-500">Client</td>
-                        <td className="p-4">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            inv.mbl_hbl_type === 'MBL' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
+                        <td className="p-2.5 py-3 font-mono font-bold text-slate-900 dark:text-white whitespace-nowrap">#{inv.job_no}</td>
+                        <td className="p-2.5 py-3 font-semibold max-w-[135px] truncate" title={inv.client_name}>{inv.client_name}</td>
+                        <td className="p-2.5 py-3">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
+                            inv.mbl_hbl_type === 'MBL' ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200/50' : 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/50'
                           }`}>
                             {inv.mbl_hbl_type}
                           </span>
                         </td>
-                        <td className="p-4 font-bold text-slate-800 dark:text-slate-200">{inv.invoice_no}</td>
-                        <td className="p-4">{new Date(inv.invoice_date).toLocaleDateString('en-GB')}</td>
-                        <td className="p-4 font-mono font-bold text-slate-600 dark:text-slate-350">{inv.client_gstin || 'URP'}</td>
+                        <td className="p-2.5 py-3 font-bold text-slate-800 dark:text-slate-200 whitespace-nowrap">{inv.invoice_no}</td>
+                        <td className="p-2.5 py-3 whitespace-nowrap">{new Date(inv.invoice_date).toLocaleDateString('en-GB')}</td>
+                        <td className="p-2.5 py-3 font-mono font-bold text-slate-600 dark:text-slate-350 whitespace-nowrap">{inv.client_gstin || 'URP'}</td>
                         
+                        {/* Validation Result/Errors */}
+                        <td className="p-2.5 py-3">
+                          {inv.validation_valid ? (
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap inline-block">
+                              Valid
+                            </span>
+                          ) : (
+                            <div className="space-y-1 text-[10.5px] text-rose-600 dark:text-rose-400 font-medium max-w-[240px]">
+                              {inv.validation_errors && inv.validation_errors.length > 0 ? (
+                                inv.validation_errors.map((err, i) => (
+                                  <div key={i} className="flex items-start gap-1">
+                                    <span className="w-1 h-1 rounded-full bg-rose-500 shrink-0 mt-1.5"></span>
+                                    <span className="leading-tight">{err}</span>
+                                  </div>
+                                ))
+                              ) : (
+                                <span>Pending Correction</span>
+                              )}
+                            </div>
+                          )}
+                          
+                          {inv.rejection_reason && (
+                            <div className="mt-1 flex items-start gap-1 text-[10.5px] text-amber-700 dark:text-amber-400 font-semibold max-w-[240px] leading-tight border-t border-slate-100 dark:border-slate-850 pt-1">
+                              <span className="w-1 h-1 rounded-full bg-amber-500 shrink-0 mt-1.5"></span>
+                              <span>Rejection: {inv.rejection_reason}</span>
+                            </div>
+                          )}
+                        </td>
+
                         {/* Approval Status Badge */}
-                        <td className="p-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            inv.approval_status === 'Approved' ? 'bg-emerald-100 text-emerald-800' :
-                            inv.approval_status === 'Rejected' ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800'
+                        <td className="p-2.5 py-3 text-center">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap inline-block border ${
+                            inv.approval_status === 'Approved' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            inv.approval_status === 'Rejected' ? 'bg-rose-50 text-rose-700 border-rose-200' : 
+                            inv.approval_status === 'Pending Correction' ? 'bg-orange-50 text-orange-700 border-orange-200 animate-pulse' : 'bg-amber-50 text-amber-700 border-amber-200'
                           }`}>
                             {inv.approval_status || 'Pending'}
                           </span>
                         </td>
 
                         {/* E-Invoice Status Badge */}
-                        <td className="p-4 text-center">
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                            inv.einvoice_status === 'Posted' ? 'bg-emerald-100 text-emerald-800' :
-                            inv.einvoice_status === 'Failed' ? 'bg-rose-100 text-rose-800' : 'bg-blue-100 text-blue-800'
+                        <td className="p-2.5 py-3 text-center">
+                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-semibold whitespace-nowrap inline-block border ${
+                            inv.einvoice_status === 'Posted' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                            inv.einvoice_status === 'Failed' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-blue-50 text-blue-700 border-blue-200'
                           }`}>
                             {inv.einvoice_status || 'Pending'}
                           </span>
                         </td>
 
-                        <td className="p-4 text-right font-bold">{amountINR}</td>
-                        <td className="p-4 text-right font-bold text-indigo-600 dark:text-indigo-400">{amountUSD}</td>
+                        <td className="p-2.5 py-3 text-right font-bold whitespace-nowrap text-slate-900 dark:text-white">{amountDisplay}</td>
                         
                         {/* Actions */}
-                        <td className="p-4 text-right flex justify-end gap-2">
+                        <td className="p-2.5 py-3 text-right flex justify-end gap-1.5 whitespace-nowrap">
                           <button
                             onClick={() => openPdfPreview(inv.pdf_link)}
                             title="View PDF Invoice"
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg text-xs font-bold transition-colors"
+                            className="p-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg transition-colors inline-flex items-center justify-center w-7 h-7"
                           >
-                            <Eye size={12} /> Preview
+                            <Eye size={14} />
                           </button>
                           
                           {eligibleForCheck && (
@@ -470,16 +509,16 @@ export default function EInvoiceApproval() {
                               <button
                                 onClick={() => handleApproveSingle(inv.id)}
                                 title="Validate & Approve"
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg text-xs font-bold transition-colors"
+                                className="p-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg transition-colors inline-flex items-center justify-center w-7 h-7"
                               >
-                                <Check size={12} /> Approve
+                                <Check size={14} />
                               </button>
                               <button
                                 onClick={() => triggerRejectModal(inv.id)}
                                 title="Reject Invoice"
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:hover:bg-rose-900/30 dark:text-rose-400 rounded-lg text-xs font-bold transition-colors"
+                                className="p-1 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:hover:bg-rose-900/30 dark:text-rose-400 rounded-lg transition-colors inline-flex items-center justify-center w-7 h-7"
                               >
-                                <X size={12} /> Reject
+                                <X size={14} />
                               </button>
                             </>
                           )}
@@ -487,9 +526,9 @@ export default function EInvoiceApproval() {
                           <button
                             onClick={() => handleViewLogs(inv)}
                             title="Audit History Logs"
-                            className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:hover:bg-slate-800/30 dark:text-slate-350 rounded-lg text-xs font-bold transition-colors"
+                            className="p-1 bg-slate-50 hover:bg-slate-100 text-slate-600 dark:bg-slate-900/30 dark:hover:bg-slate-800/30 dark:text-slate-350 rounded-lg transition-colors inline-flex items-center justify-center w-7 h-7"
                           >
-                            <History size={12} /> Logs
+                            <History size={14} />
                           </button>
                         </td>
                       </tr>
@@ -635,6 +674,45 @@ export default function EInvoiceApproval() {
                 <Download size={16} /> Download PDF
               </a>
               <button onClick={() => setShowPreviewModal(false)} className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 px-5 py-2 rounded-xl font-semibold transition-all">Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* VALIDATION ERRORS DETAILS DIALOG MODAL */}
+      {showValidationModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-sm">
+          <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex justify-between items-center p-4 bg-slate-50 border-b dark:bg-slate-800 dark:border-slate-700">
+              <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <AlertTriangle size={15} className="text-orange-500 animate-bounce" /> Validation Failures: {validationInvoiceNo}
+              </h3>
+              <button onClick={() => setShowValidationModal(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+            </div>
+            
+            <div className="p-5 space-y-4 text-sm">
+              <p className="text-slate-600 dark:text-slate-400 font-medium">
+                The invoice has failed the following system validation checks. Please correct these details in the job/invoice before approving.
+              </p>
+              
+              <ul className="space-y-2 max-h-[40vh] overflow-y-auto pr-1">
+                {validationErrors.length === 0 ? (
+                  <li className="text-slate-500 italic text-center p-4">No validation failures logged.</li>
+                ) : (
+                  validationErrors.map((err, index) => (
+                    <li key={index} className="flex gap-2.5 items-start bg-orange-50/70 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/35 p-3 rounded-xl text-orange-950 dark:text-orange-300">
+                      <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-orange-200 dark:bg-orange-900/50 text-orange-850 dark:text-orange-200 text-xs font-bold shrink-0 mt-0.5">
+                        {index + 1}
+                      </span>
+                      <span className="font-medium">{err}</span>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </div>
+
+            <div className="p-4 bg-slate-50 border-t flex justify-end dark:bg-slate-800 dark:border-slate-700">
+              <button onClick={() => setShowValidationModal(false)} className="bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 px-5 py-2 rounded-xl text-sm font-semibold transition-all">Dismiss</button>
             </div>
           </div>
         </div>

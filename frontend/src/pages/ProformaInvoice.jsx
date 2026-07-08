@@ -563,7 +563,7 @@ export default function ProformaInvoice() {
 
   return (
     <DashboardLayout title="Proforma Invoice Generator">
-      <div className="space-y-8 max-w-7xl mx-auto p-1 font-poppins">
+      <div className="space-y-8 w-full p-1 font-poppins">
         
         {/* Tab Selection */}
         <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 mb-6">
@@ -935,19 +935,21 @@ export default function ProformaInvoice() {
                       <td className="p-4 text-right flex justify-end gap-3">
                         <button
                           onClick={() => openPastPreview(inv.pdf_link)}
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg text-xs font-bold transition-colors"
+                          title="Interactive Preview"
+                          className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg transition-colors inline-flex items-center justify-center"
                           disabled={!inv.pdf_link}
                         >
-                          <Eye size={14} /> Interactive Preview
+                          <Eye size={16} />
                         </button>
                         <a
                           href={inv.pdf_link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg text-xs font-bold transition-colors"
+                          title="S3 Download"
+                          className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg transition-colors inline-flex items-center justify-center"
                           disabled={!inv.pdf_link}
                         >
-                          <Download size={14} /> S3 Download
+                          <Download size={16} />
                         </a>
                       </td>
                     </tr>
