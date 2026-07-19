@@ -202,7 +202,7 @@ export default function HBLConfirmation() {
       try {
         setFetching(true);
         // Check if HBL Confirmation already exists for this job
-        const checkRes = await api.get(`/housebl/document/check/${selectedJobNo}/Confirmation`);
+        const checkRes = await api.get(`/masterbl/document/check/${selectedJobNo}/Confirmation`);
         if (checkRes.data.success && checkRes.data.exists) {
           const doc = checkRes.data.document;
           setDocData(doc.doc_data);
@@ -213,7 +213,7 @@ export default function HBLConfirmation() {
         }
 
         setIsSavedDoc(false);
-        const res = await api.get(`/housebl/document-data/${selectedJobNo}`);
+        const res = await api.get(`/masterbl/document-data/${selectedJobNo}`);
         if (res.data.success) {
           setMasterBL(res.data.masterBL);
           setHouseBLs(res.data.houseBLs || []);
@@ -305,7 +305,7 @@ export default function HBLConfirmation() {
     }
     try {
       setSaving(true);
-      const res = await api.post("/housebl/document/save", {
+      const res = await api.post("/masterbl/document/save", {
         job_no: Number(selectedJobNo),
         document_type: "Confirmation",
         doc_data: docData
@@ -335,7 +335,7 @@ export default function HBLConfirmation() {
       if (searchJobNo) params.append("job_no", searchJobNo);
       if (searchBLNo) params.append("bl_no", searchBLNo);
 
-      const res = await api.get(`/housebl/document/search?${params.toString()}`);
+      const res = await api.get(`/masterbl/document/search?${params.toString()}`);
       if (res.data.success) {
         setStoredDocs(res.data.documents || []);
       }

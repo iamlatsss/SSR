@@ -1,197 +1,455 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <title>Proforma Invoice</title>
 <style>
-@page { size:A4; margin:10mm; }
-body{font-family: Arial, sans-serif; font-size:11px; margin:0; line-height: 1.35; color: #0f172a;}
-table{border-collapse:collapse; width:100%; margin-bottom: 6px;}
-td,th{border:1px solid #334155; padding:4px 6px; vertical-align:top}
-th{background-color: #f8fafc; font-weight: bold; text-align: left; color: #1e293b;}
-.center{text-align:center}
-.right{text-align:right}
-.bold{font-weight:bold}
-.header-title{font-size:19px; font-weight:bold; color: #1e3a8a; text-transform: uppercase;}
-.small{font-size:10px}
-.no-border{border:none!important}
-.pre-wrap{white-space: pre-line;}
-.charges-table td, .charges-table th {
-  padding: 3px 5px !important;
-  vertical-align: middle !important;
-  line-height: 1.25 !important;
-  word-wrap: break-word !important;
-}
-.charges-table th {
-  background-color: #f1f5f9 !important;
-}
+  @page {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+  }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10px;
+    color: #000000;
+    padding: 4px;
+  }
+
+  .inv-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 1.5px solid #000000;
+    background: #ffffff;
+    overflow: hidden;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 8px 12px 6px 12px;
+    border-bottom: 1.5px solid #000000;
+  }
+  .header .logo {
+    width: 80px;
+    flex: 0 0 80px;
+    padding-top: 2px;
+  }
+  .header .logo img {
+    width: 100%;
+    max-width: 75px;
+    height: auto;
+    display: block;
+  }
+  .header .company-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
+  }
+  .company-info .company-name {
+    font-weight: bold;
+    font-size: 16px;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+  }
+  .company-info .company-line {
+    font-size: 10.5px;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }
+  .company-info .company-line b { font-weight: bold; }
+
+  /* ===== STATE / GST STRIP ===== */
+  .gst-strip {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 4px 12px;
+    border-bottom: 1.5px solid #000000;
+    font-weight: bold;
+    font-size: 10.5px;
+    gap: 24px;
+  }
+  .gst-strip .item { white-space: nowrap; }
+  .gst-strip .dynamic { font-weight: bold; }
+
+  /* ===== TITLE ===== */
+  .title-bar {
+    text-align: center;
+    font-weight: bold;
+    font-size: 13px;
+    letter-spacing: 1px;
+    padding: 4px 0;
+    border-bottom: 1.5px solid #000000;
+  }
+
+  /* ===== TWO-COLUMN INFO BLOCKS ===== */
+  .info-grid {
+    display: flex;
+    width: 100%;
+    border-bottom: 1.5px solid #000000;
+  }
+  .info-grid .col {
+    flex: 1 1 50%;
+    min-width: 0;
+    padding: 4px 10px;
+    font-size: 10.5px;
+  }
+  .info-grid .col.left { border-right: 1.5px solid #000000; }
+  .info-grid .row {
+    margin: 2px 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.35;
+  }
+  .info-grid .row b { font-weight: bold; }
+
+  /* ===== SHIPMENT DETAILS GRID ===== */
+  .ship-grid {
+    display: flex;
+    width: 100%;
+    border-bottom: 1.5px solid #000000;
+  }
+  .ship-grid .col {
+    flex: 1 1 50%;
+    min-width: 0;
+    padding: 4px 10px;
+    font-size: 10.5px;
+  }
+  .ship-grid .col.left { border-right: 1.5px solid #000000; }
+  .ship-grid .row {
+    margin: 2px 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.35;
+  }
+  .ship-grid .row b { font-weight: bold; }
+
+  .container-no-strip {
+    padding: 4px 12px;
+    border-bottom: 1.5px solid #000000;
+    font-size: 10.5px;
+  }
+
+  /* ===== CHARGES TABLE ===== */
+  table.charges {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 9.5px;
+  }
+  table.charges th, table.charges td {
+    border: 1px solid #000000;
+    padding: 3px 4px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    vertical-align: middle;
+  }
+  table.charges th {
+    font-weight: bold;
+    text-align: center;
+    background: #ffffff;
+  }
+  table.charges td.num { text-align: right; }
+  table.charges td.center { text-align: center; }
+
+  /* column widths - sum to 100% */
+  table.charges col.c-name   { width: 24%; }
+  table.charges col.c-hsn    { width: 8%; }
+  table.charges col.c-rate   { width: 9%; }
+  table.charges col.c-curr   { width: 6%; }
+  table.charges col.c-qty    { width: 5%; }
+  table.charges col.c-amt    { width: 12%; }
+  table.charges col.c-gstr   { width: 8%; }
+  table.charges col.c-gstamt { width: 13%; }
+  table.charges col.c-total  { width: 15%; }
+
+  table.charges tr.subtotal td { font-weight: bold; }
+  table.charges tr.tax-row td:first-child { text-align: right; font-weight: bold; }
+  table.charges tr.tax-row td.tax-val { text-align: right; }
+  table.charges tr.words-row td:first-child { font-weight: bold; }
+  table.charges tr.words-row td.total-label { text-align: center; font-weight: bold; }
+  table.charges tr.words-row td.total-val { text-align: right; font-weight: bold; }
+
+  .reverse-charge {
+    padding: 3px 12px;
+    border-bottom: 1.5px solid #000000;
+    font-size: 10.5px;
+  }
+
+  /* ===== TERMS ===== */
+  .terms {
+    padding: 4px 10px;
+    border-bottom: 1.5px solid #000000;
+    font-size: 9.5px;
+  }
+  .terms .terms-title { font-weight: bold; margin-bottom: 2px; }
+  .terms ol { margin: 0; padding-left: 18px; }
+  .terms li { margin: 1px 0; word-wrap: break-word; overflow-wrap: break-word; }
+
+  /* ===== BANK / SIGNATURE ===== */
+  .bottom-grid {
+    display: flex;
+    width: 100%;
+    border-bottom: 1.5px solid #000000;
+  }
+  .bottom-grid .bank-col {
+    flex: 1 1 45%;
+    min-width: 0;
+    padding: 6px 10px;
+    font-size: 10.5px;
+  }
+  .bottom-grid .bank-col .row { margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; }
+  .bottom-grid .sign-col {
+    flex: 1 1 55%;
+    min-width: 0;
+    padding: 6px 10px;
+    border-left: 1.5px solid #000000;
+    text-align: center;
+    position: relative;
+  }
+  .sign-col .for-company {
+    font-weight: bold;
+    text-align: left;
+  }
+  .sign-col .stamp {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 45px;
+    margin: 2px 0;
+  }
+  .sign-col .stamp img {
+    height: 40px;
+    max-width: 150px;
+    object-fit: contain;
+  }
+  .sign-col .eoe {
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-weight: bold;
+  }
+  .sign-col .accounts-dept {
+    font-weight: bold;
+    text-align: left;
+    margin-top: 2px;
+  }
+
+  .footer-note {
+    text-align: center;
+    font-size: 9.5px;
+    padding: 3px;
+  }
 </style>
 </head>
 <body>
 
-<table>
-<tr>
-<td style="width:120px; border: 1px solid #334155; text-align: center; vertical-align: middle;">
-<img src="{{company_logo}}" style="max-width:100px; max-height:75px; object-fit: contain;">
-</td>
-<td class="center" style="border: 1px solid #334155; padding: 6px;">
-<div class="header-title">{{company_name}}</div>
-<div class="pre-wrap" style="font-weight: 500; font-size: 10px; color: #475569; margin: 3px 0;">{{company_address}}</div>
-<div style="font-weight: bold; color: #1d4ed8; font-size: 10px;">Website: {{website}}</div>
-</td>
-</tr>
-</table>
+<div class="inv-container">
 
-<table>
-<tr>
-<th style="width: 25%;">State: {{state}}</th>
-<th style="width: 25%;">State Code: {{state_code}}</th>
-<th style="width: 25%;">GST No: {{company_gst}}</th>
-<th style="width: 25%;">PAN No: {{company_pan}}</th>
-</tr>
-</table>
+  <!-- ===================== HEADER ===================== -->
+  <div class="header">
+    <div class="logo">
+      <img src="{{company_logo}}" alt="SSR Logo">
+    </div>
+    <div class="company-info">
+      <div class="company-name">{{company_name}}</div>
+      <div class="company-line">{{company_address}}</div>
+      <div class="company-line"><b>Website:</b> {{website}}</div>
+    </div>
+  </div>
 
-<table>
-<tr><th class="center" colspan="2" style="font-size:15px; background-color: #f1f5f9; padding: 5px; border-bottom: 2px solid #1e3a8a; text-align: center;">PROFORMA INVOICE</th></tr>
+  <!-- ===================== STATE / GST STRIP ===================== -->
+  <div class="gst-strip">
+    <span class="item">State: {{state}}</span>
+    <span class="item">State Code: {{state_code}}</span>
+    <span class="item">GST No. : {{company_gst}}</span>
+    <span class="item">PAN No. : {{company_pan}}</span>
+  </div>
 
-<tr>
-<td style="width:50%; border: 1px solid #334155;">
-<b>Party Name:</b> <span style="font-weight: bold;">{{party_name}}</span><br>
-<b>Address:</b> <span class="pre-wrap">{{party_address}}</span><br>
-<b>GST No:</b> {{party_gst}}<br>
-<b>Place of Supply:</b> {{place_of_supply}}
-</td>
-<td style="width:50%; border: 1px solid #334155;">
-<b>Proforma No:</b> <span style="font-weight: bold;">{{proforma_no}}</span><br>
-<b>Proforma Date:</b> {{proforma_date}}<br>
-<b>Ref No:</b> {{ref_no}}
-</td>
-</tr>
+  <!-- ===================== TITLE ===================== -->
+  <div class="title-bar">PROFORMA INVOICE</div>
 
-<tr>
-<td style="border: 1px solid #334155;">
-<b>HBL No:</b> {{hbl_no}} &nbsp;&nbsp;&nbsp;&nbsp; <b>Date:</b> {{hbl_date}}<br>
-<b>MBL No:</b> {{mbl_no}} &nbsp;&nbsp;&nbsp;&nbsp; <b>Date:</b> {{mbl_date}}<br>
-<b>Vessel/Voy:</b> {{vessel_voy}}<br>
-<b>POL:</b> {{pol}}<br>
-<b>FPD:</b> {{fpd}}<br>
-<b>IGM No:</b> {{igm_no}}<br>
-<b>Line No:</b> {{line_no}} &nbsp;&nbsp;&nbsp;&nbsp; <b>Date:</b> {{line_date}}<br>
-<b>Sub Line No:</b> {{sub_line_no}}<br>
-<b>ETD Date:</b> {{etd_date}}<br>
-<b>No. of Cntrs/Type:</b> {{container_type_count}}
-</td>
-<td style="border: 1px solid #334155;">
-<b>Consignee:</b> {{consignee}}<br>
-<b>Shipper:</b> {{shipper}}<br>
-<b>Cargo Type:</b> {{cargo_type}}<br>
-<b>Shipper Line:</b> {{shipper_line}}<br>
-<b>Cargo Weight:</b> {{cargo_weight}}<br>
-<b>CBM:</b> {{cbm}}<br>
-<b>POD:</b> {{pod}}<br>
-<b>No. of Pkgs:</b> {{no_of_pkgs}}<br>
-<b>ETA Date:</b> {{eta_date}}<br>
-<b>Ex Rate:</b> {{ex_rate}}
-</td>
-</tr>
+  <!-- ===================== PARTY / PROFORMA INFO ===================== -->
+  <div class="info-grid">
+    <div class="col left">
+      <div class="row"><b>Party Name:</b> <span class="dynamic">{{party_name}}</span></div>
+      <div class="row" style="white-space: pre-wrap;"><b>Address:</b> <span class="dynamic">{{party_address}}</span></div>
+      <div class="row"><b>GST NO :</b> <span class="dynamic">{{party_gst}}</span> , <b>State Code:</b> <span class="dynamic">{{party_state_code}}</span></div>
+      <div class="row"><b>Place of supply :</b> <span class="dynamic">{{place_of_supply}}</span></div>
+    </div>
+    <div class="col">
+      <div class="row"><b>Proforma No. :</b> <span class="dynamic">{{proforma_no}}</span></div>
+      <div class="row"><b>Proforma Date :</b> <span class="dynamic">{{proforma_date}}</span></div>
+      <div class="row"><b>Ref No. :</b> <span class="dynamic">{{ref_no}}</span></div>
+    </div>
+  </div>
 
-<tr>
-<td colspan="2" style="border: 1px solid #334155;"><b>Container No:</b> {{container_numbers}}</td>
-</tr>
-</table>
+  <!-- ===================== SHIPMENT DETAILS ===================== -->
+  <div class="ship-grid">
+    <div class="col left">
+      <div class="row"><b>HBL No. :</b> <span class="dynamic">{{hbl_no}}</span> <b>Date:</b> <span class="dynamic">{{hbl_date}}</span></div>
+      <div class="row"><b>MBL No. :</b> <span class="dynamic">{{mbl_no}}</span> <b>Date :</b> <span class="dynamic">{{mbl_date}}</span></div>
+      <div class="row"><b>Vessel / Voy :</b> <span class="dynamic">{{vessel_voy}}</span></div>
+      <div class="row"><b>POL :</b> <span class="dynamic">{{pol}}</span></div>
+      <div class="row"><b>FPD :</b> <span class="dynamic">{{fpd}}</span></div>
+      <div class="row"><b>IGM No. :</b> <span class="dynamic">{{igm_no}}</span></div>
+      <div class="row"><b>Line No. :</b> <span class="dynamic">{{line_no}}</span> <b>Date:</b> <span class="dynamic">{{line_date}}</span></div>
+      <div class="row"><b>Sub Line No. :</b> <span class="dynamic">{{sub_line_no}}</span></div>
+      <div class="row"><b>ETD Date. :</b> <span class="dynamic">{{etd_date}}</span></div>
+      <div class="row"><b>No: of Cntrs / Type :</b> <span class="dynamic">{{container_type_count}}</span></div>
+    </div>
+    <div class="col">
+      <div class="row"><b>Consignee :</b> <span class="dynamic">{{consignee}}</span></div>
+      <div class="row"><b>Shipper :</b> <span class="dynamic">{{shipper}}</span></div>
+      <div class="row"><b>Cargo Type :</b> <span class="dynamic">{{cargo_type}}</span></div>
+      <div class="row"><b>Shipper Line :</b> <span class="dynamic">{{shipper_line}}</span></div>
+      <div class="row"><b>Cargo Weight :</b> <span class="dynamic">{{cargo_weight}}</span></div>
+      <div class="row"><b>Volume :</b> <span class="dynamic">{{cbm}}</span></div>
+      <div class="row"><b>POD :</b> <span class="dynamic">{{pod}}</span></div>
+      <div class="row"><b>No. of Pkgs :</b> <span class="dynamic">{{no_of_pkgs}}</span></div>
+      <div class="row"><b>ETA Date :</b> <span class="dynamic">{{eta_date}}</span></div>
+      <div class="row"><b>Ex Rate :</b> <span class="dynamic">{{ex_rate}}</span></div>
+    </div>
+  </div>
 
-<table class="charges-table" style="table-layout: fixed; border-collapse: collapse; width: 100%; font-size: 11px;">
-<colgroup>
-<col style="width: 32%;">
-<col style="width: 7%;">
-<col style="width: 10%;">
-<col style="width: 5%;">
-<col style="width: 5%;">
-<col style="width: 10%;">
-<col style="width: 6%;">
-<col style="width: 10%;">
-<col style="width: 15%;">
-</colgroup>
-<thead>
-<tr style="background-color: #f1f5f9; font-weight: bold;">
-<th style="border: 1px solid #334155; padding: 4px 6px;">Charge Name</th>
-<th style="border: 1px solid #334155; text-align: center;">HSN/SAC</th>
-<th style="border: 1px solid #334155; text-align: right;">Rate Per Unit</th>
-<th style="border: 1px solid #334155; text-align: center;">Curr</th>
-<th style="border: 1px solid #334155; text-align: center;">Qty</th>
-<th style="border: 1px solid #334155; text-align: right;">Amount</th>
-<th style="border: 1px solid #334155; text-align: right;">GST Rate(%)</th>
-<th style="border: 1px solid #334155; text-align: right;">GST Amount</th>
-<th style="border: 1px solid #334155; text-align: right;">Total Amount</th>
-</tr>
-</thead>
-<tbody>
-{{#each charges}}
-<tr>
-<td style="border: 1px solid #334155; font-weight: bold; text-transform: uppercase;">{{charge_name}}</td>
-<td style="border: 1px solid #334155;" class="center">{{hsn_sac}}</td>
-<td style="border: 1px solid #334155;" class="right">{{rate}}</td>
-<td style="border: 1px solid #334155;" class="center">{{currency}}</td>
-<td style="border: 1px solid #334155;" class="center">{{qty}}</td>
-<td style="border: 1px solid #334155;" class="right">{{amount}}</td>
-<td style="border: 1px solid #334155;" class="right">{{gst_rate}}%</td>
-<td style="border: 1px solid #334155;" class="right">{{gst_amount}}</td>
-<td style="border: 1px solid #334155;" class="right">{{total_amount}}</td>
-</tr>
-{{/each}}
-</tbody>
-<tfoot>
-<tr style="background-color: #fafafa; font-weight: bold;">
-<td colspan="5" style="border: 1px solid #334155; text-align: right; padding-right: 6px;">Total / Subtotal:</td>
-<td class="right" style="border: 1px solid #334155;">{{taxable_total}}</td>
-<td colspan="2" class="right" style="border: 1px solid #334155;">{{gst_total}}</td>
-<td class="right" style="border: 1px solid #334155;">{{grand_total}}</td>
-</tr>
-{{#if is_intra_state}}
-<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">CGST 9%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{cgst}}</td></tr>
-<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">SGST 9%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{sgst}}</td></tr>
-<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">CGST ON FREIGHT @2.5%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{cgst_freight}}</td></tr>
-<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">SGST ON FREIGHT @2.5%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{sgst_freight}}</td></tr>
-{{else}}
-<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">IGST 18%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{igst}}</td></tr>
-<tr><td colspan="8" class="right" style="border: 1px solid #334155; font-weight: bold;">IGST ON FREIGHT @5%</td><td class="right" style="border: 1px solid #334155; font-weight: bold;">{{igst_freight}}</td></tr>
-{{/if}}
-</tfoot>
-</table>
+  <!-- ===================== CONTAINER NO ===================== -->
+  <div class="container-no-strip">
+    <b>Container No.:</b> <span class="dynamic">{{container_numbers}}</span>
+  </div>
 
-<table>
-<tr>
-<td style="width: 60%; border: 1px solid #334155; font-size: 10px; font-weight: bold; text-transform: uppercase;">Amount in Words: {{amount_in_words}}</td>
-<td class="right" style="width: 40%; border: 1px solid #334155; font-weight: bold; font-size: 12px; background-color: #f8fafc; color: #1e3a8a;">{{currency_label}} TOTAL: {{grand_total}}</td>
-</tr>
-<tr><td colspan="2" style="border: 1px solid #334155; font-weight: 500;">Reverse Charge Amount : {{reverse_charge}}</td></tr>
-</table>
+  <!-- ===================== CHARGES TABLE ===================== -->
+  <table class="charges">
+    <colgroup>
+      <col class="c-name">
+      <col class="c-hsn">
+      <col class="c-rate">
+      <col class="c-curr">
+      <col class="c-qty">
+      <col class="c-amt">
+      <col class="c-gstr">
+      <col class="c-gstamt">
+      <col class="c-total">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Charge Name</th>
+        <th>HSN/SAC</th>
+        <th>Rate Per Unit</th>
+        <th>Curr.</th>
+        <th>Qty</th>
+        <th>Amount</th>
+        <th>GST Rate(%)</th>
+        <th>GST Amount</th>
+        <th>Total Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each charges}}
+      <tr class="dynamic">
+        <td>{{charge_name}}</td>
+        <td class="center">{{hsn_sac}}</td>
+        <td class="num">{{rate}}</td>
+        <td class="center">{{currency}}</td>
+        <td class="center">{{qty}}</td>
+        <td class="num">{{amount}}</td>
+        <td class="num">{{gst_rate}}%</td>
+        <td class="num">{{gst_amount}}</td>
+        <td class="num">{{total_amount}}</td>
+      </tr>
+      {{/each}}
 
-<table>
-<tr><td class="pre-wrap" style="border: 1px solid #334155; font-size: 10px; color: #334155; line-height: 1.4;">
-<b>Terms & Conditions:</b><br>
-{{terms_conditions}}
-</td></tr>
-</table>
+      <!-- ===== TOTALS ===== -->
+      <tr class="subtotal">
+        <td colspan="5"></td>
+        <td class="num dynamic">{{taxable_total}}</td>
+        <td></td>
+        <td class="num dynamic">{{gst_total}}</td>
+        <td class="num dynamic">{{grand_total}}</td>
+      </tr>
 
-<table>
-<tr>
-<td style="width:50%; border: 1px solid #334155; line-height: 1.4;">
-<b>Our Bank Details Are:</b><br>
-Bank Name: <span style="font-weight: bold;">{{bank_name}}</span><br>
-Account Number: <span style="font-weight: bold;">{{account_number}}</span><br>
-IFSC: <span style="font-weight: bold;">{{ifsc}}</span>
-</td>
-<td class="center" style="width:50%; border: 1px solid #334155; padding-top: 10px;">
-<b>FOR {{company_name}}</b><br>
-<img src="{{company_stamp}}" style="max-height:60px; width: auto; display: inline-block; vertical-align: middle; margin: 5px 0;"><br>
-<b>Accounts Department</b>
-</td>
-</tr>
-<tr>
-<td colspan="2" class="center" style="font-size: 9px; color: #64748b; border: 1px solid #334155; font-style: italic;">System generated Invoice. Does not require Signature</td>
-</tr>
-</table>
+      {{#if is_intra_state}}
+      <tr class="tax-row">
+        <td colspan="8">CGST 9%</td>
+        <td class="num dynamic">{{cgst}}</td>
+      </tr>
+      <tr class="tax-row">
+        <td colspan="8">SGST 9%</td>
+        <td class="num dynamic">{{sgst}}</td>
+      </tr>
+      <tr class="tax-row">
+        <td colspan="8">CGST ON FREIGHT @2.5%</td>
+        <td class="num dynamic">{{cgst_freight}}</td>
+      </tr>
+      <tr class="tax-row">
+        <td colspan="8">SGST ON FREIGHT @2.5%</td>
+        <td class="num dynamic">{{sgst_freight}}</td>
+      </tr>
+      {{else}}
+      <tr class="tax-row">
+        <td colspan="8">IGST 18%</td>
+        <td class="num dynamic">{{igst}}</td>
+      </tr>
+      <tr class="tax-row">
+        <td colspan="8">IGST ON FREIGHT @5%</td>
+        <td class="num dynamic">{{igst_freight}}</td>
+      </tr>
+      {{/if}}
+
+      <tr class="words-row">
+        <td colspan="7" class="dynamic">{{currency_label}} - <span>{{amount_in_words}}</span></td>
+        <td class="total-label">{{currency_label}} TOTAL</td>
+        <td class="total-val dynamic">{{grand_total}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ===================== REVERSE CHARGE ===================== -->
+  <div class="reverse-charge">
+    Reverse Charge Amount : <span class="dynamic">{{reverse_charge}}</span>
+  </div>
+
+  <!-- ===================== TERMS & CONDITIONS ===================== -->
+  <div class="terms">
+    <div class="terms-title">Terms &amp; Conditions:</div>
+    <ol>
+      <li>Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.</li>
+      <li>Interest would be charges @ 24% p.a. on the delayed payment.</li>
+      <li>In case of any objection / reservation in the billed Invoice / Debit Note, the same must be lodged (brought to our notice) by you within 5 days from the issue date of the Invoice / Debit note and the written receipt should be taken from our Accounts Manager in respect of the said objection(s), failing which, the billed amount shall be deemed to be correct and accepted by you</li>
+      <li>Payment to be made at Mumbai by A/c payee Cheque / Demand Draft / NEFT only and receipt for the same must be insisted upon,</li>
+      <li>Any dispute subject to Mumbai Jurisdiction only.</li>
+    </ol>
+  </div>
+
+  <!-- ===================== BANK DETAILS / SIGNATURE ===================== -->
+  <div class="bottom-grid">
+    <div class="bank-col">
+      <div class="row">Our Bank Details Are:</div>
+      <div class="row">Bank Name : KOTAK MAHINDRA BANK LTD</div>
+      <div class="row">Account Number : 1050002555</div>
+      <div class="row">IFSC: KKBK0001370</div>
+    </div>
+    <div class="sign-col">
+      <div class="eoe">E &amp; O.E.</div>
+      <div class="for-company">FOR {{company_name}}</div>
+      <div class="stamp">
+        <img src="{{company_stamp}}" alt="Company Stamp and Signature">
+      </div>
+      <div class="accounts-dept">Accounts Department</div>
+    </div>
+  </div>
+
+  <!-- ===================== FOOTER NOTE ===================== -->
+  <div class="footer-note">System generated Invoice. Does not require Signature</div>
+
+</div>
 
 </body>
 </html>

@@ -1,5 +1,5 @@
 import express from 'express';
-import { authenticateJWT } from "../AuthAPI/Auth.js"
+import { authenticateJWT, hasPermission } from "../AuthAPI/Auth.js"
 import * as DB from "../Database.js";
 import bcrypt from 'bcrypt';
 
@@ -10,8 +10,8 @@ const SALT_ROUNDS = 12;
 // GET all users
 router.get("/users", authenticateJWT, async (req, res) => {
   try {
-    if (req.user.role != 'Admin') {
-      return res.status(403).json({ success: false, message: "Only admin can access user Data" });
+    if (!hasPermission(req.user.role, 'canManageUsers')) {
+      return res.status(403).json({ success: false, message: "Forbidden: Missing permission to access user Data" });
     }
 
     const result = await DB.getAllUsers();
@@ -19,7 +19,7 @@ router.get("/users", authenticateJWT, async (req, res) => {
     res.json({ success: true, users: result.users, roles: result.roles });
 
   } catch (err) {
-  console.error("❌ Get all users error:", error);
+  console.error("❌ Get all users error:", err);
   return res.status(500).json({ message: "Internal Server Error" });
 }
 });
@@ -27,8 +27,8 @@ router.get("/users", authenticateJWT, async (req, res) => {
 // UPDATE user by user_id
 router.put("/user/:user_id", authenticateJWT, async (req, res) => {
   try {
-    if (req.user.role !== "Admin") {
-      return res.status(403).json({ success: false, message: "Only admin can update user data" });
+    if (!hasPermission(req.user.role, 'canManageUsers')) {
+      return res.status(403).json({ success: false, message: "Forbidden: Missing permission to update user data" });
     }
 
     const { user_id } = req.params;
@@ -62,8 +62,8 @@ router.put("/user/:user_id", authenticateJWT, async (req, res) => {
 // DELETE user by user_id
 router.delete("/user/:user_id", authenticateJWT, async (req, res) => {
   try {
-    if (req.user.role !== "Admin") {
-      return res.status(403).json({ success: false, message: "Only admin can delete users" });
+    if (!hasPermission(req.user.role, 'canManageUsers')) {
+      return res.status(403).json({ success: false, message: "Forbidden: Missing permission to delete users" });
     }
 
     const { user_id } = req.params;

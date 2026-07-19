@@ -20,7 +20,7 @@ const PACKAGE_TYPES = [
 /* =========================================================================
    1. RATE GRID COMPONENT (Used for both Buy Rates and Sell Rates)
    ========================================================================= */
-export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true, consignee = "", chargeOptions = [], errors = [] }) {
+export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true, consignee = "", chargeOptions = [], errors = [], isLocked = false, isEditApproved = false }) {
   const partyLabel = isBuy ? "Vendor" : "Client";
   const finalCharges = chargeOptions && chargeOptions.length > 0 ? chargeOptions.map(c => c.name) : CHARGE_TYPES;
 
@@ -146,6 +146,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
         </h4>
         <button
           type="button"
+          disabled={isLocked && !isEditApproved}
           onClick={() => {
             const defaultCharge = finalCharges[0] || "Ocean Freight";
             const selectedCharge = chargeOptions.find(c => c.name === defaultCharge);
@@ -179,7 +180,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
             onAddRow(newRow);
             setActiveRowIdx(rows.length); // Focus newly created row
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg text-xs font-semibold transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Plus size={14} /> Add Rate Row
         </button>
@@ -240,25 +241,24 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
         </div>
       )}
 
-      {/* 3. ERP Fixed Layout Table Grid */}
-      <div className="overflow-x-auto xl:overflow-x-visible border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-dark-card shadow-sm">
-        <table className="w-full text-left border-collapse table-fixed text-xs min-w-[1250px] xl:min-w-full border border-slate-200 dark:border-slate-700/80">
+      <div className="overflow-visible border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-dark-card shadow-sm">
+        <table className="w-full text-left border-collapse table-fixed text-xs border border-slate-200 dark:border-slate-700/80">
           <thead>
             <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold uppercase tracking-wider">
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px]">DRCR</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[130px]">{partyLabel}</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[140px]">Address</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[200px]">Charge</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[80px] text-center">HSN/SAC</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[65px] text-center">GST</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[80px]">Unit</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[50px] text-right">Qty</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[70px] text-right">Rate</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[60px]">Cur.</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[65px] text-right">Ex Rate</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[75px] text-right">Amount</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 w-[80px] text-right">AMT_FC</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 p-2 text-center w-[40px]">Act</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[50px] text-center">DRCR</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[110px]">{partyLabel}</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[110px]">Address</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[120px]">Charge</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[65px] text-center">HSN/SAC</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[40px] text-center">GST</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[70px]">Unit</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[40px] text-right">Qty</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[65px] text-right">Rate</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[50px]">Cur.</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[60px] text-right">Ex Rate</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[70px] text-right">Amount</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[75px] text-right">AMT_FC</th>
+              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-center w-[35px]">Act</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700/60">
@@ -269,21 +269,23 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                 </td>
               </tr>
             ) : (
-              rows.map((row, idx) => (
-                <tr 
-                  key={idx} 
-                  onClick={() => setActiveRowIdx(idx)}
-                  className={`hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${activeRowIdx === idx ? 'bg-indigo-50/10 dark:bg-indigo-950/10' : ''}`}
-                >
+              rows.map((row, idx) => {
+                const isRowLocked = isLocked ? !isEditApproved : (row.locked && !isEditApproved);
+                return (
+                  <tr 
+                    key={idx} 
+                    onClick={() => setActiveRowIdx(idx)}
+                    className={`hover:bg-slate-50 dark:hover:bg-slate-800/20 transition-colors ${activeRowIdx === idx ? 'bg-indigo-50/10 dark:bg-indigo-950/10' : ''}`}
+                  >
                   <td className={`${getCellClass(idx, "drcr")} p-0`}>
                     <select
                       value={row.doc_type || row.drcr || "INV"}
-                      disabled={!!row.locked}
+                      disabled={isRowLocked}
                       onChange={(e) => {
                         handleRowChange(idx, "doc_type", e.target.value);
                         handleRowChange(idx, "drcr", e.target.value);
                       }}
-                      className={`w-full h-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"}`}
+                      className={`w-full h-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"}`}
                     >
                       <option value="INV">INV</option>
                       <option value="DR">DR</option>
@@ -302,7 +304,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       placeholder={`Select ${partyLabel}`}
                       allowCustom={true}
                       variant="grid"
-                      disabled={!!row.locked}
+                      disabled={isRowLocked}
                     />
                   </td>
                   <td className={`${getCellClass(idx, "address")} p-0`}>
@@ -342,7 +344,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                           placeholder="Address"
                           allowCustom={true}
                           variant="grid"
-                          disabled={!!row.locked}
+                          disabled={isRowLocked}
                         />
                       );
                     })()}
@@ -354,7 +356,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       onChange={(val) => handleRowChange(idx, "charge", val)}
                       showOnlyWhenTyping={true}
                       variant="grid"
-                      disabled={!!row.locked}
+                      disabled={isRowLocked}
                     />
                   </td>
                   <td className={`${getCellClass(idx, "hsn_sac")} p-0`}>
@@ -365,12 +367,12 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                         handleRowChange(idx, "sac", e.target.value);
                         handleRowChange(idx, "hsn_sac", e.target.value);
                       }}
-                      disabled={!!row.locked}
+                      disabled={isRowLocked}
                       placeholder="996521"
-                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-center rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
+                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white text-center rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
-                  <td className={`${getCellClass(idx, "gst")} p-2 font-medium text-slate-700 dark:text-slate-350 text-center bg-slate-50/10 dark:bg-slate-800/10 text-xs`}>
+                  <td className={`${getCellClass(idx, "gst")} py-1.5 px-1 font-medium text-slate-700 dark:text-slate-350 text-center bg-slate-50/10 dark:bg-slate-800/10 text-xs`}>
                     {row.gst || "0%"}
                   </td>
                   <td className={`${getCellClass(idx, "unit")} p-0`}>
@@ -379,7 +381,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       value={row.unit}
                       onChange={(val) => handleRowChange(idx, "unit", val)}
                       variant="grid"
-                      disabled={!!row.locked}
+                      disabled={isRowLocked}
                     />
                   </td>
                   <td className={`${getCellClass(idx, "quantity")} p-0`}>
@@ -387,8 +389,8 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       type="number"
                       value={row.quantity || "1"}
                       onChange={(e) => handleRowChange(idx, "quantity", e.target.value)}
-                      disabled={!!row.locked}
-                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
+                      disabled={isRowLocked}
+                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
                   <td className={`${getCellClass(idx, "rate")} p-0`}>
@@ -396,8 +398,8 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       type="number"
                       value={row.rate || "0"}
                       onChange={(e) => handleRowChange(idx, "rate", e.target.value)}
-                      disabled={!!row.locked}
-                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
+                      disabled={isRowLocked}
+                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
                   <td className={`${getCellClass(idx, "currency")} p-0`}>
@@ -406,7 +408,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       value={row.currency}
                       onChange={(val) => handleRowChange(idx, "currency", val)}
                       variant="grid"
-                      disabled={!!row.locked}
+                      disabled={isRowLocked}
                     />
                   </td>
                   <td className={`${getCellClass(idx, "ex_rate")} p-0`}>
@@ -414,18 +416,18 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       type="number"
                       value={row.ex_rate || "1"}
                       onChange={(e) => handleRowChange(idx, "ex_rate", e.target.value)}
-                      disabled={!!row.locked}
-                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none p-2 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${row.locked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
+                      disabled={isRowLocked}
+                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
                     />
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right font-medium text-slate-750 dark:text-slate-350 bg-slate-50/10 dark:bg-slate-850/10 text-xs">
+                  <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right font-medium text-slate-750 dark:text-slate-350 bg-slate-50/10 dark:bg-slate-850/10 text-xs">
                     {row.amount || "0.00"}
                   </td>
-                  <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right font-bold text-indigo-600 dark:text-indigo-400 bg-slate-50/10 dark:bg-slate-800/10 text-xs">
+                  <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right font-bold text-indigo-600 dark:text-indigo-400 bg-slate-50/10 dark:bg-slate-800/10 text-xs">
                     {row.amt_fc || "0.00"}
                   </td>
                   <td className="border border-slate-200 dark:border-slate-700/80 p-1 text-center">
-                    {row.locked ? (
+                    {isRowLocked ? (
                       <span className="text-slate-400 dark:text-slate-500 p-1 flex items-center justify-center mx-auto" title="Locked (Tax Invoice Generated)">
                         <Lock size={14} className="text-slate-400 dark:text-slate-500" />
                       </span>
@@ -440,19 +442,20 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                     )}
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
             
             {/* 4. Column Totals Row */}
             {rows.length > 0 && (
               <tr className="bg-slate-100 dark:bg-slate-800/40 text-slate-800 dark:text-white font-bold border-t border-slate-200 dark:border-slate-700/80">
-                <td colSpan="11" className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                <td colSpan="11" className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-slate-500 font-semibold uppercase tracking-wider text-xs">
                   Totals:
                 </td>
-                <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-slate-900 dark:text-white font-bold bg-slate-100/30 dark:bg-slate-800/30 text-xs">
+                <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-slate-900 dark:text-white font-bold bg-slate-100/30 dark:bg-slate-800/30 text-xs">
                   {rows.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
-                <td className="border border-slate-200 dark:border-slate-700/80 p-2 text-right text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/10 dark:bg-indigo-900/10 text-xs">
+                <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/10 dark:bg-indigo-900/10 text-xs">
                   {rows.reduce((acc, r) => acc + (parseFloat(r.amt_fc) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="border border-slate-200 dark:border-slate-700/80 p-1"></td>

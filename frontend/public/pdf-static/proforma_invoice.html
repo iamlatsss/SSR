@@ -1,338 +1,442 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8"/>
-  <title>Proforma Invoice - SSR Logistic Solutions</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <style>
-    :root{
-      --border:#000;
-      --muted:#666;
-      --accent:#f2f2f2;
-      --font: "Calibri", Arial, sans-serif;
-    }
-    html,body{height:100%;margin:0;background:#fff;font-family:var(--font);color:#000;}
-    .page{
-      max-width:900px;
-      margin:22px auto;
-      padding:18px;
-      border:2px solid var(--border);
-      box-sizing:border-box;
-    }
-    .meta {
-      text-align:right;
-      font-size:11px;
-      color:var(--muted);
-      margin-bottom:8px;
-    }
+<meta charset="UTF-8">
+<title>Proforma Invoice - Preview</title>
+<style>
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #e8e8e8;
+  }
+  body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 11.5px;
+    color: #000000;
+    padding: 20px;
+  }
 
-    header{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      margin-bottom:10px;
-    }
-    header img{height:70px;width:auto;}
-    header .org {
-      flex:1;
-      text-align:center;
-      line-height:1.15;
-    }
-    header .org h1{margin:0;font-size:18px;font-weight:700;}
-    header .org .sub{font-size:13px; margin-top:4px;}
+  .inv-container {
+    width: 950px;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 1.5px solid #000000;
+    background: #ffffff;
+    overflow: hidden;
+  }
 
-    h2.title{
-      text-align:center;
-      margin:8px 0 12px;
-      font-size:16px;
-      font-weight:700;
-      text-decoration:underline;
-    }
+  /* ===== HEADER ===== */
+  .header {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: 12px 16px 8px 16px;
+    border-bottom: 1.5px solid #000000;
+  }
+  .header .logo {
+    width: 90px;
+    flex: 0 0 90px;
+    padding-top: 4px;
+  }
+  .header .logo img {
+    width: 100%;
+    max-width: 85px;
+    height: auto;
+    display: block;
+  }
+  .header .company-info {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: center;
+  }
+  .company-info .company-name {
+    font-weight: bold;
+    font-size: 17px;
+    letter-spacing: 0.3px;
+    margin-bottom: 3px;
+  }
+  .company-info .company-line {
+    font-size: 11.5px;
+    line-height: 1.5;
+    word-wrap: break-word;
+  }
+  .company-info .company-line b { font-weight: bold; }
 
-    table.main{
-      width:100%;
-      border-collapse:collapse;
-      font-size:13px;
-      margin-bottom:10px;
-    }
-    table.main th, table.main td{
-      border:1px solid var(--border);
-      padding:8px;
-      vertical-align:top;
-      text-align:left;
-    }
-    table.main th{background:var(--accent); font-weight:700; width:22%}
+  /* ===== STATE / GST STRIP ===== */
+  .gst-strip {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 6px 16px;
+    border-bottom: 1.5px solid #000000;
+    font-weight: bold;
+    font-size: 11.5px;
+    gap: 24px;
+  }
+  .gst-strip .item { white-space: nowrap; }
+  .gst-strip .dynamic { font-weight: bold; }
 
-    .charges {
-      width:100%;
-      border-collapse:collapse;
-      table-layout: fixed;
-      margin-top:8px;
-      font-size:11px;
-    }
-    .charges th, .charges td {
-      border:1px solid var(--border);
-      padding:4px 6px;
-      vertical-align: middle;
-    }
-    .charges th { background:var(--accent); font-weight:700; }
-    .text-left { text-align: left !important; }
-    .text-center { text-align: center !important; }
-    .text-right { text-align: right !important; }
+  /* ===== TITLE ===== */
+  .title-bar {
+    text-align: center;
+    font-weight: bold;
+    font-size: 14px;
+    letter-spacing: 1px;
+    padding: 6px 0;
+    border-bottom: 1.5px solid #000000;
+  }
 
-    .totals {
-      margin-top:10px;
-      font-size:14px;
-      font-weight:700;
-    }
+  /* ===== TWO-COLUMN INFO BLOCKS ===== */
+  .info-grid {
+    display: flex;
+    width: 100%;
+    border-bottom: 1.5px solid #000000;
+  }
+  .info-grid .col {
+    flex: 1 1 50%;
+    min-width: 0;
+    padding: 8px 12px;
+    font-size: 11.5px;
+  }
+  .info-grid .col.left { border-right: 1.5px solid #000000; }
+  .info-grid .row {
+    margin: 2px 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+  }
+  .info-grid .row b { font-weight: bold; }
 
-    .terms {
-      margin-top:14px;
-      border:1px solid var(--border);
-      padding:10px;
-      font-size:12.5px;
-      line-height:1.4;
-    }
+  /* ===== SHIPMENT DETAILS GRID ===== */
+  .ship-grid {
+    display: flex;
+    width: 100%;
+    border-bottom: 1.5px solid #000000;
+  }
+  .ship-grid .col {
+    flex: 1 1 50%;
+    min-width: 0;
+    padding: 8px 12px;
+    font-size: 11.5px;
+  }
+  .ship-grid .col.left { border-right: 1.5px solid #000000; }
+  .ship-grid .row {
+    margin: 2px 0;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    line-height: 1.4;
+  }
+  .ship-grid .row b { font-weight: bold; }
 
-    .bank { margin-top:10px; font-size:13px; }
+  .container-no-strip {
+    padding: 6px 12px;
+    border-bottom: 1.5px solid #000000;
+    font-size: 11.5px;
+  }
 
-    .sign {
-      display:flex;
-      justify-content:space-between;
-      margin-top:18px;
-      font-size:13px;
-    }
+  /* ===== CHARGES TABLE ===== */
+  table.charges {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 10.5px;
+  }
+  table.charges th, table.charges td {
+    border: 1px solid #000000;
+    padding: 4px 5px;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    vertical-align: middle;
+  }
+  table.charges th {
+    font-weight: bold;
+    text-align: center;
+    background: #ffffff;
+  }
+  table.charges td.num { text-align: right; }
+  table.charges td.center { text-align: center; }
 
-    .source { margin-top:8px; font-size:11px; color:var(--muted); text-align:right; }
-    @media print{ .page{ border:none; margin:0; padding:0.6in; } }
-  </style>
+  /* column widths - sum to 100% */
+  table.charges col.c-name   { width: 24%; }
+  table.charges col.c-hsn    { width: 8%; }
+  table.charges col.c-rate   { width: 9%; }
+  table.charges col.c-curr   { width: 6%; }
+  table.charges col.c-qty    { width: 5%; }
+  table.charges col.c-amt    { width: 12%; }
+  table.charges col.c-gstr   { width: 8%; }
+  table.charges col.c-gstamt { width: 13%; }
+  table.charges col.c-total  { width: 15%; }
+
+  table.charges tr.subtotal td { font-weight: bold; }
+  table.charges tr.tax-row td:first-child { text-align: right; font-weight: bold; }
+  table.charges tr.tax-row td.tax-val { text-align: right; }
+  table.charges tr.words-row td:first-child { font-weight: bold; }
+  table.charges tr.words-row td.total-label { text-align: center; font-weight: bold; }
+  table.charges tr.words-row td.total-val { text-align: right; font-weight: bold; }
+
+  .reverse-charge {
+    padding: 4px 12px;
+    border-bottom: 1.5px solid #000000;
+    font-size: 11.5px;
+  }
+
+  /* ===== TERMS ===== */
+  .terms {
+    padding: 8px 12px;
+    border-bottom: 1.5px solid #000000;
+    font-size: 11px;
+  }
+  .terms .terms-title { font-weight: bold; margin-bottom: 2px; }
+  .terms ol { margin: 0; padding-left: 18px; }
+  .terms li { margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; }
+
+  /* ===== BANK / SIGNATURE ===== */
+  .bottom-grid {
+    display: flex;
+    width: 100%;
+    border-bottom: 1.5px solid #000000;
+  }
+  .bottom-grid .bank-col {
+    flex: 1 1 45%;
+    min-width: 0;
+    padding: 10px 12px;
+    font-size: 11.5px;
+  }
+  .bottom-grid .bank-col .row { margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; }
+  .bottom-grid .sign-col {
+    flex: 1 1 55%;
+    min-width: 0;
+    padding: 10px 12px;
+    border-left: 1.5px solid #000000;
+    text-align: center;
+    position: relative;
+  }
+  .sign-col .for-company {
+    font-weight: bold;
+    text-align: left;
+  }
+  .sign-col .stamp {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 85px;
+    margin: 4px 0;
+  }
+  .sign-col .stamp img {
+    height: 80px;
+    max-width: 200px;
+    object-fit: contain;
+  }
+  .sign-col .eoe {
+    position: absolute;
+    top: 10px;
+    right: 12px;
+    font-weight: bold;
+  }
+  .sign-col .accounts-dept {
+    font-weight: bold;
+    text-align: left;
+    margin-top: 4px;
+  }
+
+  .footer-note {
+    text-align: center;
+    font-size: 11px;
+    padding: 5px;
+  }
+</style>
 </head>
 <body>
-  <div class="page">
 
-    <div class="meta">Source: uploaded file :contentReference[oaicite:1]{index=1}</div>
+<div class="inv-container">
 
-    <header>
+  <!-- ===================== HEADER ===================== -->
+  <div class="header">
+    <div class="logo">
       <img src="https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg" alt="SSR Logo">
-      <div class="org">
-        <h1>SSR LOGISTIC SOLUTIONS PVT. LTD.</h1>
-        <div class="sub">
-          Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi,<br>
-          Navi Mumbai - 400703, India • Tel.No : 7700990630 • Website: www.ssrlogistic.net
-        </div>
-      </div>
-    </header>
-
-    <h2 class="title">PROFORMA INVOICE</h2>
-
-    <table class="main">
-      <tr>
-        <th>Party Name</th>
-        <td>ENKAY POLYCHEM LLP<br>KHASRA NO 1074 BHALSWA VILLAGE DELHI<br>110033 INDIA</td>
-        <th>Proforma No.</th>
-        <td>5172</td>
-      </tr>
-
-      <tr>
-        <th>Proforma Date</th>
-        <td>25-11-2025</td>
-        <th>Ref No.</th>
-        <td>5172</td>
-      </tr>
-
-      <tr>
-        <th>HBL No.</th>
-        <td>YSQ2504103 (01-05-2025)</td>
-        <th>MBL No.</th>
-        <td>MEDUGJ817675 (01-05-2025)</td>
-      </tr>
-
-      <tr>
-        <th>Vessel / Voyage</th>
-        <td>MSC BRIDGEPORT / V.QS516A</td>
-        <th>POL</th>
-        <td>SHANGHAI</td>
-      </tr>
-
-      <tr>
-        <th>FPD</th>
-        <td>Patli</td>
-        <th>IGM No.</th>
-        <td>1137454</td>
-      </tr>
-
-      <tr>
-        <th>Line No.</th>
-        <td>740 (Date: 15-05-2025)</td>
-        <th>Sub Line No.</th>
-        <td>1</td>
-      </tr>
-
-      <tr>
-        <th>ETD Date</th>
-        <td>01-05-2025</td>
-        <th>No: of Cntrs / Type</th>
-        <td>1 X 40HQ</td>
-      </tr>
-
-      <tr>
-        <th>Consignee</th>
-        <td>SSR LOGISTIC SOLUTIONS PVT LTD</td>
-        <th>Shipper</th>
-        <td>NINGBO B&N IMPORT AND EXPORT CO LTD</td>
-      </tr>
-
-      <tr>
-        <th>Cargo Type</th>
-        <td>General</td>
-        <th>Shipper Line</th>
-        <td>MSC MEDITERRANEAN SHIPPING CO. S.A. (G)</td>
-      </tr>
-
-      <tr>
-        <th>Cargo Weight</th>
-        <td>26000.000</td>
-        <th>CBM</th>
-        <td>37.8000</td>
-      </tr>
-
-      <tr>
-        <th>POD</th>
-        <td>MUNDRA, INDIA</td>
-        <th>No. of Pkgs</th>
-        <td>27</td>
-      </tr>
-
-      <tr>
-        <th>ETA Date</th>
-        <td>27-05-2025</td>
-        <th>Ex Rate</th>
-        <td>86.10</td>
-      </tr>
-
-      <tr>
-        <th>Container No.</th>
-        <td colspan="3">UETU6156836</td>
-      </tr>
-    </table>
-
-    <!-- Charges table -->
-    <table class="charges" aria-label="Charges">
-      <colgroup>
-        <col style="width: 32%;" />
-        <col style="width: 7%;" />
-        <col style="width: 10%;" />
-        <col style="width: 5%;" />
-        <col style="width: 5%;" />
-        <col style="width: 10%;" />
-        <col style="width: 6%;" />
-        <col style="width: 10%;" />
-        <col style="width: 15%;" />
-      </colgroup>
-      <thead>
-        <tr>
-          <th class="text-left">Charge Name</th>
-          <th class="text-center">HSN / SAC</th>
-          <th class="text-right">Rate Per Unit</th>
-          <th class="text-center">Curr.</th>
-          <th class="text-center">Qty</th>
-          <th class="text-right">Amount</th>
-          <th class="text-right">GST Rate(%)</th>
-          <th class="text-right">GST Amount</th>
-          <th class="text-right">Total Amount</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td class="text-left" style="font-weight: bold; text-transform: uppercase;">OCEAN FREIGHT CHARGES (IGST -5%)</td>
-          <td class="text-center">996521</td>
-          <td class="text-right">1050.00</td>
-          <td class="text-center">USD</td>
-          <td class="text-center">1</td>
-          <td class="text-right">90,405.00</td>
-          <td class="text-right">5.00</td>
-          <td class="text-right">4,520.25</td>
-          <td class="text-right">94,925.25</td>
-        </tr>
-        <tr>
-          <td class="text-left" style="font-weight: bold; text-transform: uppercase;">SHIPPING LINE CHARGES (IGST -18%)</td>
-          <td class="text-center">996759</td>
-          <td class="text-right">31,510.00</td>
-          <td class="text-center">INR</td>
-          <td class="text-center">1</td>
-          <td class="text-right">31,510.00</td>
-          <td class="text-right">18.00</td>
-          <td class="text-right">5,671.80</td>
-          <td class="text-right">37,181.80</td>
-        </tr>
-        <tr>
-          <td class="text-left" style="font-weight: bold; text-transform: uppercase;">DO CHARGES (IGST -18%)</td>
-          <td class="text-center">996719</td>
-          <td class="text-right">2,500.00</td>
-          <td class="text-center">INR</td>
-          <td class="text-center">1</td>
-          <td class="text-right">2,500.00</td>
-          <td class="text-right">18.00</td>
-          <td class="text-right">450.00</td>
-          <td class="text-right">2,950.00</td>
-        </tr>
-        <tr>
-          <td class="text-left" style="font-weight: bold; text-transform: uppercase;">HAULAGE CHARGES (IGST -18%)</td>
-          <td class="text-center">996759</td>
-          <td class="text-right">77,788.00</td>
-          <td class="text-center">INR</td>
-          <td class="text-center">1</td>
-          <td class="text-right">77,788.00</td>
-          <td class="text-right">18.00</td>
-          <td class="text-right">14,001.84</td>
-          <td class="text-right">91,789.84</td>
-        </tr>
-      </tbody>
-      <tfoot>
-        <tr style="font-weight: bold; background: var(--accent);">
-          <td colspan="5" class="text-right" style="padding-right: 6px;">Total / Subtotal:</td>
-          <td class="text-right">202,203.00</td>
-          <td colspan="2" class="text-right">24,643.89</td>
-          <td class="text-right">226,846.89</td>
-        </tr>
-      </tfoot>
-    </table>
-
-    <div class="totals">
-      IGST 18%: 20,123.64<br>
-      IGST ON FREIGHT @5%: 4,520.25<br>
-      <strong>INR TOTAL: 226,846.89</strong><br>
-      INR - Two Lakh Twenty Six Thousands Eight Hundred And Forty Six Rupees And Eighty Nine Paise Only
     </div>
-
-    <div class="terms">
-      <strong>Terms &amp; Conditions:</strong><br>
-      1) Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.<br>
-      2) Interest would be charged @ 24% p.a. on delayed payment.<br>
-      3) In case of any objection / reservation in the billed Invoice / Debit Note, the same must be lodged within 5 days from the issue date and a written receipt taken from our Accounts Manager.<br>
-      4) Payment to be made at Mumbai by A/c payee Cheque / Demand Draft / NEFT only and receipt for the same must be insisted upon.<br>
-      5) Any dispute subject to Mumbai Jurisdiction only.
+    <div class="company-info">
+      <div class="company-name">SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
+      <div class="company-line">Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai - 400703, Maharashtra, India</div>
+      <div class="company-line"><b>Website:</b> www.ssrlogistic.net</div>
     </div>
-
-    <div class="bank">
-      <strong>Our Bank Details Are:</strong><br>
-      Bank Name : KOTAK MAHINDRA BANK LTD<br>
-      Account Number : 1050002555<br>
-      IFSC: KKBK0001370
-    </div>
-
-    <div class="sign">
-      <div></div>
-      <div style="text-align:right">
-        <strong>FOR SSR LOGISTIC SOLUTIONS Pvt. Ltd.</strong><br>
-        Accounts Department<br>
-        E &amp; O.E.<br>
-        <em>System generated Invoice. Does not require Signature</em>
-      </div>
-    </div>
-
-    <div class="source">Source file: /mnt/data/SiProformaInvoice_5172.pEI63BdCgBaESrPSaBIXKri5XVBNbCDj.pdf</div>
-
   </div>
+
+  <!-- ===================== STATE / GST STRIP ===================== -->
+  <div class="gst-strip">
+    <span class="item">State: Maharashtra</span>
+    <span class="item">State Code: 27</span>
+    <span class="item">GST No. : 27ABMCS1941A1ZI</span>
+    <span class="item">PAN No. : ABMCS1941A</span>
+  </div>
+
+  <!-- ===================== TITLE ===================== -->
+  <div class="title-bar">PROFORMA INVOICE</div>
+
+  <!-- ===================== PARTY / PROFORMA INFO ===================== -->
+  <div class="info-grid">
+    <div class="col left">
+      <div class="row"><b>Party Name:</b> <span class="dynamic">ENKAY POLYCHEM LLP</span></div>
+      <div class="row" style="white-space: pre-wrap;"><b>Address:</b> <span class="dynamic">KHASRA NO 1074 BHALSWA VILLAGE DELHI
+110033 INDIA</span></div>
+      <div class="row"><b>GST NO :</b> <span class="dynamic">07AAGFE1234F1Z1</span> , <b>State Code:</b> <span class="dynamic">07</span></div>
+      <div class="row"><b>Place of supply :</b> <span class="dynamic">Delhi</span></div>
+    </div>
+    <div class="col">
+      <div class="row"><b>Proforma No. :</b> <span class="dynamic">5172</span></div>
+      <div class="row"><b>Proforma Date :</b> <span class="dynamic">25-11-2025</span></div>
+      <div class="row"><b>Ref No. :</b> <span class="dynamic">5172</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== SHIPMENT DETAILS ===================== -->
+  <div class="ship-grid">
+    <div class="col left">
+      <div class="row"><b>HBL No. :</b> <span class="dynamic">YSQ2504103</span> <b>Date:</b> <span class="dynamic">01-05-2025</span></div>
+      <div class="row"><b>MBL No. :</b> <span class="dynamic">MEDUGJ817675</span> <b>Date :</b> <span class="dynamic">01-05-2025</span></div>
+      <div class="row"><b>Vessel / Voy :</b> <span class="dynamic">MSC BRIDGEPORT / V.QS516A</span></div>
+      <div class="row"><b>POL :</b> <span class="dynamic">SHANGHAI</span></div>
+      <div class="row"><b>FPD :</b> <span class="dynamic">Patli</span></div>
+      <div class="row"><b>IGM No. :</b> <span class="dynamic">1137454</span></div>
+      <div class="row"><b>Line No. :</b> <span class="dynamic">740</span> <b>Date:</b> <span class="dynamic">15-05-2025</span></div>
+      <div class="row"><b>Sub Line No. :</b> <span class="dynamic">1</span></div>
+      <div class="row"><b>ETD Date. :</b> <span class="dynamic">01-05-2025</span></div>
+      <div class="row"><b>No: of Cntrs / Type :</b> <span class="dynamic">1 X 40HQ</span></div>
+    </div>
+    <div class="col">
+      <div class="row"><b>Consignee :</b> <span class="dynamic">SSR LOGISTIC SOLUTIONS PVT LTD</span></div>
+      <div class="row"><b>Shipper :</b> <span class="dynamic">NINGBO B&N IMPORT AND EXPORT CO LTD</span></div>
+      <div class="row"><b>Cargo Type :</b> <span class="dynamic">General</span></div>
+      <div class="row"><b>Shipper Line :</b> <span class="dynamic">MSC MEDITERRANEAN SHIPPING CO. S.A.</span></div>
+      <div class="row"><b>Cargo Weight :</b> <span class="dynamic">26000.00</span></div>
+      <div class="row"><b>Volume :</b> <span class="dynamic">37.80</span></div>
+      <div class="row"><b>POD :</b> <span class="dynamic">MUNDRA, INDIA</span></div>
+      <div class="row"><b>No. of Pkgs :</b> <span class="dynamic">27</span></div>
+      <div class="row"><b>ETA Date :</b> <span class="dynamic">27-05-2025</span></div>
+      <div class="row"><b>Ex Rate :</b> <span class="dynamic">86.10</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== CONTAINER NO ===================== -->
+  <div class="container-no-strip">
+    <b>Container No.:</b> <span class="dynamic">UETU6156836</span>
+  </div>
+
+  <!-- ===================== CHARGES TABLE ===================== -->
+  <table class="charges">
+    <colgroup>
+      <col class="c-name">
+      <col class="c-hsn">
+      <col class="c-rate">
+      <col class="c-curr">
+      <col class="c-qty">
+      <col class="c-amt">
+      <col class="c-gstr">
+      <col class="c-gstamt">
+      <col class="c-total">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Charge Name</th>
+        <th>HSN/SAC</th>
+        <th>Rate Per Unit</th>
+        <th>Curr.</th>
+        <th>Qty</th>
+        <th>Amount</th>
+        <th>GST Rate(%)</th>
+        <th>GST Amount</th>
+        <th>Total Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="dynamic">
+        <td>OCEAN FREIGHT CHARGES</td>
+        <td class="center">996521</td>
+        <td class="num">1050.00</td>
+        <td class="center">USD</td>
+        <td class="center">1</td>
+        <td class="num">90405.00</td>
+        <td class="num">5.0</td>
+        <td class="num">4520.25</td>
+        <td class="num">94925.25</td>
+      </tr>
+      <tr class="dynamic">
+        <td>SHIPPING LINE CHARGES</td>
+        <td class="center">996759</td>
+        <td class="num">31510.00</td>
+        <td class="center">INR</td>
+        <td class="center">1</td>
+        <td class="num">31510.00</td>
+        <td class="num">18.0</td>
+        <td class="num">5671.80</td>
+        <td class="num">37181.80</td>
+      </tr>
+
+      <!-- ===== TOTALS ===== -->
+      <tr class="subtotal">
+        <td colspan="5"></td>
+        <td class="num dynamic">121915.00</td>
+        <td></td>
+        <td class="num dynamic">10192.05</td>
+        <td class="num dynamic">132107.05</td>
+      </tr>
+
+      <tr class="tax-row">
+        <td colspan="8">IGST 18%</td>
+        <td class="num dynamic">5671.80</td>
+      </tr>
+      <tr class="tax-row">
+        <td colspan="8">IGST ON FREIGHT @5%</td>
+        <td class="num dynamic">4520.25</td>
+      </tr>
+
+      <tr class="words-row">
+        <td colspan="7" class="dynamic">INR - <span>One Lakh Thirty Two Thousand One Hundred Seven Rupees Only</span></td>
+        <td class="total-label">INR TOTAL</td>
+        <td class="total-val dynamic">132107.00</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ===================== REVERSE CHARGE ===================== -->
+  <div class="reverse-charge">
+    Reverse Charge Amount : <span class="dynamic">No</span>
+  </div>
+
+  <!-- ===================== TERMS & CONDITIONS ===================== -->
+  <div class="terms">
+    <div class="terms-title">Terms &amp; Conditions:</div>
+    <ol>
+      <li>Payment becomes due on presentation of Invoice / Debit Note and must be settled immediately.</li>
+      <li>Interest would be charges @ 24% p.a. on the delayed payment.</li>
+      <li>In case of any objection / reservation in the billed Invoice / Debit Note, the same must be lodged (brought to our notice) by you within 5 days from the issue date of the Invoice / Debit note and the written receipt should be taken from our Accounts Manager in respect of the said objection(s), failing which, the billed amount shall be deemed to be correct and accepted by you</li>
+      <li>Payment to be made at Mumbai by A/c payee Cheque / Demand Draft / NEFT only and receipt for the same must be insisted upon,</li>
+      <li>Any dispute subject to Mumbai Jurisdiction only.</li>
+    </ol>
+  </div>
+
+  <!-- ===================== BANK DETAILS / SIGNATURE ===================== -->
+  <div class="bottom-grid">
+    <div class="bank-col">
+      <div class="row">Our Bank Details Are:</div>
+      <div class="row">Bank Name : KOTAK MAHINDRA BANK LTD</div>
+      <div class="row">Account Number : 1050002555</div>
+      <div class="row">IFSC: KKBK0001370</div>
+    </div>
+    <div class="sign-col">
+      <div class="eoe">E &amp; O.E.</div>
+      <div class="for-company">FOR SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
+      <div class="stamp">
+        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Company Stamp and Signature">
+      </div>
+      <div class="accounts-dept">Accounts Department</div>
+    </div>
+  </div>
+
+  <!-- ===================== FOOTER NOTE ===================== -->
+  <div class="footer-note">System generated Invoice. Does not require Signature</div>
+
+</div>
+
 </body>
 </html>

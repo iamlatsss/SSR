@@ -1,85 +1,119 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8" />
-  <title>Cargo Arrival Notice cum Freight Certificate</title>
+  <title>Freight Certificate</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root{
-      --border:#000;
-      --muted:#666;
-      --accent:#f2f2f2;
-      --pad:12px;
+    :root {
+      --border: #000;
+      --muted: #666;
+      --accent: #f2f2f2;
+      --pad: 12px;
       --font: "Calibri", Arial, sans-serif;
     }
 
-    html,body{height:100%;margin:0;background:#fff;font-family:var(--font);color:#000;}
-    .page{
-      max-width:900px;
-      margin:20px auto;
-      padding:18px;
-      border:2px solid var(--border);
-      box-sizing:border-box;
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      background: #fff;
+      font-family: var(--font);
+      color: #000;
     }
 
-    header{
-      display:flex;
-      align-items:center;
-      gap:16px;
-      margin-bottom:14px;
-    }
-    header img{height:70px;width:auto;}
-    header .org{
-      flex:1;
-      text-align:center;
-      font-size:14px;
-      line-height:1.2;
-    }
-    header .org h1{margin:0;font-size:16px;}
-
-    h2.title{
-      text-align:center;
-      margin:6px 0 14px;
-      font-size:16px;
-      text-decoration:underline;
-      letter-spacing:0.6px;
+    .page {
+      max-width: 900px;
+      margin: 20px auto;
+      padding: 18px;
+      border: 2px solid var(--border);
+      box-sizing: border-box;
     }
 
-    table.main{
-      width:100%;
-      border-collapse:collapse;
-      margin-bottom:14px;
-      font-size:13px;
-    }
-    table.main th, table.main td{
-      border:1px solid var(--border);
-      padding:8px;
-      vertical-align:top;
-      text-align:left;
-    }
-    table.main th{background:var(--accent);width:22%;}
-    table.charges th, table.charges td{font-size:12px;text-align:left}
-
-    .footer-note{
-      border:1px solid var(--border);
-      padding:10px;
-      font-size:12px;
-      margin-top:10px;
-      line-height:1.4;
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 14px;
     }
 
-    .signature{
-      display:flex;
-      justify-content:space-between;
-      margin-top:18px;
-      font-size:13px;
+    header img {
+      height: 70px;
+      width: auto;
     }
 
-    @media print{
-      .page{border:none; margin:0; padding:0.5in;}
+    header .org {
+      flex: 1;
+      text-align: center;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+
+    header .org h1 {
+      margin: 0;
+      font-size: 16px;
+    }
+
+    h2.title {
+      text-align: center;
+      margin: 6px 0 14px;
+      font-size: 16px;
+      text-decoration: underline;
+      letter-spacing: 0.6px;
+    }
+
+    table.main {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 14px;
+      font-size: 13px;
+    }
+
+    table.main th,
+    table.main td {
+      border: 1px solid var(--border);
+      padding: 8px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    table.main th {
+      background: var(--accent);
+      width: 22%;
+    }
+
+    table.charges th,
+    table.charges td {
+      font-size: 12px;
+      text-align: left
+    }
+
+    .footer-note {
+      border: 1px solid var(--border);
+      padding: 10px;
+      font-size: 12px;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    .signature {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 18px;
+      font-size: 13px;
+    }
+
+    @media print {
+      .page {
+        border: none;
+        margin: 0;
+        padding: 0.5in;
+      }
     }
   </style>
 </head>
+
 <body>
   <div class="page">
     <!-- Source / File reference -->
@@ -101,7 +135,7 @@
       </div>
     </header>
 
-    <h2 class="title">CARGO ARRIVAL NOTICE CUM FREIGHT CERTIFICATE</h2>
+    <h2 class="title">FREIGHT CERTIFICATE</h2>
 
     <table class="main">
       <tr>
@@ -226,7 +260,8 @@
 
     <div class="footer-note">
       <strong>Note / Instructions:</strong><br>
-      Kindly contact us immediately upon arrival of containers for delivery details. Original Bill Of Lading (duly endorsed) will be required for delivery.
+      Kindly contact us immediately upon arrival of containers for delivery details. Original Bill Of Lading (duly
+      endorsed) will be required for delivery.
       Along with the D.D. or payment details please provide to DO counter.<br><br>
 
       LATE DO'S APPLICABLE FOR PENALTY AS PER SHIPPING LINE.<br><br>
@@ -251,4 +286,5 @@
 
   </div>
 </body>
+
 </html>

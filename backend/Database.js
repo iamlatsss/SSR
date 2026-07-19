@@ -14,6 +14,7 @@ const pool = mysql.createPool({
   database: process.env.MYSQL_DATABASE || 'ssr',
   enableKeepAlive: true,
   keepAliveInitialDelay: 0,
+  dateStrings: true,
 }).promise();
 
 export const knexDB = knex({
@@ -25,6 +26,7 @@ export const knexDB = knex({
     password: process.env.MYSQL_PASSWORD || '',
     database: process.env.MYSQL_DATABASE || 'ssr',
     enableKeepAlive: true,
+    dateStrings: true,
   },
   pool: { min: 0, max: 10 },
 });
@@ -58,7 +60,7 @@ export const knexDB = knex({
     // Migrate new_user to Viewer and modify ENUM
     try {
       await pool.query(`UPDATE Users SET role = 'Viewer' WHERE role = 'new_user'`);
-      await pool.query(`ALTER TABLE Users MODIFY COLUMN role ENUM('Admin', 'Accounts', 'Custom', 'Sales', 'Viewer') DEFAULT 'Viewer'`);
+      await pool.query(`ALTER TABLE Users MODIFY COLUMN role ENUM('Director', 'Admin', 'Accounts', 'Custom', 'Sales', 'Viewer') DEFAULT 'Viewer'`);
     } catch (e) {
       console.log("Ignored or failed updating ENUM role:", e.message);
     }
@@ -506,10 +508,20 @@ export async function deleteQuotationsByIds(ids) {
   try {
     await pool.query(query);
     console.log("MasterBL table initialized");
-    try {
-      await pool.query("ALTER TABLE MasterBL ADD COLUMN additional_details JSON");
-    } catch (e) {
-      // Column already exists, safe to ignore
+    const columns = [
+      "ADD COLUMN additional_details JSON",
+      "ADD COLUMN hbl_no VARCHAR(100)",
+      "ADD COLUMN hbl_date DATE",
+      "ADD COLUMN hbl_shipper INT",
+      "ADD COLUMN hbl_consignee INT",
+      "ADD COLUMN hbl_agent INT"
+    ];
+    for (const col of columns) {
+      try {
+        await pool.query(`ALTER TABLE MasterBL ${col}`);
+      } catch (e) {
+        // Column already exists, safe to ignore
+      }
     }
   } catch (err) {
     console.error("Error creating MasterBL table:", err);
@@ -570,6 +582,130 @@ export async function deleteQuotationsByIds(ids) {
     }
   } catch (err) {
     console.error("Error creating HouseBL table:", err);
+  }
+})();
+
+(async function migrateHouseBLToMasterBL() {
+  try {
+    const hasHouseBL = await knexDB.schema.hasTable("HouseBL");
+    if (!hasHouseBL) return;
+
+    console.log("Migrating existing HouseBL jobs to unified MasterBL table...");
+    const houseJobs = await knexDB("HouseBL").select("*");
+    
+    for (const h of houseJobs) {
+      // Find matching MasterBL by job_no or mbl_no
+      let m = await knexDB("MasterBL").where({ job_no: h.job_no }).first();
+      if (!m && h.mbl_no) {
+        m = await knexDB("MasterBL").where({ mbl_no: h.mbl_no }).first();
+      }
+
+      let manualDetails = {};
+      if (h.manual_party_details) {
+        try {
+          manualDetails = typeof h.manual_party_details === 'string'
+            ? JSON.parse(h.manual_party_details)
+            : h.manual_party_details;
+        } catch (e) {}
+      }
+
+      let hAddDetails = {};
+      if (h.additional_details) {
+        try {
+          hAddDetails = typeof h.additional_details === 'string'
+            ? JSON.parse(h.additional_details)
+            : h.additional_details;
+        } catch (e) {}
+      }
+
+      if (m) {
+        // MasterBL exists. We merge HouseBL fields into it.
+        let mManualDetails = {};
+        if (m.manual_party_details) {
+          try {
+            mManualDetails = typeof m.manual_party_details === 'string'
+              ? JSON.parse(m.manual_party_details)
+              : m.manual_party_details;
+          } catch (e) {}
+        }
+        if (manualDetails.shipper) mManualDetails.hbl_shipper = manualDetails.shipper;
+        if (manualDetails.consignee) mManualDetails.hbl_consignee = manualDetails.consignee;
+        if (manualDetails.agent) mManualDetails.hbl_agent = manualDetails.agent;
+
+        let mAddDetails = {};
+        if (m.additional_details) {
+          try {
+            mAddDetails = typeof m.additional_details === 'string'
+              ? JSON.parse(m.additional_details)
+              : m.additional_details;
+          } catch (e) {}
+        }
+        mAddDetails.hbl_notify = hAddDetails.notify || mAddDetails.hbl_notify || '';
+        mAddDetails.hbl_carrier = hAddDetails.carrier || mAddDetails.hbl_carrier || '';
+        mAddDetails.hbl_transporter = hAddDetails.transporter || mAddDetails.hbl_transporter || '';
+        mAddDetails.hbl_cha_name = hAddDetails.cha_name || mAddDetails.hbl_cha_name || '';
+        mAddDetails.hbl_freight_amount = h.freight_amount || mAddDetails.hbl_freight_amount || '';
+        mAddDetails.hbl_freight_currency = h.freight_currency || mAddDetails.hbl_freight_currency || '';
+        mAddDetails.hbl_status = h.status || mAddDetails.hbl_status || '';
+
+        await knexDB("MasterBL").where({ job_no: m.job_no }).update({
+          hbl_no: h.hbl_no,
+          hbl_date: h.date_of_nomination,
+          hbl_shipper: h.shipper || null,
+          hbl_consignee: h.consignee || null,
+          manual_party_details: JSON.stringify(mManualDetails),
+          additional_details: JSON.stringify(mAddDetails)
+        });
+        console.log(`Migrated HouseBL #${h.id} into MasterBL Job #${m.job_no}`);
+      } else {
+        // MasterBL does not exist. We create one.
+        const mManualDetails = {
+          hbl_shipper: manualDetails.shipper || '',
+          hbl_consignee: manualDetails.consignee || '',
+          hbl_agent: manualDetails.agent || ''
+        };
+        const mAddDetails = {
+          hbl_notify: hAddDetails.notify || '',
+          hbl_carrier: hAddDetails.carrier || '',
+          hbl_transporter: hAddDetails.transporter || '',
+          hbl_cha_name: hAddDetails.cha_name || '',
+          hbl_freight_amount: h.freight_amount || '',
+          hbl_freight_currency: h.freight_currency || '',
+          hbl_status: h.status || ''
+        };
+
+        await knexDB("MasterBL").insert({
+          job_no: h.job_no,
+          mbl_no: h.mbl_no || `MBL-MIG-${h.hbl_no}`,
+          date_of_nomination: h.date_of_nomination,
+          pol: hAddDetails.pol || '',
+          pod: hAddDetails.pod || '',
+          final_pod: hAddDetails.final_pod || '',
+          container_size: hAddDetails.container_size || '',
+          container_count: hAddDetails.container_count || 1,
+          status: h.status || 'Draft',
+          eta: hAddDetails.eta || null,
+          etd: hAddDetails.etd || null,
+          shipper_invoice_no: h.shipper_invoice_no || '',
+          net_weight: h.net_weight || 0,
+          gross_weight: h.gross_weight || 0,
+          marks_and_numbers: h.marks_and_numbers || '',
+          hbl_no: h.hbl_no,
+          hbl_date: h.date_of_nomination,
+          hbl_shipper: h.shipper || null,
+          hbl_consignee: h.consignee || null,
+          manual_party_details: JSON.stringify(mManualDetails),
+          additional_details: JSON.stringify(mAddDetails)
+        });
+        console.log(`Created new MasterBL Job #${h.job_no} from orphaned HouseBL #${h.id}`);
+      }
+    }
+
+    // Drop HouseBL table to complete migration and avoid confusion
+    await pool.query("DROP TABLE IF EXISTS HouseBL");
+    console.log("HouseBL table dropped successfully after migration.");
+  } catch (err) {
+    console.error("Error migrating HouseBL to MasterBL:", err);
   }
 })();
 
@@ -1103,5 +1239,88 @@ export function mapPartyToCustomer(party) {
     console.error("Error seeding CFS standard parties:", err);
   }
 })();
+
+(async function initBookingUpdatesTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS BookingUpdates (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      date_of_nomination VARCHAR(255) NULL,
+      consignee VARCHAR(255) NULL,
+      job_no VARCHAR(255) UNIQUE NULL,
+      ref_no VARCHAR(255) NULL,
+      hbl VARCHAR(255) NULL,
+      mbl VARCHAR(255) NULL,
+      pol VARCHAR(255) NULL,
+      pod VARCHAR(255) NULL,
+      container_size VARCHAR(255) NULL,
+      teus VARCHAR(255) NULL,
+      agent VARCHAR(255) NULL,
+      shipping_line VARCHAR(255) NULL,
+      freight VARCHAR(255) NULL,
+      etd VARCHAR(255) NULL,
+      eta VARCHAR(255) NULL,
+      swb VARCHAR(255) NULL,
+      igm VARCHAR(255) NULL,
+      invoice_amount VARCHAR(255) NULL,
+      cha VARCHAR(255) NULL,
+      cfs VARCHAR(255) NULL,
+      container_no VARCHAR(255) NULL,
+      remarks TEXT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  try {
+    await pool.query(query);
+    console.log("BookingUpdates table initialized");
+    try {
+      await pool.query("ALTER TABLE BookingUpdates ADD COLUMN status VARCHAR(50) DEFAULT 'Current'");
+      console.log("BookingUpdates status column added");
+    } catch (e) {
+      // Ignore if column already exists
+    }
+    // Add new columns for dynamic tracking and assignments
+    const newCols = [
+      "ADD COLUMN created_by INT NULL",
+      "ADD COLUMN assigned_to INT NULL",
+      "ADD COLUMN updated_by INT NULL",
+      "ADD COLUMN updated_at DATETIME NULL"
+    ];
+    for (const col of newCols) {
+      try {
+        await pool.query(`ALTER TABLE BookingUpdates ${col}`);
+      } catch (e) {
+        // Ignore if column already exists
+      }
+    }
+  } catch (err) {
+    console.error("Error creating BookingUpdates table:", err);
+  }
+})();
+
+(async function initJobEditRequestsTable() {
+  const query = `
+    CREATE TABLE IF NOT EXISTS JobEditRequests (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      job_no INT NOT NULL,
+      mbl_no VARCHAR(100),
+      hbl_no VARCHAR(100),
+      requested_by VARCHAR(255) NOT NULL,
+      requested_by_id INT NOT NULL,
+      reason TEXT,
+      status VARCHAR(50) DEFAULT 'Pending',
+      approved_by VARCHAR(255),
+      approval_date DATETIME,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )
+  `;
+  try {
+    await pool.query(query);
+    console.log("JobEditRequests table initialized");
+  } catch (err) {
+    console.error("Error creating JobEditRequests table:", err);
+  }
+})();
+
 
 

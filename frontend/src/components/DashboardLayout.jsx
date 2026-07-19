@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import {
     LayoutDashboard,
     Users,
@@ -144,6 +145,39 @@ const SidebarGroup = ({ icon, text, children, isCollapsed, isExpanded, onToggle,
     );
 };
 
+const ROLE_PERMISSIONS = {
+  director: {
+    canAccessUsers: true,
+    canAccessIGM: false,
+    canAccessKYC: false,
+  },
+  admin: {
+    canAccessUsers: true,
+    canAccessIGM: true,
+    canAccessKYC: true,
+  },
+  custom: {
+    canAccessUsers: false,
+    canAccessIGM: false,
+    canAccessKYC: false,
+  },
+  accounts: {
+    canAccessUsers: false,
+    canAccessIGM: false,
+    canAccessKYC: false,
+  },
+  sales: {
+    canAccessUsers: false,
+    canAccessIGM: false,
+    canAccessKYC: false,
+  },
+  viewer: {
+    canAccessUsers: false,
+    canAccessIGM: false,
+    canAccessKYC: false,
+  }
+};
+
 const menuConfig = [
     {
         type: 'group',
@@ -152,8 +186,10 @@ const menuConfig = [
         to: '/',
         groupKey: 'dashboard',
         children: [
-            { text: 'KYC', to: '/kyc', adminOnly: true, icon: <ShieldCheck size={18} /> },
-            { text: 'Users', to: '/users', adminOnly: true, icon: <Users size={18} /> },
+            { text: 'Booking Updates', to: '/booking-updates', icon: <Scroll size={18} /> },
+            { text: 'User Booking Updates', to: '/user-booking-updates', icon: <Scroll size={18} /> },
+            { text: 'KYC', to: '/kyc', permission: 'canAccessKYC', icon: <ShieldCheck size={18} /> },
+            { text: 'Users', to: '/users', permission: 'canAccessUsers', icon: <Users size={18} /> },
             { text: 'Charge', to: '/charges', icon: <DollarSign size={18} /> },
             { text: 'Party', to: '/parties', icon: <Briefcase size={18} /> },
             { text: 'CFS', to: '/cfs', icon: <Compass size={18} /> }
@@ -166,24 +202,11 @@ const menuConfig = [
         icon: <FileText size={20} />
     },
     {
-        type: 'group',
-        text: 'Sea Import',
-        icon: <Ship size={20} />,
-        groupKey: 'seaImport',
-        children: [
-            { text: 'SI MasterBL', to: '/si-masterbl', queryParam: { direction: 'import' }, icon: <Anchor size={18} /> },
-            { text: 'SI HouseBL', to: '/si-housebl', queryParam: { direction: 'import' }, icon: <Compass size={18} /> }
-        ]
-    },
-    {
-        type: 'group',
-        text: 'Sea Export',
-        icon: <Globe size={20} />,
-        groupKey: 'seaExport',
-        children: [
-            { text: 'SI MasterBL', to: '/si-masterbl', queryParam: { direction: 'export' }, icon: <Anchor size={18} /> },
-            { text: 'SI HouseBL', to: '/si-housebl', queryParam: { direction: 'export' }, icon: <Compass size={18} /> }
-        ]
+        type: 'item',
+        text: 'Sea Master BL',
+        to: '/si-masterbl',
+        queryParam: { direction: 'import' },
+        icon: <Ship size={20} />
     },
     {
         type: 'item',
@@ -195,7 +218,7 @@ const menuConfig = [
         type: 'item',
         text: 'IGM',
         to: '/igm',
-        adminOnly: true,
+        permission: 'canAccessIGM',
         icon: <Compass size={20} />
     },
     {
@@ -231,6 +254,38 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
 
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const [isProfileOpen, setIsProfileOpen] = useState(false);
+    const [editRequests, setEditRequests] = useState([]);
+    const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+
+    useEffect(() => {
+        if (user && (user.role === 'Admin' || user.role === 'Director')) {
+            const fetchPendingRequests = async () => {
+                try {
+                    const res = await api.get('/masterbl/edit-requests/pending');
+                    if (res.data.success) {
+                        setEditRequests(res.data.requests || []);
+                    }
+                } catch (e) {
+                    console.error("Error fetching pending requests:", e);
+                }
+            };
+            fetchPendingRequests();
+            const interval = setInterval(fetchPendingRequests, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [user]);
+
+    const handleUpdateRequestStatus = async (id, status) => {
+        try {
+            const res = await api.put(`/masterbl/edit-requests/${id}/status`, { status });
+            if (res.data.success) {
+                setEditRequests(prev => prev.filter(r => r.id !== id));
+            }
+        } catch (e) {
+            console.error("Error updating request status:", e);
+        }
+    };
+
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
         if (typeof window !== 'undefined') {
             return sessionStorage.getItem('sidebarCollapsed') === 'true';
@@ -238,17 +293,14 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
         return false;
     });
 
-    // Detect active groups based on pathname and direction query
     const isDashboardActive = ['/kyc', '/users', '/charges', '/parties'].includes(location.pathname);
-    const isSeaImportActive = ['/si-masterbl', '/si-masterbl-form', '/si-housebl', '/si-housebl-form'].includes(location.pathname) && direction === 'import';
-    const isSeaExportActive = ['/si-masterbl', '/si-masterbl-form', '/si-housebl', '/si-housebl-form'].includes(location.pathname) && direction === 'export';
+    const isSeaImportActive = ['/si-masterbl', '/si-masterbl-form'].includes(location.pathname) && direction === 'import';
     const isInvoiceActive = ['/invoice', '/proforma-invoice', '/e-invoice-approval', '/e-invoice-posting'].includes(location.pathname);
     const isHblDocsActive = ['/hbl-confirmation', '/hbl-final', '/hbl-telex-release'].includes(location.pathname);
 
     const [expandedMenus, setExpandedMenus] = useState({
         dashboard: isDashboardActive,
         seaImport: isSeaImportActive,
-        seaExport: isSeaExportActive,
         invoice: isInvoiceActive,
         hblDocuments: isHblDocsActive
     });
@@ -259,11 +311,10 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
             ...prev,
             dashboard: isDashboardActive ? true : prev.dashboard,
             seaImport: isSeaImportActive ? true : prev.seaImport,
-            seaExport: isSeaExportActive ? true : prev.seaExport,
             invoice: isInvoiceActive ? true : prev.invoice,
             hblDocuments: isHblDocsActive ? true : prev.hblDocuments
         }));
-    }, [location.pathname, direction, isDashboardActive, isSeaImportActive, isSeaExportActive, isInvoiceActive, isHblDocsActive]);
+    }, [location.pathname, direction]);
 
     const handleToggleGroup = (groupKey) => {
         setExpandedMenus(prev => ({
@@ -303,14 +354,22 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
         ? user.user_name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
         : 'U';
 
-    const isAdmin = user?.role?.toLowerCase() === 'admin';
+    const userRole = user?.role?.toLowerCase() || 'viewer';
+    const userPermissions = ROLE_PERMISSIONS[userRole] || ROLE_PERMISSIONS['viewer'];
+
+    const hasPermission = (item) => {
+        if (item.permission) {
+            return !!userPermissions[item.permission];
+        }
+        return true;
+    };
 
     // Filter menu items by user roles
     const filteredMenu = menuConfig.map(menu => {
-        if (menu.adminOnly && !isAdmin) return null;
+        if (!hasPermission(menu)) return null;
         
         if (menu.type === 'group') {
-            const visibleChildren = menu.children.filter(child => !child.adminOnly || isAdmin);
+            const visibleChildren = menu.children.filter(child => hasPermission(child));
             if (visibleChildren.length === 0) {
                 if (menu.to) {
                     return {
@@ -342,7 +401,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                 fixed inset-y-0 left-0 z-30 bg-white dark:bg-dark-bg border-r border-slate-200 dark:border-slate-800 transform 
                 transition-all duration-300 ease-in-out shadow-xl md:shadow-sm flex flex-col h-full
                 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}
-                ${isSidebarCollapsed ? 'md:translate-x-0 md:static md:w-20' : 'md:translate-x-0 md:static md:w-64'}
+                ${isSidebarCollapsed ? 'md:translate-x-0 md:relative md:z-40 md:w-20' : 'md:translate-x-0 md:relative md:z-40 md:w-64'}
             `}>
                 {!isSidebarCollapsed ? (
                     <div className="h-16 flex items-center justify-between px-4 border-b border-slate-100 dark:border-slate-800 shrink-0">
@@ -395,7 +454,6 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                             const isGroupActive = 
                                 (menu.groupKey === 'dashboard' && isDashboardActive) ||
                                 (menu.groupKey === 'seaImport' && isSeaImportActive) ||
-                                (menu.groupKey === 'seaExport' && isSeaExportActive) ||
                                 (menu.groupKey === 'invoice' && isInvoiceActive) ||
                                 (menu.groupKey === 'hblDocuments' && isHblDocsActive);
 
@@ -435,7 +493,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                 </div>
             </aside>
             <div className="flex-1 flex flex-col overflow-hidden relative w-full">
-                <header className="h-16 bg-white dark:bg-dark-bg border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-10 z-10 shadow-sm shrink-0 transition-colors duration-300">
+                <header className="h-16 bg-white dark:bg-dark-bg border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-10 z-40 shadow-sm shrink-0 transition-colors duration-300">
                     <div className="flex items-center gap-4">
                         <button
                             className="p-2 bg-slate-100 dark:bg-slate-800 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-slate-600 dark:text-slate-300 cursor-pointer flex md:hidden items-center justify-center"
@@ -456,7 +514,76 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                         </button>
                         <div className="relative">
-                            <Bell className="w-5 h-5 text-slate-500 dark:text-slate-400 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" />
+                            <button
+                                onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
+                                className="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
+                            >
+                                <Bell className="w-5 h-5 cursor-pointer hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" />
+                                {editRequests.length > 0 && (
+                                    <span className="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-pulse">
+                                        {editRequests.length}
+                                    </span>
+                                )}
+                            </button>
+
+                            {isNotificationsOpen && (
+                                <div className="absolute top-12 right-0 w-80 bg-white dark:bg-dark-card rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 py-2 overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-100">
+                                    <div className="px-4 py-2 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/55 dark:bg-slate-800/10">
+                                        <p className="text-xs font-bold text-slate-850 dark:text-white uppercase tracking-wider">Notifications</p>
+                                        {editRequests.length > 0 && (
+                                            <span className="text-[10px] font-semibold bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 px-2 py-0.5 rounded-full">
+                                                {editRequests.length} Pending
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+                                        {editRequests.length === 0 ? (
+                                            <div className="px-4 py-6 text-center text-xs text-slate-400 dark:text-slate-500 italic">
+                                                No new notifications
+                                            </div>
+                                        ) : (
+                                            editRequests.map((req) => (
+                                                <div key={req.id} className="p-3 text-xs space-y-2 hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                                    <div className="flex justify-between items-start">
+                                                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                                            Job #{req.job_no} Edit Request
+                                                        </span>
+                                                        <span className="text-[10px] text-slate-400">
+                                                            {new Date(req.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+                                                        Requested by: <strong className="text-slate-700 dark:text-slate-300">{req.requested_by}</strong>
+                                                    </p>
+                                                    <p className="text-slate-550 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/50 p-1.5 rounded text-[11px] border border-slate-100 dark:border-slate-800 leading-normal italic">
+                                                        "{req.reason}"
+                                                    </p>
+                                                    <div className="flex gap-2 justify-end pt-1">
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleUpdateRequestStatus(req.id, 'Rejected');
+                                                            }}
+                                                            className="px-2.5 py-1 text-[11px] font-medium border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md transition-colors"
+                                                        >
+                                                            Reject
+                                                        </button>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleUpdateRequestStatus(req.id, 'Approved');
+                                                            }}
+                                                            className="px-2.5 py-1 text-[11px] font-medium bg-emerald-600 hover:bg-emerald-700 text-white rounded-md transition-colors"
+                                                        >
+                                                            Approve
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         <div
                             className="relative flex items-center gap-3 pl-4 sm:pl-6 border-l border-slate-200 dark:border-slate-700 cursor-pointer"

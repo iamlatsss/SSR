@@ -5,7 +5,7 @@ import * as DB from "../Database.js";
 
 const tokenExpirePeriod = 7 * 24 * 60 * 60; // Time in seconds 
 const SALT_ROUNDS = 12;
-const USER_ROLES = new Set(['admin', 'accounts', 'custom', 'sales', 'viewer']);
+const USER_ROLES = new Set(['director', 'admin', 'accounts', 'custom', 'sales', 'viewer']);
 
 const router = express.Router();
 
@@ -44,6 +44,73 @@ export async function authenticateJWT(req, res, next) {
     console.error("❌ JWT Authentication Error:", error);
     return res.status(500).json({ message: "Internal Server Error during authentication" });
   }
+}
+
+export const ROLE_PERMISSIONS = {
+  director: {
+    canManageUsers: true,
+    canAccessIGM: false,
+    canAccessKYC: false,
+    canViewAllBookings: true,
+    canEditAllBookings: true,
+    canDeleteAllBookings: true,
+  },
+  admin: {
+    canManageUsers: true,
+    canAccessIGM: true,
+    canAccessKYC: true,
+    canViewAllBookings: true,
+    canEditAllBookings: true,
+    canDeleteAllBookings: true,
+  },
+  custom: {
+    canManageUsers: false,
+    canAccessIGM: false,
+    canAccessKYC: false,
+    canViewAllBookings: false,
+    canEditAllBookings: false,
+    canDeleteAllBookings: false,
+  },
+  accounts: {
+    canManageUsers: false,
+    canAccessIGM: false,
+    canAccessKYC: false,
+    canViewAllBookings: false,
+    canEditAllBookings: false,
+    canDeleteAllBookings: false,
+  },
+  sales: {
+    canManageUsers: false,
+    canAccessIGM: false,
+    canAccessKYC: false,
+    canViewAllBookings: false,
+    canEditAllBookings: false,
+    canDeleteAllBookings: false,
+  },
+  viewer: {
+    canManageUsers: false,
+    canAccessIGM: false,
+    canAccessKYC: false,
+    canViewAllBookings: false,
+    canEditAllBookings: false,
+    canDeleteAllBookings: false,
+  }
+};
+
+export function hasPermission(role, permissionName) {
+  const normalizedRole = role?.toLowerCase() || 'viewer';
+  const permissions = ROLE_PERMISSIONS[normalizedRole] || ROLE_PERMISSIONS['viewer'];
+  return !!permissions[permissionName];
+}
+
+export function checkPermission(permissionName) {
+  return (req, res, next) => {
+    if (hasPermission(req.user?.role, permissionName)) {
+      next();
+    } else {
+      res.status(403).json({ success: false, message: `Forbidden: Missing permission ${permissionName}` });
+    }
+  };
 }
 
 export function requireAdmin(req, res, next) {

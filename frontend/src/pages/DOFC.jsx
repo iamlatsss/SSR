@@ -16,15 +16,29 @@ const DOFC = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
 
+    const [bookingUpdates, setBookingUpdates] = useState([]);
+
     useEffect(() => {
         fetchJobs();
+        fetchBookingUpdates();
     }, []);
+
+    const fetchBookingUpdates = async () => {
+        try {
+            const res = await api.get("/booking-updates");
+            if (res.data.success) {
+                setBookingUpdates(res.data.data || []);
+            }
+        } catch (error) {
+            console.error("Error loading booking updates:", error);
+        }
+    };
 
     const fetchJobs = async () => {
         try {
-            const res = await api.get("/booking/get");
+            const res = await api.get("/masterbl/get");
             if (res.data.success) {
-                setJobs(res.data.bookings || []);
+                setJobs(res.data.jobs || []);
             }
         } catch (error) {
             console.error("Error loading jobs:", error);
@@ -133,6 +147,9 @@ const DOFC = () => {
                     templatePath = '/pdf-static/fc_mbl.html';
                     templateKey = "fc_mbl";
                 }
+            } else if (activeTab === "CAN") {
+                templatePath = '/pdf-static/can_hbl.html';
+                templateKey = "can_hbl";
             }
 
             if (!templatePath) throw new Error("No template found for selection");
@@ -144,42 +161,87 @@ const DOFC = () => {
 
             // 3. Prepare Data Map based on template type
             let data = {};
-            const todayStr = new Date().toLocaleDateString();
+            const formatDate = (dateVal) => {
+                if (!dateVal) return "-";
+                const d = new Date(dateVal);
+                if (isNaN(d.getTime())) return "-";
+                return d.toLocaleDateString('en-GB');
+            };
+            const todayStr = new Date().toLocaleDateString('en-GB');
+
+            const currentShipperName = selectedType === 'MBL' ? (selectedJob.shipper_name || "-") : (selectedJob.hbl_shipper_name || selectedJob.shipper_name || "-");
+            const currentShipperAddress = selectedType === 'MBL' ? (selectedJob.shipper_address || "-") : (selectedJob.hbl_shipper_address || selectedJob.shipper_address || "-");
+            const currentConsigneeName = selectedType === 'MBL' ? (selectedJob.consignee_name || "-") : (selectedJob.hbl_consignee_name || selectedJob.consignee_name || "-");
+            const currentConsigneeAddress = selectedType === 'MBL' ? (selectedJob.consignee_address || "-") : (selectedJob.hbl_consignee_address || selectedJob.consignee_address || "-");
+            const currentNotify = selectedType === 'MBL' ? (selectedJob.notify || selectedJob.consignee_name || "-") : (selectedJob.hbl_notify || selectedJob.hbl_consignee_name || "-");
+            const currentCarrier = selectedType === 'MBL' ? (selectedJob.carrier || selectedJob.shipping_line_name || "-") : (selectedJob.hbl_carrier || selectedJob.shipping_line_name || "-");
+            const currentTransporter = selectedType === 'MBL' ? (selectedJob.transporter || "-") : (selectedJob.hbl_transporter || "-");
+            const currentCHA = selectedType === 'MBL' ? (selectedJob.cha_name || "-") : (selectedJob.hbl_cha_name || "-");
 
             if (templateKey === 'do_hbl') {
-                // Mapping for do_hbl.html
-                // If MBL is selected for DO, we might want to emphasize MBL data or leave as standard DO?
-                // The standard DO seems to have fields for both. 
-                // Let's use the standard mapping which includes both.
+                const currentUpdate = bookingUpdates.find(u => String(u.job_no) === String(selectedJob.job_no));
                 data = {
-                    'bookings.hbl_no': selectedJob.hbl_no || "-",
-                    'bookings.mbl_no': selectedJob.mbl_no || "-",
-                    'bookings.nomination_date': selectedJob.hbl_date ? new Date(selectedJob.hbl_date).toLocaleDateString() : (selectedJob.date_of_nomination ? new Date(selectedJob.date_of_nomination).toLocaleDateString() : "-"),
-                    'bookings.container_number': selectedJob.container_number || "-",
-                    'bookings.consignee': selectedJob.consignee_name || "-",
-                    'bookings.description': selectedJob.cargo_type || "-",
-                    'bookings.delivery_type': "Full",
-                    'bookings.no_of_packages': String(selectedJob.no_of_palette || "0"),
-                    'bookings.measurement': "-",
-                    'bookings.gross_weight': String(selectedJob.gross_weight || "-"),
-                    'bookings.vessel_voyage': selectedJob.shipping_line_name || "-",
-                    'bookings.marks_nos': selectedJob.marks_and_numbers || "-",
-                    'bookings.validity': selectedJob.do_validity ? new Date(selectedJob.do_validity).toLocaleDateString() : "-",
-                    'igm.cfsname': selectedJob.cfs_name || "BUDGET CFS TERMINALS PRIVATE LIMITED",
-                    'igm.cha_name': selectedJob.cha_name || "-",
-                    'igm.igm_no': selectedJob.igm_no || "-",
-                    'igm.line_no': "252",
-                    'igm.sub_line_no': "-",
-                    'do.do_date': todayStr,
+                    'TO_PARTY': currentUpdate?.cfs || selectedJob.cfs_name || "BUDGET CFS TERMINALS PRIVATE LIMITED",
+                    'DO_NO': selectedJob.do_number || selectedJob.mbl_no || "-",
+                    'DO_DATE': todayStr,
+                    'HBL_NO': selectedJob.hbl_no || currentUpdate?.hbl || "-",
+                    'HBL_DATE': selectedJob.hbl_date ? formatDate(selectedJob.hbl_date) : (currentUpdate?.date_of_nomination ? formatDate(currentUpdate.date_of_nomination) : "-"),
+                    'MBL_NO': selectedJob.mbl_no || currentUpdate?.mbl || "-",
+                    'MBL_DATE': selectedJob.mbl_date ? formatDate(selectedJob.mbl_date) : (currentUpdate?.date_of_nomination ? formatDate(currentUpdate.date_of_nomination) : "-"),
+                    'CONTAINER_NO': currentUpdate?.container_no || selectedJob.container_number || "-",
+                    'MBL_CONSIGNEE': "SSR LOGISTIC SOLUTIONS PVT. LTD.",
+                    'HBL_CONSIGNEE': currentConsigneeName,
+                    'NOTIFY_PARTY': currentNotify,
+                    'CHA': currentCHA,
+                    'CARGO_DESCRIPTION': selectedJob.cargo_type || selectedJob.description || "-",
+                    'DELIVERY_TYPE': selectedJob.delivery_type || "Full",
+                    'NO_OF_PACKAGES': String(selectedJob.no_of_packages || selectedJob.no_of_palette || "0"),
+                    'MEASUREMENT': selectedJob.measurement || "-",
+                    'GROSS_WEIGHT': String(selectedJob.gross_weight || "-"),
+                    'VESSEL_VOYAGE': selectedJob.shipping_line_name || selectedJob.vessel_voyage || currentUpdate?.shipping_line || "-",
+                    'IGM_NO': currentUpdate?.igm || selectedJob.igm_no || "-",
+                    'LINE_NO': selectedJob.line_no || selectedJob.line || "252",
+                    'SUB_LINE_NO': selectedJob.sub_line_no || "-",
+                    'MARKS_AND_NOS': selectedJob.marks_and_numbers || selectedJob.marks_nos || "-",
+                    'VALID_TILL': selectedJob.do_validity ? formatDate(selectedJob.do_validity) : (selectedJob.validity ? formatDate(selectedJob.validity) : "-"),
+                    'REMARKS': currentUpdate?.remarks || selectedJob.remarks || "-",
+                };
+            } else if (templateKey === 'can_hbl') {
+                const currentUpdate = bookingUpdates.find(u => String(u.job_no) === String(selectedJob.job_no));
+                data = {
+                    'DOC_TYPE': selectedType || "HBL",
+                    'SHIPPER': currentShipperName,
+                    'CONSIGNEE': currentConsigneeName,
+                    'CONSIGNEE_ADDRESS': currentConsigneeAddress,
+                    'HBL_NO': selectedJob.hbl_no || currentUpdate?.hbl || "-",
+                    'HBL_DATE': selectedJob.hbl_date ? formatDate(selectedJob.hbl_date) : (currentUpdate?.date_of_nomination ? formatDate(currentUpdate.date_of_nomination) : "-"),
+                    'MBL_NO': selectedJob.mbl_no || currentUpdate?.mbl || "-",
+                    'MBL_DATE': selectedJob.mbl_date ? formatDate(selectedJob.mbl_date) : (currentUpdate?.date_of_nomination ? formatDate(currentUpdate.date_of_nomination) : "-"),
+                    'IGM_NO': currentUpdate?.igm || selectedJob.igm_no || "-",
+                    'IGM_DATE': selectedJob.igm_on ? formatDate(selectedJob.igm_on) : (currentUpdate?.date_of_nomination ? formatDate(currentUpdate.date_of_nomination) : "-"),
+                    'FPD': selectedJob.final_pod || "-",
+                    'PKGS': String(selectedJob.no_of_packages || selectedJob.no_of_palette || "0"),
+                    'POL': selectedJob.pol || "-",
+                    'CNT_NO': currentUpdate?.container_no || selectedJob.container_number || "-",
+                    'EX_NO': selectedJob.exchange_rate || "-",
+                    'JOB_NO': selectedJob.job_no || "-",
+                    'VESSEL_NAME': selectedJob.shipping_line_name || selectedJob.vessel_name || "-",
+                    'VOYAGE': selectedJob.voyage || "-",
+                    'LINE_ITEAM': selectedJob.line_no || selectedJob.line || "252",
+                    'ETA_DATE': selectedJob.eta ? formatDate(selectedJob.eta) : "-",
+                    'GR_WHT': String(selectedJob.gross_weight || "-"),
+                    'CBM': selectedJob.measurement || "-",
+                    'POD': selectedJob.pod || "-",
+                    'CFS': currentUpdate?.cfs || selectedJob.cfs_name || "-",
                 };
             } else if (templateKey === 'fc_hbl') {
                 // Mapping for fc_hbl.html
                 data = {
-                    'KYCList.shipper_name': selectedJob.shipper_name || "-",
-                    'KYCList.shipper_address': selectedJob.shipper_address || "-",
+                    'KYCList.shipper_name': currentShipperName,
+                    'KYCList.shipper_address': currentShipperAddress,
                     'IGM.cfs_name': selectedJob.cfs_name || selectedJob.cfs || "-",
-                    'KYCList.consignee_name': selectedJob.consignee_name || "-",
-                    'KYCList.consignee_address': selectedJob.consignee_address || "-",
+                    'KYCList.consignee_name': currentConsigneeName,
+                    'KYCList.consignee_address': currentConsigneeAddress,
                     'IGM.vessel_name': selectedJob.shipping_line_name || selectedJob.vessel_name || "-",
                     'IGM.vessel_voyage': selectedJob.voyage || "-",
                     'BookingList.hbl_no': selectedJob.hbl_no || "-",
@@ -198,10 +260,10 @@ const DOFC = () => {
             } else if (templateKey === 'fc_mbl') {
                 // Mapping for fc_mbl.html
                 data = {
-                    'mbl.shipper_name': selectedJob.shipper_name || "-",
-                    'mbl.shipper_address': selectedJob.shipper_address || "-",
-                    'mbl.consignee_name': selectedJob.consignee_name || "-",
-                    'mbl.consignee_address': selectedJob.consignee_address || "-",
+                    'mbl.shipper_name': currentShipperName,
+                    'mbl.shipper_address': currentShipperAddress,
+                    'mbl.consignee_name': currentConsigneeName,
+                    'mbl.consignee_address': currentConsigneeAddress,
                     'igm.cfs_name': selectedJob.cfs_name || selectedJob.cfs || "-",
                     'other.date': todayStr,
                     'vessel.name': selectedJob.shipping_line_name || selectedJob.vessel_name || "-",
@@ -216,7 +278,7 @@ const DOFC = () => {
                     'booking.eta': selectedJob.eta ? new Date(selectedJob.eta).toLocaleDateString() : "-",
                     'booking.container_size': selectedJob.container_size || "-",
                     'booking.pol': selectedJob.pol || "-",
-                    'carrier.name': selectedJob.carrier || selectedJob.shipping_line_name || "-",
+                    'carrier.name': currentCarrier,
                     'booking.pod': selectedJob.pod || "-",
                     'booking.no_containers': String(selectedJob.container_count || "1"),
                     'booking.exchange_rate': selectedJob.exchange_rate || "—",
@@ -257,7 +319,7 @@ const DOFC = () => {
     };
 
     return (
-        <DashboardLayout title="Documents (DO / FC)">
+        <DashboardLayout title="Documents (DO / FC / CAN)">
             {/* Tabs */}
             <div className="flex gap-4 mb-6 border-b border-slate-200 dark:border-slate-700">
                 <button
@@ -279,6 +341,16 @@ const DOFC = () => {
                 >
                     Freight Certificate
                     {activeTab === "FC" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
+                </button>
+                <button
+                    onClick={() => { setActiveTab("CAN"); setPreviewData(null); }}
+                    className={`pb-3 px-1 text-sm font-medium transition-colors relative ${activeTab === "CAN"
+                        ? "text-indigo-600 dark:text-indigo-400"
+                        : "text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+                        }`}
+                >
+                    CAN Copy
+                    {activeTab === "CAN" && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-indigo-600 dark:bg-indigo-400 rounded-t-full" />}
                 </button>
             </div>
 

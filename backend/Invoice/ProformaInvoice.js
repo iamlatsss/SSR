@@ -120,9 +120,40 @@ function numberToWordsUSD(num) {
 // 1. Initialize Route
 router.get("/init", authenticateJWT, async (req, res) => {
     try {
-        // Fetch MBL jobs and HBL jobs
-        const mblJobs = await knexDB("MasterBL").select("job_no", "mbl_no", "date_of_nomination", "pol", "pod", "shipper", "consignee");
-        const hblJobs = await knexDB("HouseBL").select("job_no", "hbl_no", "mbl_no", "date_of_nomination", "shipper", "consignee");
+        // Fetch MBL jobs and HBL jobs from MasterBL table
+        const mblJobs = await knexDB("MasterBL")
+            .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+            .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+            .select(
+                "MasterBL.job_no",
+                "MasterBL.mbl_no",
+                "MasterBL.hbl_no",
+                "MasterBL.date_of_nomination",
+                "MasterBL.pol",
+                "MasterBL.pod",
+                "MasterBL.shipper",
+                "MasterBL.consignee",
+                knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
+                knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.consignee'))) as consignee_name")
+            );
+
+        const hblJobs = await knexDB("MasterBL")
+            .leftJoin('Parties as S', 'MasterBL.hbl_shipper', 'S.id')
+            .leftJoin('Parties as C', 'MasterBL.hbl_consignee', 'C.id')
+            .select(
+                "MasterBL.job_no",
+                "MasterBL.hbl_no",
+                "MasterBL.mbl_no",
+                "MasterBL.date_of_nomination",
+                "MasterBL.pol",
+                "MasterBL.pod",
+                "MasterBL.hbl_shipper as shipper",
+                "MasterBL.hbl_consignee as consignee",
+                knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.hbl_shipper'))) as shipper_name"),
+                knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.hbl_consignee'))) as consignee_name")
+            )
+            .whereNotNull("MasterBL.hbl_no")
+            .andWhereNot("MasterBL.hbl_no", "");
         
         // Fetch Customers list
         const parties = await knexDB("Parties").select("*");
@@ -144,15 +175,30 @@ router.get("/init", authenticateJWT, async (req, res) => {
 router.get("/job-details/:jobNo", authenticateJWT, async (req, res) => {
     const jobNo = parseInt(req.params.jobNo);
     try {
-        let job = await knexDB("MasterBL").where({ job_no: jobNo }).first();
+        let job = await knexDB("MasterBL")
+            .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+            .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+            .leftJoin('Parties as HS', 'MasterBL.hbl_shipper', 'HS.id')
+            .leftJoin('Parties as HC', 'MasterBL.hbl_consignee', 'HC.id')
+            .select(
+                'MasterBL.*',
+                knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
+                knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.consignee'))) as consignee_name"),
+                knexDB.raw("COALESCE(HS.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.hbl_shipper'))) as hbl_shipper_name"),
+                knexDB.raw("COALESCE(HC.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.hbl_consignee'))) as hbl_consignee_name")
+            )
+            .where({ 'MasterBL.job_no': jobNo })
+            .first();
+
         let relatedHBLs = [];
         let type = 'MBL';
 
-        if (job) {
-            relatedHBLs = await knexDB("HouseBL").where({ mbl_no: job.mbl_no }).select("id", "job_no", "hbl_no");
-        } else {
-            job = await knexDB("HouseBL").where({ job_no: jobNo }).first();
-            type = 'HBL';
+        if (job && job.hbl_no) {
+            relatedHBLs.push({
+                id: job.job_no,
+                job_no: job.job_no,
+                hbl_no: job.hbl_no
+            });
         }
 
         if (!job) {
@@ -184,7 +230,7 @@ router.get("/search-charges", authenticateJWT, async (req, res) => {
         if (mbl_hbl_type === 'MBL') {
             record = await knexDB("MasterBL").where({ mbl_no: mbl_hbl_no }).first();
         } else {
-            record = await knexDB("HouseBL").where({ hbl_no: mbl_hbl_no }).first();
+            record = await knexDB("MasterBL").where({ hbl_no: mbl_hbl_no }).first();
         }
 
         if (!record) {
@@ -200,51 +246,7 @@ router.get("/search-charges", authenticateJWT, async (req, res) => {
 
         const sellRates = additionalDetails.sell_rates || [];
 
-        // Check if there is an existing Tax Invoice for this job/BL
-        const existingInvoice = await knexDB("Invoices")
-            .where({ job_no: parseInt(job_no) })
-            .first();
-
         let filteredSellRates = sellRates;
-        if (existingInvoice) {
-            let invoiceItems = [];
-            try {
-                invoiceItems = typeof existingInvoice.items === 'string'
-                    ? JSON.parse(existingInvoice.items)
-                    : (existingInvoice.items || []);
-            } catch (e) {
-                invoiceItems = [];
-            }
-
-            const pool = [...invoiceItems];
-            filteredSellRates = sellRates.filter(r => {
-                // If it is not locked, it is a new charge. Always keep it!
-                if (!r.locked) {
-                    return true;
-                }
-
-                // If it is locked, it must be present in the Tax Invoice items pool to be visible
-                const matchIndex = pool.findIndex(item => {
-                    const chargeNameMatch = (r.charge || r.chargeName || '').toLowerCase().trim() === 
-                                            (item.charge || item.chargeName || '').toLowerCase().trim();
-                    const partyMatch = String(r.party || r.clientId || r.clientName || '').trim() === 
-                                       String(item.party || item.clientId || item.clientName || '').trim();
-                    const rateMatch = Math.abs(parseFloat(r.rate || 0) - parseFloat(item.rate || 0)) < 0.01;
-                    const qtyMatch = Math.abs(parseFloat(r.quantity || r.qty || 0) - parseFloat(item.quantity || item.qty || 0)) < 0.01;
-                    const currencyMatch = (r.currency || '').toLowerCase().trim() === 
-                                          (item.currency || '').toLowerCase().trim();
-                    const gstMatch = Math.abs(parseFloat(r.gst || r.taxPercent || 0) - parseFloat(item.gst || item.taxPercent || 0)) < 0.01;
-
-                    return chargeNameMatch && partyMatch && rateMatch && qtyMatch && currencyMatch && gstMatch;
-                });
-
-                if (matchIndex !== -1) {
-                    pool.splice(matchIndex, 1);
-                    return true;
-                }
-                return false;
-            });
-        }
 
         res.json({
             success: true,
@@ -307,44 +309,23 @@ router.post("/save", authenticateJWT, async (req, res) => {
     }
 
     try {
-        // Prevent duplicate/overwrite issues by deleting existing proforma invoice for this job/MBL/HBL
-        const existingProforma = await knexDB("ProformaInvoices")
-            .where({ job_no: jobNo, mbl_hbl_type: mblHblType, mbl_hbl_no: mblHblNo })
-            .first();
-
-        if (existingProforma) {
-            await knexDB("ProformaInvoices").where({ id: existingProforma.id }).delete();
-        }
-
         const proformaNoStr = String(jobNo);
 
-        // Insert record into DB
-        const payload = {
-            proforma_no: proformaNoStr,
-            job_no: jobNo,
-            mbl_hbl_type: mblHblType,
-            mbl_hbl_no: mblHblNo,
-            client_id: clientId || null,
-            client_name: clientName || '',
-            client_address: clientAddress || '',
-            client_gstin: clientGstin || '',
-            client_state: clientState || '',
-            print_type: printType || 'Invoice',
-            proforma_date: proformaDate || new Date().toISOString().split('T')[0],
-            items: JSON.stringify(items),
-            totals: JSON.stringify(totals),
-            pdf_link: null
-        };
-
-        const [insertedId] = await knexDB("ProformaInvoices").insert(payload);
-
         // Retrieve Linked Job details to fill metadata
-        let jobRecord = null;
-        if (mblHblType === 'MBL') {
-            jobRecord = await knexDB("MasterBL").where({ job_no: jobNo }).first();
-        } else {
-            jobRecord = await knexDB("HouseBL").where({ hbl_no: mblHblNo }).first();
-        }
+        const jobRecord = await knexDB("MasterBL")
+            .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+            .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+            .leftJoin('Parties as HS', 'MasterBL.hbl_shipper', 'HS.id')
+            .leftJoin('Parties as HC', 'MasterBL.hbl_consignee', 'HC.id')
+            .select(
+                'MasterBL.*',
+                knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
+                knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.consignee'))) as consignee_name"),
+                knexDB.raw("COALESCE(HS.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.hbl_shipper'))) as hbl_shipper_name"),
+                knexDB.raw("COALESCE(HC.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.hbl_consignee'))) as hbl_consignee_name")
+            )
+            .where({ 'MasterBL.job_no': jobNo })
+            .first();
 
         let addDetails = {};
         if (jobRecord && jobRecord.additional_details) {
@@ -357,24 +338,28 @@ router.post("/save", authenticateJWT, async (req, res) => {
         let consigneeName = '';
         let shipperName = '';
         if (jobRecord) {
-            consigneeName = jobRecord.consignee_name || '';
-            shipperName = jobRecord.shipper_name || '';
-            if (!consigneeName && jobRecord.manual_party_details) {
-                try {
-                    const mp = typeof jobRecord.manual_party_details === 'string'
-                        ? JSON.parse(jobRecord.manual_party_details)
-                        : jobRecord.manual_party_details;
-                    consigneeName = mp.consignee || '';
-                    shipperName = mp.shipper || '';
-                } catch(e){}
+            if (mblHblType === 'MBL') {
+                consigneeName = jobRecord.consignee_name || '';
+                shipperName = jobRecord.shipper_name || '';
+            } else {
+                consigneeName = jobRecord.hbl_consignee_name || '';
+                shipperName = jobRecord.hbl_shipper_name || '';
             }
         }
 
         const formatDate = (dateStr) => {
             if (!dateStr) return '—';
+            if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+                const parts = dateStr.slice(0, 10).split('-');
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
             try {
                 const d = new Date(dateStr);
-                return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+                if (isNaN(d.getTime())) return dateStr;
+                const yyyy = d.getUTCFullYear();
+                const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const dd = String(d.getUTCDate()).padStart(2, '0');
+                return `${dd}-${mm}-${yyyy}`;
             } catch (e) { return dateStr; }
         };
 
@@ -392,17 +377,14 @@ router.post("/save", authenticateJWT, async (req, res) => {
             const rowExRate = parseFloat(item.ex_rate || effectiveExRate);
 
             let amount = qty * baseRate;
-            let targetRate = baseRate;
 
             if (printType === 'USD') {
                 if (itemCurrency === 'INR') {
                     amount = (qty * baseRate) / rowExRate;
-                    targetRate = baseRate / rowExRate;
                 }
             } else {
                 if (itemCurrency === 'USD') {
                     amount = qty * baseRate * rowExRate;
-                    targetRate = baseRate * rowExRate;
                 }
             }
 
@@ -416,8 +398,8 @@ router.post("/save", authenticateJWT, async (req, res) => {
             return {
                 charge_name: item.charge || '—',
                 hsn_sac: item.hsn_sac || item.sac || '996521',
-                rate: targetRate.toFixed(2),
-                currency: targetCurrency,
+                rate: baseRate.toFixed(2),
+                currency: itemCurrency,
                 qty: qty,
                 amount: amount.toFixed(2),
                 gst_rate: gstRate.toFixed(1),
@@ -511,6 +493,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
             party_name: clientName || '—',
             party_address: clientAddress || '—',
             party_gst: clientGstin || 'N/A',
+            party_state_code: stateInfo.code,
             place_of_supply: stateInfo.name,
 
             proforma_no: proformaNoStr,
@@ -518,10 +501,10 @@ router.post("/save", authenticateJWT, async (req, res) => {
             ref_no: jobNo,
 
             hbl_no: mblHblType === 'HBL' ? mblHblNo : (addDetails.hbl_no || '—'),
-            hbl_date: formatDate(jobRecord?.hbl_date || jobRecord?.created_at || addDetails.hbl_date),
+            hbl_date: formatDate(jobRecord?.hbl_date || addDetails.hbl_date),
             mbl_no: mblHblType === 'MBL' ? mblHblNo : (jobRecord?.mbl_no || '—'),
-            mbl_date: formatDate(jobRecord?.mbl_date || jobRecord?.created_at || addDetails.mbl_date),
-            vessel_voy: `${jobRecord?.vessel || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
+            mbl_date: formatDate(jobRecord?.mbl_date || addDetails.mbl_date),
+            vessel_voy: `${jobRecord?.shipping_line_name || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
             pol: polVal,
             fpd: fpdVal,
             igm_no: addDetails.igm_no || '—',
@@ -533,14 +516,14 @@ router.post("/save", authenticateJWT, async (req, res) => {
             consignee: consigneeName || '—',
             shipper: shipperName || '—',
             cargo_type: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
-            shipper_line: jobRecord?.shipping_line_name || addDetails.carrier || '—',
+            shipper_line: addDetails.carrier || '—',
             cargo_weight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
-            cbm: jobRecord?.net_weight || addDetails.volume || '—',
+            cbm: jobRecord?.volume || addDetails.volume || '—',
             pod: podVal,
             no_of_pkgs: addDetails.no_of_packages || '—',
             eta_date: formatDate(jobRecord?.eta || addDetails.eta_date),
             ex_rate: effectiveExRate.toFixed(2),
-            container_numbers: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.containerNo).join(', ')) || '—',
+            container_numbers: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.container_no || c.containerNo).join(', ')) || '—',
 
             charges: chargesList,
 
@@ -606,15 +589,7 @@ router.post("/save", authenticateJWT, async (req, res) => {
             return res.status(500).json({ success: false, message: "Failed to upload generated Proforma Invoice PDF to S3" });
         }
 
-        // Update S3 PDF link in database
-        await knexDB("ProformaInvoices").where({ id: insertedId }).update({ pdf_link: uploadRes.url });
-
-        // Update MasterBL / HouseBL status
-        if (mblHblType === 'MBL') {
-            await knexDB("MasterBL").where({ job_no: jobNo }).update({ status: 'Invoice Generated' });
-        } else {
-            await knexDB("HouseBL").where({ hbl_no: mblHblNo }).update({ status: 'Invoice Generated' });
-        }
+        // S3 upload successful, return PDF URL to frontend directly without storing to DB or updating job status
 
         res.json({
             success: true,
@@ -664,7 +639,7 @@ router.delete("/delete/:id", authenticateJWT, async (req, res) => {
                     status: 'Sell Rate Updated'
                 });
             } else {
-                await trx("HouseBL").where({ hbl_no: mbl_hbl_no }).update({
+                await trx("MasterBL").where({ hbl_no: mbl_hbl_no }).update({
                     status: 'Sell Rate Updated'
                 });
             }
@@ -706,7 +681,7 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
         if (mbl_hbl_type === 'MBL') {
             jobRecord = await knexDB("MasterBL").where({ job_no }).first();
         } else {
-            jobRecord = await knexDB("HouseBL").where({ hbl_no: mbl_hbl_no }).first();
+            jobRecord = await knexDB("MasterBL").where({ hbl_no: mbl_hbl_no }).first();
         }
 
         let addDetails = {};
@@ -734,9 +709,17 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
 
         const formatDate = (dateStr) => {
             if (!dateStr) return '—';
+            if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateStr)) {
+                const parts = dateStr.slice(0, 10).split('-');
+                return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
             try {
                 const d = new Date(dateStr);
-                return `${String(d.getDate()).padStart(2, '0')}-${String(d.getMonth() + 1).padStart(2, '0')}-${d.getFullYear()}`;
+                if (isNaN(d.getTime())) return dateStr;
+                const yyyy = d.getUTCFullYear();
+                const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+                const dd = String(d.getUTCDate()).padStart(2, '0');
+                return `${dd}-${mm}-${yyyy}`;
             } catch (e) { return dateStr; }
         };
 
@@ -753,17 +736,14 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             const rowExRate = parseFloat(item.ex_rate || item.exRate || effectiveExRate);
 
             let amount = qty * baseRate;
-            let targetRate = baseRate;
 
             if (print_type === 'USD') {
                 if (itemCurrency === 'INR') {
                     amount = (qty * baseRate) / rowExRate;
-                    targetRate = baseRate / rowExRate;
                 }
             } else {
                 if (itemCurrency === 'USD') {
                     amount = qty * baseRate * rowExRate;
-                    targetRate = baseRate * rowExRate;
                 }
             }
 
@@ -776,8 +756,8 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             return {
                 charge_name: item.charge || item.chargeName || '—',
                 hsn_sac: item.hsn_sac || item.sac || '996521',
-                rate: targetRate.toFixed(2),
-                currency: targetCurrency,
+                rate: baseRate.toFixed(2),
+                currency: itemCurrency,
                 qty: qty,
                 amount: amount.toFixed(2),
                 gst_rate: gstRate.toFixed(1),
@@ -867,6 +847,7 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             party_name: client_name || '—',
             party_address: client_address || '—',
             party_gst: client_gstin || 'N/A',
+            party_state_code: stateInfo.code,
             place_of_supply: stateInfo.name,
 
             proforma_no: proforma.proforma_no,
@@ -874,10 +855,10 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             ref_no: job_no,
 
             hbl_no: mbl_hbl_type === 'HBL' ? mbl_hbl_no : (addDetails.hbl_no || '—'),
-            hbl_date: formatDate(jobRecord?.hbl_date || jobRecord?.created_at || addDetails.hbl_date),
+            hbl_date: formatDate(jobRecord?.hbl_date || addDetails.hbl_date),
             mbl_no: mbl_hbl_type === 'MBL' ? mbl_hbl_no : (jobRecord?.mbl_no || '—'),
-            mbl_date: formatDate(jobRecord?.mbl_date || jobRecord?.created_at || addDetails.mbl_date),
-            vessel_voy: `${jobRecord?.vessel || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
+            mbl_date: formatDate(jobRecord?.mbl_date || addDetails.mbl_date),
+            vessel_voy: `${jobRecord?.shipping_line_name || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
             pol: polVal,
             fpd: fpdVal,
             igm_no: addDetails.igm_no || '—',
@@ -889,14 +870,14 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             consignee: consigneeName || '—',
             shipper: shipperName || '—',
             cargo_type: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
-            shipper_line: jobRecord?.shipping_line_name || addDetails.carrier || '—',
+            shipper_line: addDetails.carrier || '—',
             cargo_weight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
-            cbm: jobRecord?.net_weight || addDetails.volume || '—',
+            cbm: jobRecord?.volume || addDetails.volume || '—',
             pod: podVal,
             no_of_pkgs: addDetails.no_of_packages || '—',
             eta_date: formatDate(jobRecord?.eta || addDetails.eta_date),
             ex_rate: effectiveExRate.toFixed(2),
-            container_numbers: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.containerNo).join(', ')) || '—',
+            container_numbers: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.container_no || c.containerNo).join(', ')) || '—',
 
             charges: chargesList,
 

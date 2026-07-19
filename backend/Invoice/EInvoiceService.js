@@ -69,8 +69,33 @@ function isValidPortCode(portCode) {
 /**
  * Perform all business logic validations for an invoice
  */
-export async function validateInvoiceDetails(invoice) {
+export async function validateInvoiceDetails(invoice, isPosting = false) {
   const errors = [];
+
+  // State validations for posting
+  if (isPosting) {
+    if (invoice.approval_status !== 'Approved') {
+      errors.push("Approval Status must be 'Approved'.");
+    }
+    if (invoice.einvoice_status === 'Cancelled') {
+      errors.push("Invoice is cancelled.");
+    }
+    if (invoice.irn) {
+      errors.push("IRN is already generated for this invoice.");
+    }
+  }
+
+  // Check unique invoice number across all posted invoices
+  if (invoice.invoice_no) {
+    const duplicate = await knexDB("Invoices")
+      .where({ invoice_no: invoice.invoice_no })
+      .whereNot({ id: invoice.id })
+      .whereNotNull('irn')
+      .first();
+    if (duplicate) {
+      errors.push(`Invoice Number '${invoice.invoice_no}' is not unique (already has an active IRN on another record).`);
+    }
+  }
 
   // 1. Check basic Invoice Details
   if (!invoice.invoice_no) errors.push("Invoice number is missing.");
@@ -80,10 +105,25 @@ export async function validateInvoiceDetails(invoice) {
   let jobRecord = null;
   let addDetails = {};
   if (invoice.job_no) {
-    if (invoice.mbl_hbl_type === 'MBL') {
-      jobRecord = await knexDB("MasterBL").where({ job_no: invoice.job_no }).first();
-    } else {
-      jobRecord = await knexDB("HouseBL").where({ job_no: invoice.job_no }).first();
+    const table = 'MasterBL';
+    jobRecord = await knexDB(table)
+      .leftJoin('Parties as S', `${table}.shipper`, 'S.id')
+      .leftJoin('Parties as C', `${table}.consignee`, 'C.id')
+      .leftJoin('Parties as HS', `${table}.hbl_shipper`, 'HS.id')
+      .leftJoin('Parties as HC', `${table}.hbl_consignee`, 'HC.id')
+      .select(
+        `${table}.*`,
+        knexDB.raw(`COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(${table}.manual_party_details, '$.shipper'))) as shipper_name`),
+        knexDB.raw(`COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(${table}.manual_party_details, '$.consignee'))) as consignee_name`),
+        knexDB.raw(`COALESCE(HS.name, JSON_UNQUOTE(JSON_EXTRACT(${table}.manual_party_details, '$.hbl_shipper'))) as hbl_shipper_name`),
+        knexDB.raw(`COALESCE(HC.name, JSON_UNQUOTE(JSON_EXTRACT(${table}.manual_party_details, '$.hbl_consignee'))) as hbl_consignee_name`)
+      )
+      .where({ [`${table}.job_no`]: invoice.job_no })
+      .first();
+
+    if (jobRecord && invoice.mbl_hbl_type === 'HBL') {
+      jobRecord.shipper_name = jobRecord.hbl_shipper_name || jobRecord.shipper_name;
+      jobRecord.consignee_name = jobRecord.hbl_consignee_name || jobRecord.consignee_name;
     }
   }
 
@@ -96,11 +136,7 @@ export async function validateInvoiceDetails(invoice) {
   }
 
   // Fetch linked MasterBL for HouseBL to get MBL date, POL, POD etc if not present
-  let linkedMblNo = jobRecord?.mbl_no || addDetails?.mbl_no;
-  let mblRec = null;
-  if (linkedMblNo) {
-    mblRec = await knexDB("MasterBL").where({ mbl_no: linkedMblNo }).first();
-  }
+  let mblRec = jobRecord;
 
   // 3. Resolve numbers, dates, POL, POD, container details
   const hblNo = invoice.mbl_hbl_type === 'HBL' ? invoice.mbl_hbl_no : (addDetails?.hbl_no || jobRecord?.hbl_no);
@@ -133,6 +169,24 @@ export async function validateInvoiceDetails(invoice) {
   // Container details
   if (!containerSize || !containerCount) {
     errors.push("Container details (size/type and count) are missing.");
+  }
+
+  // Vessel, Consignee, Shipper Name, ETD Date, ETA Date validations
+  const vesselVal = (jobRecord?.shipping_line_name || addDetails?.vessel || '').trim();
+  const consigneeVal = (jobRecord?.consignee_name || '').trim();
+  const shipperVal = (jobRecord?.shipper_name || '').trim();
+  const etdVal = jobRecord?.etd || addDetails?.etd_date;
+  const etaVal = jobRecord?.eta || addDetails?.eta_date;
+
+  const missingFields = [];
+  if (!vesselVal || vesselVal === '—') missingFields.push("Vessel");
+  if (!consigneeVal || consigneeVal === '—') missingFields.push("Consignee");
+  if (!shipperVal || shipperVal === '—') missingFields.push("Shipper Name");
+  if (!etdVal || etdVal === '—') missingFields.push("ETD Date");
+  if (!etaVal || etaVal === '—') missingFields.push("ETA Date");
+
+  if (missingFields.length > 0) {
+    errors.push(`Mandatory fields are empty: ${missingFields.join(', ')}.`);
   }
 
   // 4. Customer validations
@@ -534,14 +588,25 @@ export async function postInvoiceToPortal(invoiceId, user) {
     throw new Error("Invoice already posted and has active IRN.");
   }
 
+  // Run full validations before posting
+  const validation = await validateInvoiceDetails(invoice, true);
+  if (!validation.valid) {
+    const errorMsg = validation.errors.join("; ");
+    await knexDB("Invoices").where({ id: invoiceId }).update({
+      einvoice_status: 'Failed',
+      einvoice_response: JSON.stringify({ error: "Validation failed: " + errorMsg })
+    });
+    await logEInvoiceAction(invoiceId, invoice.invoice_no, 'Posting Validation Failed', user, {
+      errors: validation.errors,
+      status: 'Failed'
+    });
+    throw new Error("Validation failed: " + errorMsg);
+  }
+
   // Retrieve Job details
   let jobRecord = null;
   if (invoice.job_no) {
-    if (invoice.mbl_hbl_type === 'MBL') {
-      jobRecord = await knexDB("MasterBL").where({ job_no: invoice.job_no }).first();
-    } else {
-      jobRecord = await knexDB("HouseBL").where({ job_no: invoice.job_no }).first();
-    }
+    jobRecord = await knexDB("MasterBL").where({ job_no: invoice.job_no }).first();
   }
 
   let addDetails = {};

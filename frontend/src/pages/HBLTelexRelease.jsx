@@ -138,7 +138,7 @@ export default function HBLTelexRelease() {
         setFetching(true);
         setIsLocked(false);
         // Check if HBL Telex Release already exists for this job
-        const checkRes = await api.get(`/housebl/document/check/${selectedJobNo}/TelexRelease`);
+        const checkRes = await api.get(`/masterbl/document/check/${selectedJobNo}/TelexRelease`);
         if (checkRes.data.success && checkRes.data.exists) {
           const doc = checkRes.data.document;
           setDocData(doc.doc_data);
@@ -148,7 +148,7 @@ export default function HBLTelexRelease() {
           return;
         }
 
-        const res = await api.get(`/housebl/document-data/${selectedJobNo}`);
+        const res = await api.get(`/masterbl/document-data/${selectedJobNo}`);
         if (res.data.success) {
           setMasterBL(res.data.masterBL);
           setHouseBLs(res.data.houseBLs || []);
@@ -225,7 +225,7 @@ export default function HBLTelexRelease() {
     }
     try {
       setSaving(true);
-      const res = await api.post("/housebl/document/save", {
+      const res = await api.post("/masterbl/document/save", {
         job_no: Number(selectedJobNo),
         document_type: "TelexRelease",
         doc_data: docData
@@ -255,7 +255,7 @@ export default function HBLTelexRelease() {
       if (searchJobNo) params.append("job_no", searchJobNo);
       if (searchBLNo) params.append("bl_no", searchBLNo);
 
-      const res = await api.get(`/housebl/document/search?${params.toString()}`);
+      const res = await api.get(`/masterbl/document/search?${params.toString()}`);
       if (res.data.success) {
         setStoredDocs(res.data.documents || []);
       }
@@ -294,7 +294,7 @@ export default function HBLTelexRelease() {
       if (!isLocked) {
         setSaving(true);
         try {
-          const res = await api.post("/housebl/document/save", {
+          const res = await api.post("/masterbl/document/save", {
             job_no: Number(selectedJobNo),
             document_type: "TelexRelease",
             doc_data: docData

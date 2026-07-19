@@ -19,7 +19,6 @@ import Invoice from './pages/Invoice.jsx';
 import InvoiceGenerator from './pages/InvoiceGenerator.jsx';
 import Profile from './pages/Profile.jsx';
 import { SIMasterBLList, SIMasterBLForm } from './pages/SIMasterBL';
-import { SIHouseBLList, SIHouseBLForm } from './pages/SIHouseBL';
 import ProformaInvoice from './pages/ProformaInvoice';
 import Placeholder from './pages/Placeholder';
 import Charges from './pages/Charges';
@@ -30,6 +29,8 @@ import EInvoicePosting from './pages/EInvoicePosting';
 import HBLConfirmation from './pages/HBLConfirmation';
 import HBLFinal from './pages/HBLFinal';
 import HBLTelexRelease from './pages/HBLTelexRelease';
+import BookingUpdates from './pages/BookingUpdates';
+import UserBookingUpdates from './pages/UserBookingUpdates';
 
 // Placeholder for now
 const Settings = () => (
@@ -52,13 +53,13 @@ function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Home />} />
+            <Route path="/booking-updates" element={<BookingUpdates />} />
+            <Route path="/user-booking-updates" element={<UserBookingUpdates />} />
             <Route path="/quotation" element={<Quotation />} />
             <Route path="/bookings" element={<BookingList />} />
             <Route path="/booking-form" element={<BookingForm />} />
             <Route path="/si-masterbl" element={<SIMasterBLList />} />
             <Route path="/si-masterbl-form" element={<SIMasterBLForm />} />
-            <Route path="/si-housebl" element={<SIHouseBLList />} />
-            <Route path="/si-housebl-form" element={<SIHouseBLForm />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/do-fc" element={<DOFC />} />
@@ -78,6 +79,10 @@ function App() {
             <Route element={<ProtectedRoute allowedRoles={['Admin', 'admin']} />}>
               <Route path="/igm" element={<IGM />} />
               <Route path="/kyc" element={<KYCList />} />
+            </Route>
+
+            {/* Restricted to Admin and Director */}
+            <Route element={<ProtectedRoute allowedRoles={['Admin', 'admin', 'Director', 'director']} />}>
               <Route path="/users" element={<Admin />} />
             </Route>
           </Route>

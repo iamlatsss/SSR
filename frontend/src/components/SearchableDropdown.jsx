@@ -94,7 +94,12 @@ const SearchableDropdown = ({
       // Map options to scores and filter out non-matching
       scored = options
         .map(opt => {
-          const text = (typeof opt === 'object' ? opt[labelKey] : String(opt)).toLowerCase();
+          let text = "";
+          if (typeof opt === 'object' && opt !== null) {
+            text = Object.values(opt).map(v => String(v || '')).join(' ').toLowerCase();
+          } else {
+            text = String(opt).toLowerCase();
+          }
           
           let score = -1;
           if (text === query) {
@@ -214,7 +219,7 @@ const SearchableDropdown = ({
       <div
         onClick={toggleDropdown}
         className={variant === "grid"
-          ? `w-full h-full flex items-center justify-between bg-transparent rounded-none px-2 py-1.5 text-xs transition-all select-none border-0 focus-within:ring-0 focus-within:outline-none focus-within:bg-indigo-50/20 dark:focus-within:bg-indigo-950/20 ${disabled ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40"} ${className}`
+          ? `w-full h-full flex items-center justify-between bg-transparent rounded-none px-1 py-1 text-xs transition-all select-none border-0 focus-within:ring-0 focus-within:outline-none focus-within:bg-indigo-50/20 dark:focus-within:bg-indigo-950/20 ${disabled ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40"} ${className}`
           : `w-full flex items-center justify-between cursor-pointer bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-indigo-500/20 focus-within:border-indigo-500 select-none ${disabled ? "opacity-50 cursor-not-allowed pointer-events-none" : "hover:border-slate-300 dark:hover:border-slate-600"} ${className}`
         }
       >

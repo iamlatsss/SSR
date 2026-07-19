@@ -199,58 +199,24 @@ router.post("/insert", authenticateJWT, async (req, res) => {
 router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
   const jobNo = parseInt(req.params.JobNo, 10);
   try {
-    if (jobNo >= 9000) {
-      // HouseBL
-      const booking = await knexDB('HouseBL')
-        .leftJoin('Parties as S', 'HouseBL.shipper', 'S.id')
-        .leftJoin('Parties as C', 'HouseBL.consignee', 'C.id')
-        .leftJoin('MasterBL as M', 'HouseBL.mbl_no', 'M.mbl_no')
-        .leftJoin('Parties as A', 'M.agent', 'A.id')
-        .select(
-          'HouseBL.*',
-          knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.shipper'))) as shipper_name"),
-          knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(HouseBL.manual_party_details, '$.consignee'))) as consignee_name"),
-          'M.pol as pol',
-          'M.pod as pod',
-          'M.final_pod as final_pod',
-          'M.eta as eta',
-          'M.etd as etd',
-          'M.shipping_line_name as shipping_line_name',
-          'M.cargo_type as cargo_type',
-          'M.container_size as container_size',
-          'M.container_count as container_count',
-          'M.agent as agent',
-          knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(M.manual_party_details, '$.agent'))) as agent_name")
-        )
-        .where({ 'HouseBL.job_no': jobNo })
-        .first();
+    // 1. Try MasterBL table (unified MBL / HBL records)
+    const masterJob = await knexDB('MasterBL')
+      .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
+      .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
+      .leftJoin('Parties as A', 'MasterBL.agent', 'A.id')
+      .select(
+        'MasterBL.*',
+        knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
+        knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.consignee'))) as consignee_name"),
+        knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.agent'))) as agent_name")
+      )
+      .where({ 'MasterBL.job_no': jobNo })
+      .first();
 
-      if (!booking) {
-        return res.status(404).json({ success: false, message: "HouseBL not found" });
-      }
-      booking.job_type = 'HouseBL';
-      return res.json({ success: true, booking });
-    } else if (jobNo >= 8000) {
-      // MasterBL
-      const booking = await knexDB('MasterBL')
-        .leftJoin('Parties as S', 'MasterBL.shipper', 'S.id')
-        .leftJoin('Parties as C', 'MasterBL.consignee', 'C.id')
-        .leftJoin('Parties as A', 'MasterBL.agent', 'A.id')
-        .select(
-          'MasterBL.*',
-          knexDB.raw("COALESCE(S.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.shipper'))) as shipper_name"),
-          knexDB.raw("COALESCE(C.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.consignee'))) as consignee_name"),
-          knexDB.raw("COALESCE(A.name, JSON_UNQUOTE(JSON_EXTRACT(MasterBL.manual_party_details, '$.agent'))) as agent_name")
-        )
-        .where({ 'MasterBL.job_no': jobNo })
-        .first();
-
-      if (!booking) {
-        return res.status(404).json({ success: false, message: "MasterBL not found" });
-      }
-      booking.job_type = 'MasterBL';
-      return res.json({ success: true, booking });
-    } else {
+    if (masterJob) {
+      masterJob.job_type = 'MasterBL';
+      return res.json({ success: true, booking: masterJob });
+    }
       // Standard Booking
       const booking = await knexDB('Booking')
         .leftJoin('Parties as S', 'Booking.shipper', 'S.id')
@@ -274,7 +240,6 @@ router.get("/get/:JobNo", authenticateJWT, async (req, res) => {
       }
       booking.job_type = 'Booking';
       return res.json({ success: true, booking });
-    }
   } catch (error) {
     console.error("Error fetching booking:", error);
     res.status(500).json({ success: false, message: "Internal server error" });

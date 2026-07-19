@@ -132,11 +132,19 @@ export default function Invoice() {
   const [filteredCustomers, setFilteredCustomers] = useState([]);
   const [currentJob, setCurrentJob] = useState(null);
 
+  // Stored Invoice Search State
+  const [searchVal, setSearchVal] = useState("");
+  const [historySearchTerm, setHistorySearchTerm] = useState("");
+
   // Memoized options for SearchableDropdowns
   const jobOptions = useMemo(() => {
     return mblJobs.map(j => ({
       value: j.job_no,
-      label: `Job #${j.job_no} (${j.mbl_no || "No MBL"})`
+      label: `Job #${j.job_no}`,
+      mbl_no: j.mbl_no || "",
+      hbl_no: j.hbl_no || "",
+      shipper_name: j.shipper_name || "",
+      consignee_name: j.consignee_name || ""
     }));
   }, [mblJobs]);
 
@@ -159,6 +167,11 @@ export default function Invoice() {
   const [checkedItems, setCheckedItems] = useState({});
   const [searchTriggered, setSearchTriggered] = useState(false);
   const [jobExchangeRate, setJobExchangeRate] = useState(85.00);
+  const [exchangeRateInput, setExchangeRateInput] = useState("85.00");
+
+  useEffect(() => {
+    setExchangeRateInput(String(jobExchangeRate));
+  }, [jobExchangeRate]);
 
   // Totals calculations
   const [calcTotals, setCalcTotals] = useState({
@@ -182,6 +195,7 @@ export default function Invoice() {
   const [editTotals, setEditTotals] = useState({ subtotal: 0, cgst: 0, sgst: 0, igst: 0, grandTotal: 0 });
   const [editInvoiceDate, setEditInvoiceDate] = useState("");
   const [editRemarks, setEditRemarks] = useState("");
+  const [editExRate, setEditExRate] = useState(85.00);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const calculateEditTotals = (items, printType, clientGstin, clientAddress) => {
@@ -248,6 +262,23 @@ export default function Invoice() {
     return { subtotal, cgst, sgst, igst, grandTotal };
   };
 
+  const handleEditExRateChange = (newRate) => {
+    setEditExRate(newRate);
+    const updatedItems = editItems.map(item => ({
+      ...item,
+      ex_rate: newRate,
+      exRate: newRate
+    }));
+    setEditItems(updatedItems);
+    const newTotals = calculateEditTotals(
+      updatedItems,
+      editingInvoice.print_type,
+      editingInvoice.client_gstin,
+      editingInvoice.client_address
+    );
+    setEditTotals(newTotals);
+  };
+
   const openEditModal = (inv) => {
     setEditingInvoice(inv);
     let items = [];
@@ -265,6 +296,10 @@ export default function Invoice() {
     setEditTotals(totals);
 
     setEditInvoiceDate(inv.invoice_date ? inv.invoice_date.split('T')[0] : "");
+    
+    const firstItem = items[0] || {};
+    const rateVal = parseFloat(firstItem.ex_rate || firstItem.exRate || inv.ex_rate || 85.00);
+    setEditExRate(rateVal);
     
     let remarks = "NIL";
     try {
@@ -304,7 +339,8 @@ export default function Invoice() {
           narration: editRemarks
         },
         invoiceDate: editInvoiceDate,
-        remarks: editRemarks
+        remarks: editRemarks,
+        exRate: editExRate
       };
 
       const res = await api.put(`/invoice/update/${editingInvoice.id}`, payload);
@@ -322,6 +358,11 @@ export default function Invoice() {
       setSavingEdit(false);
     }
   };
+
+  const filteredHistory = useMemo(() => {
+    if (!historySearchTerm.trim()) return history;
+    return history.filter(inv => String(inv.job_no).toLowerCase().includes(historySearchTerm.toLowerCase().trim()));
+  }, [history, historySearchTerm]);
 
   useEffect(() => {
     loadInitData();
@@ -824,10 +865,16 @@ export default function Invoice() {
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">USD Exchange Rate (Ex Rate)</label>
               <input
-                type="number"
-                step="0.01"
-                value={jobExchangeRate}
-                onChange={(e) => setJobExchangeRate(parseFloat(e.target.value) || 85.00)}
+                type="text"
+                value={exchangeRateInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setExchangeRateInput(val);
+                  const parsed = parseFloat(val);
+                  if (!isNaN(parsed) && parsed > 0) {
+                    setJobExchangeRate(parsed);
+                  }
+                }}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                 placeholder="85.00"
               />
@@ -1044,9 +1091,32 @@ export default function Invoice() {
         ) : (
           /* TAX INVOICES ARCHIVE HISTORY */
           <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
-            <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-              <FileText size={20} className="text-indigo-500" /> Tax Invoices History Log
-            </h3>
+            <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-5 gap-4">
+              <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <FileText size={20} className="text-indigo-500" /> Tax Invoices History Log
+              </h3>
+              <div className="flex items-center gap-2 max-w-sm w-full">
+                <input
+                  type="text"
+                  placeholder="Enter Job Number..."
+                  value={searchVal}
+                  onChange={(e) => setSearchVal(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      setHistorySearchTerm(searchVal);
+                    }
+                  }}
+                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => setHistorySearchTerm(searchVal)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <Search size={14} /> Search
+                </button>
+              </div>
+            </div>
 
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse table-auto text-sm">
@@ -1063,14 +1133,14 @@ export default function Invoice() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {history.length === 0 ? (
+                  {filteredHistory.length === 0 ? (
                     <tr>
                       <td colSpan="8" className="p-8 text-center text-slate-500 italic">
-                        No tax invoices generated yet.
+                        No matching tax invoices located.
                       </td>
                     </tr>
                   ) : (
-                    history.map((inv) => (
+                    filteredHistory.map((inv) => (
                       <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
                         <td className="p-4 font-bold text-slate-900 dark:text-white">#{inv.invoice_no || inv.id}</td>
                         <td className="p-4 font-mono text-indigo-600 dark:text-indigo-400">#{inv.job_no}</td>
@@ -1327,9 +1397,10 @@ export default function Invoice() {
                     <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Ex Rate</label>
                     <input
                       type="number"
-                      value={editItems[0]?.ex_rate || editItems[0]?.exRate || 1.00}
-                      disabled
-                      className="w-full bg-slate-100 border border-slate-200 dark:bg-slate-800 dark:border-slate-700 rounded-xl p-2.5 text-slate-500 outline-none cursor-not-allowed"
+                      step="0.01"
+                      value={editExRate}
+                      onChange={(e) => handleEditExRateChange(parseFloat(e.target.value) || 1.00)}
+                      className="w-full bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                   </div>
 

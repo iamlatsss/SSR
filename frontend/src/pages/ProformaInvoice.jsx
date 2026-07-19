@@ -116,7 +116,6 @@ export default function ProformaInvoice() {
   const [mblJobs, setMblJobs] = useState([]);
   const [hblJobs, setHblJobs] = useState([]);
   const [customers, setCustomers] = useState([]);
-  const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
@@ -136,7 +135,11 @@ export default function ProformaInvoice() {
   const jobOptions = useMemo(() => {
     return mblJobs.map(j => ({
       value: j.job_no,
-      label: `Job #${j.job_no} (${j.mbl_no || "No MBL"})`
+      label: `Job #${j.job_no}`,
+      mbl_no: j.mbl_no || "",
+      hbl_no: j.hbl_no || "",
+      shipper_name: j.shipper_name || "",
+      consignee_name: j.consignee_name || ""
     }));
   }, [mblJobs]);
 
@@ -159,6 +162,11 @@ export default function ProformaInvoice() {
   const [checkedItems, setCheckedItems] = useState({});
   const [searchTriggered, setSearchTriggered] = useState(false);
   const [jobExchangeRate, setJobExchangeRate] = useState(85.00);
+  const [exchangeRateInput, setExchangeRateInput] = useState("85.00");
+
+  useEffect(() => {
+    setExchangeRateInput(String(jobExchangeRate));
+  }, [jobExchangeRate]);
 
   // Totals calculations
   const [calcTotals, setCalcTotals] = useState({
@@ -176,7 +184,6 @@ export default function ProformaInvoice() {
 
   useEffect(() => {
     loadInitData();
-    loadHistory();
   }, []);
 
   // Recalculate related MBL/HBL options when job number changes
@@ -213,16 +220,7 @@ export default function ProformaInvoice() {
     }
   };
 
-  const loadHistory = async () => {
-    try {
-      const res = await api.get("/proforma/history");
-      if (res.data.success) {
-        setHistory(res.data.invoices || []);
-      }
-    } catch (error) {
-      console.error("Error loading history:", error);
-    }
-  };
+
 
   const fetchJobDetails = async (jobNo) => {
     try {
@@ -523,10 +521,9 @@ export default function ProformaInvoice() {
       const res = await api.post("/proforma/save", payload);
 
       if (res.data.success) {
-        toast.success(`Successfully saved Proforma #${res.data.proformaNo}`);
+        toast.success(`Successfully generated Proforma Invoice`);
         setPreviewPdfUrl(res.data.pdfUrl);
         setShowPreviewModal(true);
-        loadHistory(); // reload logs
       } else {
         toast.error("Generation failed: " + res.data.message);
       }
@@ -538,60 +535,13 @@ export default function ProformaInvoice() {
     }
   };
 
-  const openPastPreview = (pdfUrl) => {
-    setPreviewPdfUrl(pdfUrl);
-    setShowPreviewModal(true);
-  };
 
-  const handleDeleteProforma = async (id, proformaNo) => {
-    if (!window.confirm(`Are you sure you want to delete Proforma Invoice #${proformaNo}? This will delete the proforma from the database and reset the job status.`)) {
-      return;
-    }
-    try {
-      const res = await api.delete(`/proforma/delete/${id}`);
-      if (res.data.success) {
-        toast.success(res.data.message || `Proforma Invoice #${proformaNo} has been deleted.`);
-        loadHistory(); // Reload history
-      } else {
-        toast.error("Deletion failed: " + res.data.message);
-      }
-    } catch (error) {
-      console.error("Error deleting proforma invoice:", error);
-      toast.error("Failed to delete proforma invoice: " + (error.response?.data?.message || error.message));
-    }
-  };
 
   return (
     <DashboardLayout title="Proforma Invoice Generator">
       <div className="space-y-8 w-full p-1 font-poppins">
         
-        {/* Tab Selection */}
-        <div className="flex border-b border-slate-200 dark:border-slate-800 gap-4 mb-6">
-          <button
-            onClick={() => setActiveTab("generate")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
-              activeTab === "generate"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            Generate Proforma
-          </button>
-          <button
-            onClick={() => setActiveTab("stored")}
-            className={`pb-3 text-sm font-semibold border-b-2 transition-all ${
-              activeTab === "stored"
-                ? "border-indigo-600 text-indigo-600 dark:text-indigo-400"
-                : "border-transparent text-slate-500 hover:text-slate-700"
-            }`}
-          >
-            Stored Proformas
-          </button>
-        </div>
-
-        {activeTab === "generate" ? (
-          <>
-            {/* TOP FILTER CONTROLS */}
+        {/* TOP FILTER CONTROLS */}
             <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
           <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <FileText size={20} className="text-indigo-500" /> Filter Billing Context
@@ -667,10 +617,16 @@ export default function ProformaInvoice() {
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">USD Exchange Rate (Ex Rate)</label>
               <input
-                type="number"
-                step="0.01"
-                value={jobExchangeRate}
-                onChange={(e) => setJobExchangeRate(parseFloat(e.target.value) || 85.00)}
+                type="text"
+                value={exchangeRateInput}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setExchangeRateInput(val);
+                  const parsed = parseFloat(val);
+                  if (!isNaN(parsed) && parsed > 0) {
+                    setJobExchangeRate(parsed);
+                  }
+                }}
                 className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2.5 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
                 placeholder="85.00"
               />
@@ -887,80 +843,6 @@ export default function ProformaInvoice() {
 
           </div>
         )}
-          </>
-        ) : (
-          /* PROFORMA INVOICES ARCHIVE HISTORY */
-          <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
-          <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
-            <FileText size={20} className="text-indigo-500" /> Proforma Invoices History Log
-          </h3>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse table-auto text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs">
-                  <th className="p-4">Proforma No</th>
-                  <th className="p-4">Job No</th>
-                  <th className="p-4">BL Type</th>
-                  <th className="p-4">BL Number</th>
-                  <th className="p-4">Billing Client</th>
-                  <th className="p-4 text-center">Print Currency</th>
-                  <th className="p-4">Date</th>
-                  <th className="p-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                {history.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" className="p-8 text-center text-slate-500 italic">
-                      No proforma invoices generated yet.
-                    </td>
-                  </tr>
-                ) : (
-                  history.map((inv) => (
-                    <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                      <td className="p-4 font-bold text-slate-900 dark:text-white">#{inv.proforma_no || inv.id}</td>
-                      <td className="p-4 font-mono text-indigo-600 dark:text-indigo-400">#{inv.job_no}</td>
-                      <td className="p-4">
-                        <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                          inv.mbl_hbl_type === 'MBL' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {inv.mbl_hbl_type}
-                        </span>
-                      </td>
-                      <td className="p-4 font-mono font-medium">{inv.mbl_hbl_no}</td>
-                      <td className="p-4 font-semibold">{inv.client_name}</td>
-                      <td className="p-4 text-center font-bold text-teal-600">{inv.print_type === 'USD' ? 'USD' : 'INR'}</td>
-                      <td className="p-4">{new Date(inv.proforma_date || inv.created_at).toLocaleDateString()}</td>
-                      <td className="p-4 text-right flex justify-end gap-3">
-                        <button
-                          onClick={() => openPastPreview(inv.pdf_link)}
-                          title="Interactive Preview"
-                          className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg transition-colors inline-flex items-center justify-center"
-                          disabled={!inv.pdf_link}
-                        >
-                          <Eye size={16} />
-                        </button>
-                        <a
-                          href={inv.pdf_link}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="S3 Download"
-                          className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg transition-colors inline-flex items-center justify-center"
-                          disabled={!inv.pdf_link}
-                        >
-                          <Download size={16} />
-                        </a>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        )}
-
       </div>
 
       {/* POPUP MODAL FOR INTERACTIVE PREVIEW */}
