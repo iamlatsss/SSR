@@ -23,6 +23,7 @@ import EditRequests from './MasterBL/EditRequests.js';
 import Party from './Party/Party.js';
 import PackageTypes from './Data/PackageTypes.js';
 import CFS from './CFS/CFS.js';
+import { startBackupScheduler } from './database-maintenance/scheduler.js';
 
 const app = express();
 const PORT = 5001;
@@ -76,5 +77,6 @@ app.get('/', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Backend server listening on port ${PORT}`);
+  startBackupScheduler('30 14 * * *'); // Triggers daily at 8:00 PM IST (14:30 UTC)
 });
 

@@ -1,16 +1,19 @@
-# Ignore virtual environment
-venv/
+# Dependencies
+node_modules/
 
-# Ignore Python cache files
+# Environment Variables & Secrets
+.env
+*.env
+
+# Application Backups & Temporary Files
+LocalTemp/
+backend/backups/
+
+# Python
+venv/
 __pycache__/
 *.pyc
 
-# Ignore environment variables file
-.env
-
-# Ignore macOS system files (optional)
+# System & OS Files
 .DS_Store
-
-node_modules/
-
-LocalTemp/
+Thumbs.db
