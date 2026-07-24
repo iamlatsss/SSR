@@ -54,6 +54,17 @@ export function cleanOldLocalBackups(maxDays = 7) {
   }
 }
 
+function removeFailedBackupFile(filePath) {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath);
+      console.log(`[Backup Cleanup] Deleted failed/partial backup file: ${path.basename(filePath)}`);
+    }
+  } catch (err) {
+    console.error(`[Backup Cleanup] Failed to delete file ${path.basename(filePath)}:`, err.message);
+  }
+}
+
 export async function createBackup() {
   if (!fs.existsSync(BACKUP_DIR)) {
     fs.mkdirSync(BACKUP_DIR, { recursive: true });
@@ -97,31 +108,54 @@ export async function createBackup() {
     const fileStream = fs.createWriteStream(backupPath);
 
     let stderr = '';
+    let hasFailed = false;
+
     dumpProc.stderr.on('data', chunk => { stderr += chunk.toString(); });
+
+    dumpProc.on('error', err => {
+      hasFailed = true;
+      fileStream.destroy();
+      removeFailedBackupFile(backupPath);
+      reject(new Error(`Failed to spawn mysqldump CLI: ${err.message}`));
+    });
 
     dumpProc.on('close', code => {
       if (code !== 0) {
+        hasFailed = true;
         console.error(`[Backup] FAILED with code ${code}: ${stderr.trim()}`);
+        fileStream.destroy();
+        removeFailedBackupFile(backupPath);
         return reject(new Error(`mysqldump failed: ${stderr.trim()}`));
       }
     });
 
     fileStream.on('finish', async () => {
+      if (hasFailed) return;
+
       console.log(`[Backup] SUCCESS! Full database backup saved to: ${filename}`);
       
-      // 1. Upload to S3 if configured
-      await uploadBackupToS3(backupPath);
+      try {
+        // 1. Upload to S3 if configured
+        await uploadBackupToS3(backupPath);
 
-      // 2. Local EC2 Retention Cleanup (max 7 days)
-      cleanOldLocalBackups(7);
+        // 2. Local EC2 Retention Cleanup (max 7 days)
+        cleanOldLocalBackups(7);
 
-      // 3. Amazon S3 Retention Cleanup (max 90 days / 3 months)
-      await cleanOldS3Backups(90);
+        // 3. Amazon S3 Retention Cleanup (max 90 days / 3 months)
+        await cleanOldS3Backups(90);
 
-      resolve(backupPath);
+        resolve(backupPath);
+      } catch (err) {
+        console.error(`[Backup Post-Processing Error]`, err.message);
+        resolve(backupPath);
+      }
     });
 
-    fileStream.on('error', err => reject(err));
+    fileStream.on('error', err => {
+      hasFailed = true;
+      removeFailedBackupFile(backupPath);
+      reject(err);
+    });
 
     dumpProc.stdout.pipe(gzipProc).pipe(fileStream);
   });

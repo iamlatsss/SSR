@@ -1,24 +1,13 @@
 {
-  "name": "react",
+  "name": "ssr-workspace",
   "version": "1.0.0",
-  "main": "index.js",
+  "private": true,
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
     "server": "cd backend && npm start",
-    "client": "cd frontend && npm run dev",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "client": "cd frontend && npm run dev"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "devDependencies": {
     "concurrently": "^9.1.2"
-  },
-  "dependencies": {
-    "bcrypt": "^6.0.0",
-    "dotenv": "^16.5.0",
-    "jsonwebtoken": "^9.0.2",
-    "react-icons": "^5.5.0"
   }
 }

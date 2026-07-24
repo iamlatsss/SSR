@@ -4,13 +4,19 @@ A clean, 100% read-only MySQL database backup module for Node.js.
 
 ---
 
-## 🔒 Safety Guarantee
+## 🔒 Safety & Failure Handling Guarantees
 
+### 1. `backup` Command (100% READ-ONLY)
 - **Does it alter the database?** **NO.**
 - `backup` is strictly a **100% read-only fetch operation**.
 - It uses `mysqldump` to read table structures and data rows.
 - It performs **zero** writes, **zero** table alterations, and **zero** deletions on your database.
-- Automatically uploads compressed `.sql.gz` backup files to **Amazon S3**.
+
+### 2. Auto-Cleanup on Failure
+- If `mysqldump` fails (e.g. database unreachable, network timeout, connection error):
+  - **The partial/corrupt local backup file is immediately deleted**.
+  - **S3 Upload is completely skipped** (nothing is uploaded to S3 if the dump fails).
+  - An error log is recorded.
 
 ---
 
