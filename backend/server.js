@@ -3,7 +3,7 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser';
 import './config.js';
 
-// reload nodemon
+// reload nodemon after footer single-line alignment fix
 import Auth, { authenticateJWT, requireAdmin, checkPermission } from './AuthAPI/Auth.js';
 import ForgotPasswordAPI from './AuthAPI/ForgotPasswordAPI.js';
 import Admin from './Admin/admin.js';

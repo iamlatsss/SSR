@@ -1,8 +1,8 @@
 import express from 'express';
-import { saveQuotation, getAllSentQuotations, deleteQuotationsByIds, knexDB } from '../Database.js';
+import { saveQuotation, getAllSentQuotations, deleteQuotationsByIds, getNextQuoteNo, knexDB } from '../Database.js';
 import fs from 'fs/promises';
 import path from 'path';
-import puppeteer from 'puppeteer';
+import { generatePdf } from '../utils/pdfGenerator.js';
 import { uploadFile, listFiles } from '../S3/S3Service.js';
 import { fileURLToPath } from 'url';
 
@@ -23,21 +23,124 @@ router.get('/charges', async (req, res) => {
     }
 });
 
+function isIndianPort(portStr) {
+    if (!portStr) return false;
+    const str = String(portStr).toLowerCase();
+    return str.includes('india') || str.includes('innsa') || str.includes('inbom') || str.includes('inmaa') || str.includes('inmun') || str.includes('inccu') || str.includes('incok') || str.includes('intut') || str.includes('inixy') || str.includes('ingoi') || str.includes('invtz');
+}
+
+function getChargeCategory(charge, pol, pod) {
+    if (charge.category) return charge.category.toLowerCase();
+    
+    const name = (charge.chargeName || '').toUpperCase();
+    if (name.includes('FREIGHT') || name.includes('OCEAN') || name.includes('AIR') || name.includes('BAF') || name.includes('CAF')) {
+        return 'freight';
+    }
+    if (name.includes('POD') || name.includes('DESTINATION') || name.includes('DO CHARGES') || name.includes('DELIVERY ORDER') || name.includes('CUSTOMS') || name.includes('DEMURRAGE') || name.includes('STORAGE') || name.includes('DETENTION') || name.includes('IMPORT') || name.includes('CFS')) {
+        return 'destination';
+    }
+    if (name.includes('POL') || name.includes('ORIGIN') || name.includes('SEAL') || name.includes('MANDATORY') || name.includes('BL ') || name.includes('DOCUMENTATION') || name.includes('TOLL') || name.includes('VGM') || name.includes('EXPORT')) {
+        return 'origin';
+    }
+
+    const isExport = isIndianPort(pol) || (!isIndianPort(pod) && !!pol);
+    return isExport ? 'origin' : 'destination';
+}
+
+function renderChargeTable(title, chargesList) {
+    if (!chargesList || chargesList.length === 0) return '';
+    
+    let rowsHtml = '';
+    chargesList.forEach((charge) => {
+        const currencyStr = charge.currency || 'USD';
+        const basisStr = charge.basis || '20\'';
+        
+        const rawQty = parseFloat(charge.quantity);
+        const qtyNum = isNaN(rawQty) ? 1 : rawQty;
+
+        const rawRate = parseFloat(charge.amount);
+        const rateNum = isNaN(rawRate) ? 0 : rawRate;
+
+        const rawTax = parseFloat(charge.tax);
+        const taxNum = isNaN(rawTax) ? (title.includes('Freight') ? 5 : 18) : rawTax;
+
+        const subtotalNum = qtyNum * rateNum * (1 + taxNum / 100);
+
+        const qty = qtyNum.toFixed(2);
+        const rate = rateNum.toFixed(2);
+        const tax = taxNum;
+        const subtotal = subtotalNum.toFixed(2);
+
+        rowsHtml += `
+          <tr style="border-bottom: 1px solid #e2e8f0;">
+            <td style="text-align: left; padding: 4px 8px; border-right: 1px solid #e2e8f0; vertical-align: middle; font-weight: 500; color: #1e293b;">${charge.chargeName || '-'}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid #e2e8f0; vertical-align: middle; color: #334155;">${basisStr}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid #e2e8f0; vertical-align: middle; color: #334155;">${qty}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid #e2e8f0; vertical-align: middle; color: #334155;">${currencyStr}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid #e2e8f0; vertical-align: middle; color: #334155;">${rate}</td>
+            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid #e2e8f0; vertical-align: middle; color: #334155;">${tax}%</td>
+            <td style="text-align: center; padding: 4px 6px; font-weight: 700; color: #0f2460; vertical-align: middle; white-space: nowrap;">${currencyStr} ${subtotal}</td>
+          </tr>`;
+    });
+
+    return `
+      <div style="margin-bottom: 8px; page-break-inside: avoid;">
+        <div style="background: #0f2460; color: #ffffff; padding: 4px 10px; font-weight: 700; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.5px; border-top-left-radius: 4px; border-top-right-radius: 4px;">
+          ${title}
+        </div>
+        <div style="border: 1px solid #cbd5e1; border-top: none; border-bottom-left-radius: 4px; border-bottom-right-radius: 4px; overflow: hidden;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+            <thead>
+              <tr style="background: #f1f5f9; border-bottom: 1.5px solid #cbd5e1;">
+                <th style="text-align: left; padding: 4px 8px; border-right: 1px solid #cbd5e1; font-weight: 700; color: #0f2460; font-size: 9.5px; text-transform: uppercase; width: 30%;">CHARGE HEAD</th>
+                <th style="text-align: center; padding: 4px 6px; border-right: 1px solid #cbd5e1; font-weight: 700; color: #0f2460; font-size: 9.5px; text-transform: uppercase; width: 16%;">BASIS</th>
+                <th style="text-align: center; padding: 4px 6px; border-right: 1px solid #cbd5e1; font-weight: 700; color: #0f2460; font-size: 9.5px; text-transform: uppercase; width: 11%;">QUANTITY</th>
+                <th style="text-align: center; padding: 4px 6px; border-right: 1px solid #cbd5e1; font-weight: 700; color: #0f2460; font-size: 9.5px; text-transform: uppercase; width: 11%;">CURRENCY</th>
+                <th style="text-align: center; padding: 4px 6px; border-right: 1px solid #cbd5e1; font-weight: 700; color: #0f2460; font-size: 9.5px; text-transform: uppercase; width: 10%;">RATE</th>
+                <th style="text-align: center; padding: 4px 6px; border-right: 1px solid #cbd5e1; font-weight: 700; color: #0f2460; font-size: 9.5px; text-transform: uppercase; width: 9%;">TAX (%)</th>
+                <th style="text-align: center; padding: 4px 6px; font-weight: 700; color: #0f2460; font-size: 9.5px; text-transform: uppercase; width: 13%;">SUBTOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+}
+
+function buildChargesSectionsHtml(charges, pol, pod) {
+    if (!charges || !Array.isArray(charges) || charges.length === 0) {
+        return '<div style="padding: 10px; text-align: center; font-style: italic; color: #888;">No charges specified</div>';
+    }
+
+    const freightList = charges.filter(c => getChargeCategory(c, pol, pod) === 'freight');
+    const originList = charges.filter(c => getChargeCategory(c, pol, pod) === 'origin');
+    const destinationList = charges.filter(c => getChargeCategory(c, pol, pod) === 'destination');
+
+    let html = '';
+    html += renderChargeTable('Freight Charges', freightList);
+    html += renderChargeTable('Origin Charges', originList);
+    html += renderChargeTable('Destination Charges', destinationList);
+
+    return html;
+}
+
 router.post('/generate-and-save', async (req, res) => {
     try {
         const data = req.body;
+        const quoteNo = data.quote_no || await getNextQuoteNo();
         
         // 1. Read HTML template
         const templatePath = path.join(__dirname, '..', 'Mail', 'quotation_pdf.html');
         let html = await fs.readFile(templatePath, 'utf-8');
 
-        const quoteNo = `SSR/QT/${new Date().getFullYear()}/${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
-
         // 2. Replace placeholders
         const replacements = {
             '{{QUOTE_NO}}': quoteNo,
             '{{DATE}}': new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
-            '{{VALIDITY_DATE}}': data.validity ? new Date(data.validity).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '',
+            '{{VALIDITY_DATE}}': data.validity ? new Date(data.validity).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '-',
             '{{CLIENT_NAME}}': data.client_name || '-',
             '{{ADDRESS}}': data.address || '-',
             '{{PHONE}}': data.phone_number || '-',
@@ -48,46 +151,23 @@ router.post('/generate-and-save', async (req, res) => {
             '{{COMMODITY}}': data.commodity || '-',
             '{{INCOTERMS}}': data.incoterms || '-',
             '{{TRANSIT_TIME}}': data.transit_time || '-',
-            '{{REMARKS}}': data.remarks || '',
-            '{{TERMS}}': data.terms || 'Standard Terms Apply'
+            '{{REMARKS}}': data.remarks || '-',
+            '{{TERMS}}': data.terms || 'Standard Terms Apply',
+            '{{CHARGES_SECTIONS}}': buildChargesSectionsHtml(data.charges, data.pol, data.pod)
         };
-
-        let chargesHtml = '';
-        if (data.charges && Array.isArray(data.charges)) {
-            data.charges.forEach((charge, index) => {
-                const currencyStr = charge.currency || 'USD';
-                const basisStr = charge.basis || 'Per Container';
-                const qty = parseFloat(charge.quantity !== undefined ? charge.quantity : 1).toFixed(2);
-                const rate = parseFloat(charge.amount || 0).toFixed(2);
-                const tax = parseFloat(charge.tax !== undefined ? charge.tax : 5);
-                const subtotal = (qty * rate * (1 + tax / 100)).toFixed(2);
-                chargesHtml += `
-          <tr>
-            <td style="text-align: left; padding: 4px 6px; border-right: 1px solid var(--border); vertical-align: middle;">${charge.chargeName || '-'}</td>
-            <td style="text-align: left; padding: 4px 6px; border-right: 1px solid var(--border); vertical-align: middle;">${basisStr}</td>
-            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid var(--border); font-weight: bold; color: var(--blue-dk); vertical-align: middle;">${qty}</td>
-            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid var(--border); vertical-align: middle;">${currencyStr}</td>
-            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid var(--border); font-weight: bold; color: var(--blue-dk); vertical-align: middle;">${rate}</td>
-            <td style="text-align: center; padding: 4px 6px; border-right: 1px solid var(--border); vertical-align: middle;">${tax}%</td>
-            <td style="text-align: center; padding: 4px 6px; font-weight: bold; color: var(--blue-dk); vertical-align: middle;">${currencyStr} ${subtotal}</td>
-          </tr>`;
-            });
-        }
-        replacements['{{CHARGES_ROWS}}'] = chargesHtml;
 
         for (const [key, value] of Object.entries(replacements)) {
             html = html.replace(new RegExp(key, 'g'), value);
         }
 
         // 3. Generate PDF with Puppeteer
-        const browser = await puppeteer.launch({ headless: 'new', args: ['--no-sandbox'] });
-        const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'networkidle0' });
-        const pdfBuffer = await page.pdf({ format: 'A4', printBackground: true });
-        await browser.close();
+        const pdfBuffer = await generatePdf({
+            htmlContent: html,
+            pdfOptions: { format: 'A4', printBackground: true }
+        });
 
         // 4. Upload to S3
-        const filename = `Quotation_${(data.client_name || 'Client').replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+        const filename = `Quotation_${quoteNo}_${Date.now()}.pdf`;
         const uploadRes = await uploadFile({
             fileBuffer: pdfBuffer,
             key: filename,
@@ -102,15 +182,85 @@ router.post('/generate-and-save', async (req, res) => {
         // 5. Save to database
         const dbData = {
             ...data,
+            quote_no: quoteNo,
             container_size_type: data.containersize,
             pdf_link: uploadRes.url
         };
         const saveRes = await saveQuotation(dbData);
 
-        res.json({ success: true, pdfUrl: uploadRes.url });
+        res.json({ success: true, pdfUrl: uploadRes.url, quoteNo });
     } catch (error) {
         console.error("Generate and Save Error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });
+    }
+});
+
+// Download PDF directly as stream
+router.post('/download-pdf', async (req, res) => {
+    try {
+        const data = req.body;
+        const quoteNo = data.quote_no || await getNextQuoteNo();
+        
+        const templatePath = path.join(__dirname, '..', 'Mail', 'quotation_pdf.html');
+        let html = await fs.readFile(templatePath, 'utf-8');
+
+        const replacements = {
+            '{{QUOTE_NO}}': quoteNo,
+            '{{DATE}}': new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }),
+            '{{VALIDITY_DATE}}': data.validity ? new Date(data.validity).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }) : '-',
+            '{{CLIENT_NAME}}': data.client_name || '-',
+            '{{ADDRESS}}': data.address || '-',
+            '{{PHONE}}': data.phone_number || '-',
+            '{{EMAIL}}': data.email || '-',
+            '{{POL}}': data.pol || '-',
+            '{{POD}}': data.pod || '-',
+            '{{CONTAINER}}': data.containersize || '-',
+            '{{COMMODITY}}': data.commodity || '-',
+            '{{INCOTERMS}}': data.incoterms || '-',
+            '{{TRANSIT_TIME}}': data.transit_time || '-',
+            '{{REMARKS}}': data.remarks || '-',
+            '{{TERMS}}': data.terms || 'Standard Terms Apply',
+            '{{CHARGES_SECTIONS}}': buildChargesSectionsHtml(data.charges, data.pol, data.pod)
+        };
+
+        for (const [key, value] of Object.entries(replacements)) {
+            html = html.replace(new RegExp(key, 'g'), value);
+        }
+
+        const pdfBuffer = await generatePdf({
+            htmlContent: html,
+            pdfOptions: { format: 'A4', printBackground: true }
+        });
+
+        // Save & S3 upload synchronously to guarantee database log persistence
+        const filename = `Quotation_${quoteNo}_${Date.now()}.pdf`;
+        try {
+            const uploadRes = await uploadFile({
+                fileBuffer: pdfBuffer,
+                key: filename,
+                directory: 'quotations',
+                contentType: 'application/pdf'
+            });
+
+            if (uploadRes.success) {
+                await saveQuotation({
+                    ...data,
+                    quote_no: quoteNo,
+                    container_size_type: data.containersize,
+                    pdf_link: uploadRes.url
+                });
+            }
+        } catch (uploadErr) {
+            console.error("Save & S3 Upload error in download-pdf:", uploadErr);
+        }
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${quoteNo}.pdf"`);
+        res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+        return res.send(pdfBuffer);
+    } catch (error) {
+        console.error("Download PDF Error:", error);
+        res.status(500).json({ success: false, message: "Failed to generate PDF" });
     }
 });
 

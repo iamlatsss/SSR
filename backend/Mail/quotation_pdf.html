@@ -5,11 +5,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Freight Quotation – SSR Logistic Solutions</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
   <style>
     @page {
       size: A4;
-      margin: 15mm 14mm;
+      margin: 5mm 6mm;
     }
 
     *,
@@ -33,8 +32,8 @@
     }
 
     body {
-      font-family: 'Inter', sans-serif;
-      font-size: 12px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      font-size: 11px;
       color: var(--black);
       background: #fff;
       -webkit-print-color-adjust: exact;
@@ -51,8 +50,8 @@
     .header {
       display: flex;
       align-items: center;
-      gap: 20px;
-      padding: 20px 28px 16px;
+      gap: 16px;
+      padding: 10px 20px 10px;
       border-bottom: 3px solid var(--blue);
       page-break-inside: avoid;
     }
@@ -62,7 +61,7 @@
     }
 
     .logo-img {
-      width: 90px;
+      width: 75px;
       height: auto;
       flex-shrink: 0;
     }
@@ -72,17 +71,17 @@
     }
 
     .company-info h1 {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: 700;
       color: var(--blue-dk);
       letter-spacing: .3px;
-      margin-bottom: 5px;
+      margin-bottom: 2px;
     }
 
     .company-info p {
-      font-size: 10.5px;
+      font-size: 10px;
       color: var(--gray);
-      line-height: 1.75;
+      line-height: 1.5;
     }
 
     .company-info p b {
@@ -94,11 +93,11 @@
       text-align: right;
       flex-shrink: 0;
       border-left: 3px solid var(--blue-dk);
-      padding-left: 18px;
+      padding-left: 14px;
     }
 
     .header-right .doc-title {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 700;
       color: var(--blue-dk);
       letter-spacing: 1px;
@@ -106,14 +105,14 @@
     }
 
     .header-right .quot-no {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 600;
       color: var(--blue-dk);
-      margin-top: 4px;
+      margin-top: 2px;
     }
 
     .header-right .date-line {
-      font-size: 10.5px;
+      font-size: 10px;
       color: var(--gray);
       margin-top: 2px;
     }
@@ -122,33 +121,33 @@
     .accent-bar {
       height: 3px;
       background: var(--blue-dk);
-      margin-bottom: 20px;
+      margin-bottom: 10px;
     }
 
     /* ── BODY ── */
     .body {
-      padding: 0 28px 20px;
+      padding: 0 20px 10px;
     }
 
     /* ── SECTION TITLE ── */
     .section-title {
-      font-size: 11px;
+      font-size: 10.5px;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1.2px;
       color: #fff;
       background: var(--blue-dk);
-      padding: 6px 12px;
+      padding: 4px 10px;
       border-left: 4px solid var(--blue-dk);
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
 
     /* ── TWO COLUMN ── */
     .two-col {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      margin-bottom: 22px;
+      gap: 12px;
+      margin-bottom: 10px;
     }
 
     /* ── INFO CARD ── */
@@ -156,14 +155,14 @@
       border: 1px solid var(--border);
       border-top: 2px solid var(--blue);
       border-radius: var(--radius);
-      padding: 14px 16px;
+      padding: 8px 12px;
     }
 
     .info-row {
       display: flex;
-      gap: 8px;
-      margin-bottom: 6px;
-      line-height: 1.5;
+      gap: 6px;
+      margin-bottom: 3px;
+      line-height: 1.4;
     }
 
     .info-row:last-child {
@@ -261,10 +260,10 @@
       border: 1px solid var(--border);
       border-left: 4px solid var(--blue-dk);
       border-radius: var(--radius);
-      padding: 12px 16px;
-      margin-bottom: 18px;
-      font-size: 11.5px;
-      line-height: 1.75;
+      padding: 6px 10px;
+      margin-bottom: 8px;
+      font-size: 10.5px;
+      line-height: 1.5;
       background: var(--mist);
       page-break-inside: avoid;
     }
@@ -277,22 +276,22 @@
     .tnc-box {
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: 14px 16px;
-      margin-bottom: 22px;
+      padding: 8px 12px;
+      margin-bottom: 10px;
       page-break-inside: avoid;
     }
 
     .tnc-box ol {
-      padding-left: 18px;
+      padding-left: 16px;
       list-style: decimal;
     }
 
     .tnc-box ol li {
-      font-size: 11px;
+      font-size: 10px;
       color: var(--gray);
-      line-height: 1.7;
-      margin-bottom: 4px;
-      padding-left: 4px;
+      line-height: 1.4;
+      margin-bottom: 2px;
+      padding-left: 2px;
     }
 
     .tnc-box ol li::marker {
@@ -305,10 +304,10 @@
       border: 1px solid var(--border);
       border-top: 2px solid var(--blue);
       border-radius: var(--radius);
-      padding: 14px 18px;
-      font-size: 11.5px;
-      line-height: 1.8;
-      margin-bottom: 22px;
+      padding: 8px 12px;
+      font-size: 10.5px;
+      line-height: 1.5;
+      margin-bottom: 10px;
       color: var(--black);
       page-break-inside: avoid;
     }
@@ -317,18 +316,18 @@
     .signature {
       display: flex;
       justify-content: flex-end;
-      margin-bottom: 24px;
+      margin-bottom: 10px;
       page-break-inside: avoid;
     }
 
     .sig-block {
       text-align: center;
-      min-width: 180px;
+      min-width: 160px;
     }
 
     .sig-line {
       border-top: 1.5px solid var(--blue-dk);
-      margin-top: 44px;
+      margin-top: 24px;
       padding-top: 6px;
       font-size: 11px;
       color: var(--gray);
@@ -342,26 +341,29 @@
 
     /* ── FOOTER ── */
     .footer {
-      border-top: 3px solid var(--blue-dk);
-      padding: 12px 28px;
+      border-top: 2.5px solid var(--blue-dk);
+      padding: 6px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 10px;
+      font-size: 9px;
       color: var(--gray-lt);
       page-break-inside: avoid;
       background: #fff;
+      white-space: nowrap;
     }
 
     .footer .footer-left {
       color: var(--gray);
-      font-size: 10.5px;
+      font-size: 9px;
+      white-space: nowrap;
     }
 
     .footer .footer-right {
       text-align: right;
-      font-size: 10px;
+      font-size: 9px;
       color: var(--gray-lt);
+      white-space: nowrap;
     }
 
     .footer b {
@@ -446,7 +448,7 @@
               <div class="info-val">{{POD}}</div>
             </div>
             <div class="info-row">
-              <div class="info-key">Container</div>
+              <div class="info-key">Container wt/size</div>
               <div class="info-val">{{CONTAINER}}</div>
             </div>
             <div class="info-row">
@@ -469,26 +471,8 @@
         </div>
       </div>
 
-      <!-- Charges -->
-      <div class="section-title">Freight Charges</div>
-      <div class="charges-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th style="text-align: left; padding: 4px 6px; border-right: 1px solid rgba(255, 255, 255, 0.15);">Charge Head</th>
-              <th style="text-align: left; padding: 4px 6px; border-right: 1px solid rgba(255, 255, 255, 0.15); width: 110px;">Basis</th>
-              <th style="text-align: center; padding: 4px 6px; border-right: 1px solid rgba(255, 255, 255, 0.15); width: 65px;">Quantity</th>
-              <th style="text-align: center; padding: 4px 6px; border-right: 1px solid rgba(255, 255, 255, 0.15); width: 70px;">Currency</th>
-              <th style="text-align: center; padding: 4px 6px; border-right: 1px solid rgba(255, 255, 255, 0.15); width: 90px;">Rate</th>
-              <th style="text-align: center; padding: 4px 6px; border-right: 1px solid rgba(255, 255, 255, 0.15); width: 55px;">Tax(%)</th>
-              <th style="text-align: center; padding: 4px 6px; width: 110px;">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {{CHARGES_ROWS}}
-          </tbody>
-        </table>
-      </div>
+      <!-- Charges Sections -->
+      {{CHARGES_SECTIONS}}
 
       <!-- Remarks -->
       <div class="section-title">Remarks</div>
@@ -521,14 +505,6 @@
         Sincerely,<br />
         <b>SSR Logistic Solutions</b>
       </div> -->
-
-      <!-- Signature -->
-      <div class="signature">
-        <div class="sig-block">
-          <div class="sig-company">SSR Logistic Solutions</div>
-          <div class="sig-line">Authorised Signatory</div>
-        </div>
-      </div>
 
     </div><!-- /body -->
 

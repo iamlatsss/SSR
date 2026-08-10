@@ -390,7 +390,8 @@ export async function updateBookingById(jobNo, updates) {
       "ADD COLUMN incoterms VARCHAR(255)",
       "ADD COLUMN terms TEXT",
       "ADD COLUMN charges JSON",
-      "ADD COLUMN transit_time VARCHAR(255)"
+      "ADD COLUMN transit_time VARCHAR(255)",
+      "ADD COLUMN quote_no VARCHAR(100)"
     ];
     for (const col of newColumns) {
       try {
@@ -403,13 +404,36 @@ export async function updateBookingById(jobNo, updates) {
   }
 })();
 
+export async function getNextQuoteNo() {
+  try {
+    const [rows] = await pool.query("SELECT quote_no, id FROM Quotations ORDER BY id DESC LIMIT 1");
+    if (rows.length === 0) {
+      return "Quote-SSR1001";
+    }
+    const lastRow = rows[0];
+    if (lastRow.quote_no && lastRow.quote_no.startsWith("Quote-SSR")) {
+      const numPart = parseInt(lastRow.quote_no.replace("Quote-SSR", ""), 10);
+      if (!isNaN(numPart)) {
+        return `Quote-SSR${numPart + 1}`;
+      }
+    }
+    const nextId = 1000 + (lastRow.id ? lastRow.id + 1 : 1);
+    return `Quote-SSR${nextId}`;
+  } catch (error) {
+    console.error("Error generating quote_no:", error);
+    return "Quote-SSR1001";
+  }
+}
+
 export async function saveQuotation(data) {
+  const quoteNo = data.quote_no || await getNextQuoteNo();
   const query = `
     INSERT INTO Quotations 
-    (client_name, phone_number, email, pol, pod, container_size_type, remarks, pdf_link, address, commodity, incoterms, terms, charges, transit_time)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    (quote_no, client_name, phone_number, email, pol, pod, container_size_type, remarks, pdf_link, address, commodity, incoterms, terms, charges, transit_time)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const values = [
+    quoteNo,
     data.client_name || null,
     data.phone_number || null,
     data.email || null,
@@ -428,7 +452,7 @@ export async function saveQuotation(data) {
 
   try {
     const [result] = await pool.query(query, values);
-    return { ok: true, insertId: result.insertId };
+    return { ok: true, insertId: result.insertId, quoteNo };
   } catch (error) {
     console.error("Error saving quotation:", error);
     return { ok: false, message: "Database error", error: error.message };
@@ -733,6 +757,21 @@ export async function deleteQuotationsByIds(ids) {
   try {
     await pool.query(query);
     console.log("ProformaInvoices table initialized");
+
+    const columnsToAdd = [
+      { name: 'approval_status', type: "VARCHAR(20) DEFAULT 'Pending'" },
+      { name: 'party_type', type: "VARCHAR(20) DEFAULT 'Customer'" },
+      { name: 'vendor_invoice_no', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'vendor_invoice_date', type: 'DATE DEFAULT NULL' },
+      { name: 'gst_no', type: 'VARCHAR(100) DEFAULT NULL' }
+    ];
+    for (const col of columnsToAdd) {
+      try {
+        await pool.query(`ALTER TABLE ProformaInvoices ADD COLUMN ${col.name} ${col.type}`);
+      } catch (e) {
+        // Ignore if exists
+      }
+    }
   } catch (err) {
     console.error("Error creating ProformaInvoices table:", err);
   }
@@ -785,7 +824,11 @@ export async function deleteQuotationsByIds(ids) {
       { name: 'signed_qr_code', type: 'LONGTEXT DEFAULT NULL' },
       { name: 'signed_invoice', type: 'LONGTEXT DEFAULT NULL' },
       { name: 'einvoice_response', type: 'JSON DEFAULT NULL' },
-      { name: 'einvoice_logs', type: 'JSON DEFAULT NULL' }
+      { name: 'einvoice_logs', type: 'JSON DEFAULT NULL' },
+      { name: 'party_type', type: "VARCHAR(20) DEFAULT 'Customer'" },
+      { name: 'vendor_invoice_no', type: 'VARCHAR(100) DEFAULT NULL' },
+      { name: 'vendor_invoice_date', type: 'DATE DEFAULT NULL' },
+      { name: 'gst_no', type: 'VARCHAR(100) DEFAULT NULL' }
     ];
     for (const col of columnsToAdd) {
       try {
