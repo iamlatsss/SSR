@@ -30,7 +30,6 @@ import HBLConfirmation from './pages/HBLConfirmation';
 import HBLFinal from './pages/HBLFinal';
 import HBLTelexRelease from './pages/HBLTelexRelease';
 import BookingUpdates from './pages/BookingUpdates';
-import UserBookingUpdates from './pages/UserBookingUpdates';
 
 // Placeholder for now
 const Settings = () => (
@@ -54,7 +53,6 @@ function App() {
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<Home />} />
             <Route path="/booking-updates" element={<BookingUpdates />} />
-            <Route path="/user-booking-updates" element={<UserBookingUpdates />} />
             <Route path="/quotation" element={<Quotation />} />
             <Route path="/bookings" element={<BookingList />} />
             <Route path="/booking-form" element={<BookingForm />} />

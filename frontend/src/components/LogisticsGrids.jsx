@@ -21,13 +21,17 @@ const PACKAGE_TYPES = [
    1. RATE GRID COMPONENT (Used for both Buy Rates and Sell Rates)
    ========================================================================= */
 export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true, consignee = "", chargeOptions = [], errors = [], isLocked = false, isEditApproved = false }) {
+  const safeRows = Array.isArray(rows) ? rows : [];
+  const safeCustomers = Array.isArray(customers) ? customers : [];
+  const safeErrors = Array.isArray(errors) ? errors : [];
+  const safeChargeOptions = Array.isArray(chargeOptions) ? chargeOptions : [];
   const partyLabel = isBuy ? "Vendor" : "Client";
-  const finalCharges = chargeOptions && chargeOptions.length > 0 ? chargeOptions.map(c => c.name) : CHARGE_TYPES;
+  const finalCharges = safeChargeOptions.length > 0 ? safeChargeOptions.map(c => c.name) : CHARGE_TYPES;
 
   const [activeRowIdx, setActiveRowIdx] = React.useState(0);
 
   const getCellClass = (idx, fieldName) => {
-    const hasError = errors && errors[idx] && errors[idx][fieldName];
+    const hasError = safeErrors[idx] && safeErrors[idx][fieldName];
     if (hasError) {
       return "border-2 border-red-500 bg-red-50/10 dark:bg-red-950/10 focus-within:ring-2 focus-within:ring-red-500";
     }
@@ -35,11 +39,12 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
   };
 
   const handleRowChange = (index, field, value) => {
-    const updated = [...rows];
+    const updated = safeRows.map(r => ({ ...r }));
+    if (!updated[index]) return;
     updated[index][field] = value;
 
     if (field === "charge") {
-      const selectedCharge = chargeOptions.find(c => c.name === value);
+      const selectedCharge = safeChargeOptions.find(c => c.name === value);
       if (selectedCharge) {
         if (selectedCharge.percentage !== undefined && selectedCharge.percentage !== null) {
           updated[index].gst = `${selectedCharge.percentage}%`;
@@ -55,19 +60,23 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
     if (field === "quantity" || field === "rate") {
       const q = parseFloat(updated[index].quantity) || 0;
       const r = parseFloat(updated[index].rate) || 0;
-      updated[index].amount = (q * r).toFixed(2);
+      // Foreign Currency Amount (AMT_FC) = Quantity * Rate
+      updated[index].amt_fc = (q * r).toFixed(2);
       
       const ex = parseFloat(updated[index].ex_rate) || 1;
-      updated[index].amt_fc = (q * r * ex).toFixed(2);
+      // Final calculated Amount in INR = Foreign Currency Amount * Ex Rate
+      updated[index].amount = (q * r * ex).toFixed(2);
     }
 
     if (field === "ex_rate") {
-      const amt = parseFloat(updated[index].amount) || 0;
+      const amtFc = parseFloat(updated[index].amt_fc) || 0;
       const ex = parseFloat(value) || 1;
-      updated[index].amt_fc = (amt * ex).toFixed(2);
+      updated[index].amount = (amtFc * ex).toFixed(2);
     }
 
-    onChange(updated);
+    if (typeof onChange === 'function') {
+      onChange(updated);
+    }
   };
 
   // Helper to parse city/state from custom addresses
@@ -105,18 +114,18 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
   };
 
   // GST summary panel values computation
-  const activeRow = rows[activeRowIdx] || rows[0] || null;
-  const activeClient = activeRow ? customers.find(c => String(c.customer_id) === String(activeRow.party) || c.name === activeRow.party) : null;
+  const activeRow = safeRows[activeRowIdx] || safeRows[0] || null;
+  const activeClient = activeRow ? safeCustomers.find(c => String(c.customer_id) === String(activeRow.party) || c.name === activeRow.party) : null;
   const activeGSTIN = activeClient?.gstin || "—";
   const activeAddress = activeRow?.address || "—";
   const { city, state } = parseCityState(activeAddress);
   const activeGstRateStr = activeRow?.gst || "0%";
   const activeGstRate = parseFloat(activeGstRateStr) || 0;
-  const activeAmtFc = activeRow ? (parseFloat(activeRow.amt_fc) || 0) : 0; // INR Amount
+  const activeInrAmt = activeRow ? (parseFloat(activeRow.amount) || 0) : 0; // Final calculated INR Amount
   
   // Splits
   const isMaharashtra = activeGSTIN.startsWith("27") || activeAddress.toLowerCase().includes("maharashtra");
-  const taxAmount = activeAmtFc * (activeGstRate / 100);
+  const taxAmount = activeInrAmt * (activeGstRate / 100);
   
   let cgstRate = "0%";
   let sgstRate = "0%";
@@ -262,14 +271,14 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700/60">
-            {rows.length === 0 ? (
+            {safeRows.length === 0 ? (
               <tr>
                 <td colSpan="14" className="p-8 text-center text-slate-500 dark:text-slate-400 italic border border-slate-200 dark:border-slate-700/80">
                   No rate rows added yet. Click "Add Rate Row" to start.
                 </td>
               </tr>
             ) : (
-              rows.map((row, idx) => {
+              safeRows.map((row, idx) => {
                 const isRowLocked = isLocked ? !isEditApproved : (row.locked && !isEditApproved);
                 return (
                   <tr 
@@ -293,10 +302,10 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                   </td>
                   <td className={`${getCellClass(idx, "party")} p-0`}>
                     <SearchableDropdown
-                      options={customers.map((c) => ({ value: c.customer_id, label: c.name }))}
+                      options={safeCustomers.map((c) => ({ value: c.customer_id, label: c.name }))}
                       value={row.party}
                       onChange={(val) => {
-                        const updated = [...rows];
+                        const updated = [...safeRows];
                         updated[idx].party = val;
                         updated[idx].address = "";
                         onChange(updated);
@@ -309,7 +318,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                   </td>
                   <td className={`${getCellClass(idx, "address")} p-0`}>
                     {(() => {
-                      const clientData = customers.find(c => String(c.customer_id) === String(row.party) || c.name === row.party);
+                      const clientData = safeCustomers.find(c => String(c.customer_id) === String(row.party) || c.name === row.party);
                       const addrs = [];
                       if (clientData) {
                         if (Array.isArray(clientData.addresses) && clientData.addresses.length > 0) {
@@ -447,16 +456,16 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
             )}
             
             {/* 4. Column Totals Row */}
-            {rows.length > 0 && (
+            {safeRows.length > 0 && (
               <tr className="bg-slate-100 dark:bg-slate-800/40 text-slate-800 dark:text-white font-bold border-t border-slate-200 dark:border-slate-700/80">
                 <td colSpan="11" className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-slate-500 font-semibold uppercase tracking-wider text-xs">
                   Totals:
                 </td>
                 <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-slate-900 dark:text-white font-bold bg-slate-100/30 dark:bg-slate-800/30 text-xs">
-                  {rows.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {safeRows.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-indigo-600 dark:text-indigo-400 font-extrabold bg-indigo-50/10 dark:bg-indigo-900/10 text-xs">
-                  {rows.reduce((acc, r) => acc + (parseFloat(r.amt_fc) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  {safeRows.reduce((acc, r) => acc + (parseFloat(r.amt_fc) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="border border-slate-200 dark:border-slate-700/80 p-1"></td>
               </tr>
@@ -465,12 +474,12 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
         </table>
       </div>
 
-      {rows.length > 0 && (
+      {safeRows.length > 0 && (
         <div className="flex justify-end p-3 bg-slate-50 dark:bg-slate-850 border border-slate-200 dark:border-slate-700 rounded-xl">
           <div className="text-right space-y-1">
             <span className="text-xs text-slate-500">Total Base Currency Revenue:</span>
             <div className="text-lg font-bold text-slate-800 dark:text-white">
-              INR {rows.reduce((acc, r) => acc + (parseFloat(r.amt_fc) || 0), 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              INR {safeRows.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         </div>

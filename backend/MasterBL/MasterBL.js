@@ -419,7 +419,7 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
     res.json({ success: true, message: "MasterBL job updated successfully" });
   } catch (error) {
     console.error("Error updating MasterBL:", error);
-    res.status(500).json({ success: false, message: "Internal server error" });
+    res.status(500).json({ success: false, message: error.message || "Internal server error" });
   }
 });
 

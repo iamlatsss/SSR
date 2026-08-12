@@ -913,16 +913,7 @@ const BookingUpdates = () => {
                             <span>Add Job</span>
                         </button>
                         
-                        {selectedRowIds.size > 0 && (
-                            <button 
-                                onClick={handleDeleteSelected}
-                                className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-md text-sm font-semibold transition shadow-sm animate-pulse"
-                            >
-                                <Trash2 size={16} />
-                                <span>Delete Selected ({selectedRowIds.size})</span>
-                            </button>
-                        )}
-                        
+                        {/* Search & Actions */}
                         <div className="relative">
                             <span className="absolute inset-y-0 left-0 flex items-center pl-2.5 text-slate-400">
                                 <Search size={15} />
@@ -968,7 +959,7 @@ const BookingUpdates = () => {
                                 title="Export displayed data"
                             >
                                 <Download size={14} />
-                                <span>Export to Excel</span>
+                                <span>Export Excel</span>
                             </button>
                         </div>
                     </div>
@@ -1016,14 +1007,6 @@ const BookingUpdates = () => {
                     <table className="table-fixed min-w-full border-collapse select-text">
                         <thead className={freezeHeader ? "sticky top-0 bg-slate-100 dark:bg-slate-800 shadow-sm z-20" : "bg-slate-100 dark:bg-slate-800"}>
                             <tr>
-                                <th className="w-12 px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-center bg-slate-100 dark:bg-slate-800">
-                                    <input 
-                                        type="checkbox"
-                                        checked={selectedRowIds.size === filteredRows.length && filteredRows.length > 0}
-                                        onChange={toggleSelectAll}
-                                        className="rounded border-slate-350 dark:border-slate-600 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                                    />
-                                </th>
                                 <th className="w-10 px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center select-none">
                                     View
                                 </th>
@@ -1056,7 +1039,6 @@ const BookingUpdates = () => {
 
                             {showFilterRow && (
                                 <tr className="bg-slate-550 dark:bg-slate-850">
-                                    <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                                     <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                                     <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                                     <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
@@ -1095,7 +1077,7 @@ const BookingUpdates = () => {
                             {loading ? (
                                 <tr>
                                     <td 
-                                        colSpan={ALL_COLUMNS.filter(col => visibleColumns[col.key]).length + 4}
+                                        colSpan={ALL_COLUMNS.filter(col => visibleColumns[col.key]).length + 3}
                                         className="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
                                     >
                                         <div className="flex flex-col items-center justify-center gap-2">
@@ -1107,7 +1089,7 @@ const BookingUpdates = () => {
                             ) : filteredRows.length === 0 ? (
                                 <tr>
                                     <td 
-                                        colSpan={ALL_COLUMNS.filter(col => visibleColumns[col.key]).length + 4}
+                                        colSpan={ALL_COLUMNS.filter(col => visibleColumns[col.key]).length + 3}
                                         className="px-6 py-12 text-center text-slate-500 dark:text-slate-400 font-semibold"
                                     >
                                         No booking updates found. Click "Add Job" to create a new row manually or upload an Excel file.
@@ -1119,16 +1101,6 @@ const BookingUpdates = () => {
                                         key={row.id} 
                                         className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 group transition duration-150"
                                     >
-                                        {/* Checkbox column */}
-                                        <td className="px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-center select-none bg-slate-50/50 dark:bg-slate-800/10">
-                                            <input 
-                                                type="checkbox"
-                                                checked={selectedRowIds.has(row.id)}
-                                                onChange={() => toggleSelectRow(row.id)}
-                                                className="rounded border-slate-300 dark:border-slate-600 text-indigo-650 focus:ring-indigo-500 cursor-pointer"
-                                            />
-                                        </td>
-
                                         {/* View Details Eye Icon Column */}
                                         <td className="px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-center select-none">
                                             <button 

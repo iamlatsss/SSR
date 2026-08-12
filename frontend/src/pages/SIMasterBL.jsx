@@ -261,14 +261,8 @@ export function SIMasterBLList() {
           </div>
         </div>
         <button
-          onClick={handleDeleteAll}
-          className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white px-6 py-2 rounded-lg transition-colors font-medium text-sm shadow-sm hover:shadow-md ml-auto whitespace-nowrap"
-        >
-          <Trash2 size={18} /> Delete All Jobs
-        </button>
-        <button
           onClick={handleCreateJob}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors font-medium text-sm shadow-sm hover:shadow-md ml-2 whitespace-nowrap"
+          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors font-medium text-sm shadow-sm hover:shadow-md ml-auto whitespace-nowrap"
         >
           <Plus size={18} /> New MBL Job (#{nextJobNo})
         </button>
@@ -1162,50 +1156,64 @@ export function SIMasterBLForm() {
 
     const buyRatesErrors = [];
     const buyRatesRowErrors = [];
-    (form.buy_rates || []).forEach((row, idx) => {
+    const normalizedBuyRates = (form.buy_rates || []).map((row, idx) => {
       const rowNum = idx + 1;
       const missing = [];
       const rowErr = {};
-      if (!row.drcr || row.drcr.trim() === "") { missing.push("DRCR"); rowErr.drcr = true; }
       if (!row.party || String(row.party).trim() === "") { missing.push("Vendor"); rowErr.party = true; }
-      if (!row.address || String(row.address).trim() === "") { missing.push("Address"); rowErr.address = true; }
       if (!row.charge || String(row.charge).trim() === "") { missing.push("Charge"); rowErr.charge = true; }
-      if (!row.hsn_sac || String(row.hsn_sac).trim() === "") { missing.push("HSN/SAC"); rowErr.hsn_sac = true; }
-      if (!row.gst || String(row.gst).trim() === "") { missing.push("GST"); rowErr.gst = true; }
-      if (!row.unit || String(row.unit).trim() === "" || row.unit === "--- None ---") { missing.push("Unit"); rowErr.unit = true; }
-      if (!row.quantity || String(row.quantity).trim() === "" || parseFloat(row.quantity) === 0) { missing.push("Qty"); rowErr.quantity = true; }
-      if (!row.rate || String(row.rate).trim() === "" || parseFloat(row.rate) === 0) { missing.push("Rate"); rowErr.rate = true; }
-      if (!row.currency || String(row.currency).trim() === "") { missing.push("Cur."); rowErr.currency = true; }
-      if (!row.ex_rate || String(row.ex_rate).trim() === "" || parseFloat(row.ex_rate) === 0) { missing.push("Ex Rate"); rowErr.ex_rate = true; }
 
       if (missing.length > 0) {
         buyRatesErrors.push(`Buy Rate - Row ${rowNum}: ${missing.join(", ")} are required.`);
         buyRatesRowErrors[idx] = rowErr;
       }
+
+      return {
+        ...row,
+        doc_type: row.doc_type || row.drcr || "INV",
+        drcr: row.drcr || row.doc_type || "DR",
+        hsn_sac: row.hsn_sac || row.sac || "996521",
+        sac: row.sac || row.hsn_sac || "996521",
+        gst: row.gst || "0%",
+        unit: (!row.unit || row.unit === "--- None ---") ? "40" : row.unit,
+        quantity: row.quantity || "1",
+        rate: row.rate !== undefined && row.rate !== null ? String(row.rate) : "0",
+        currency: row.currency || "USD",
+        ex_rate: row.ex_rate && parseFloat(row.ex_rate) > 0 ? String(row.ex_rate) : "1",
+        amount: row.amount || "0.00",
+        amt_fc: row.amt_fc || "0.00"
+      };
     });
 
     const sellRatesErrors = [];
     const sellRatesRowErrors = [];
-    (form.sell_rates || []).forEach((row, idx) => {
+    const normalizedSellRates = (form.sell_rates || []).map((row, idx) => {
       const rowNum = idx + 1;
       const missing = [];
       const rowErr = {};
-      if (!row.drcr || row.drcr.trim() === "") { missing.push("DRCR"); rowErr.drcr = true; }
       if (!row.party || String(row.party).trim() === "") { missing.push("Client"); rowErr.party = true; }
-      if (!row.address || String(row.address).trim() === "") { missing.push("Address"); rowErr.address = true; }
       if (!row.charge || String(row.charge).trim() === "") { missing.push("Charge"); rowErr.charge = true; }
-      if (!row.hsn_sac || String(row.hsn_sac).trim() === "") { missing.push("HSN/SAC"); rowErr.hsn_sac = true; }
-      if (!row.gst || String(row.gst).trim() === "") { missing.push("GST"); rowErr.gst = true; }
-      if (!row.unit || String(row.unit).trim() === "" || row.unit === "--- None ---") { missing.push("Unit"); rowErr.unit = true; }
-      if (!row.quantity || String(row.quantity).trim() === "" || parseFloat(row.quantity) === 0) { missing.push("Qty"); rowErr.quantity = true; }
-      if (!row.rate || String(row.rate).trim() === "" || parseFloat(row.rate) === 0) { missing.push("Rate"); rowErr.rate = true; }
-      if (!row.currency || String(row.currency).trim() === "") { missing.push("Cur."); rowErr.currency = true; }
-      if (!row.ex_rate || String(row.ex_rate).trim() === "" || parseFloat(row.ex_rate) === 0) { missing.push("Ex Rate"); rowErr.ex_rate = true; }
 
       if (missing.length > 0) {
         sellRatesErrors.push(`Sell Rate - Row ${rowNum}: ${missing.join(", ")} are required.`);
         sellRatesRowErrors[idx] = rowErr;
       }
+
+      return {
+        ...row,
+        doc_type: row.doc_type || row.drcr || "INV",
+        drcr: row.drcr || row.doc_type || "DR",
+        hsn_sac: row.hsn_sac || row.sac || "996521",
+        sac: row.sac || row.hsn_sac || "996521",
+        gst: row.gst || "0%",
+        unit: (!row.unit || row.unit === "--- None ---") ? "40" : row.unit,
+        quantity: row.quantity || "1",
+        rate: row.rate !== undefined && row.rate !== null ? String(row.rate) : "0",
+        currency: row.currency || "USD",
+        ex_rate: row.ex_rate && parseFloat(row.ex_rate) > 0 ? String(row.ex_rate) : "1",
+        amount: row.amount || "0.00",
+        amt_fc: row.amt_fc || "0.00"
+      };
     });
 
     if (buyRatesErrors.length > 0 || sellRatesErrors.length > 0 || messages.length > 0) {
@@ -1281,9 +1289,9 @@ export function SIMasterBLForm() {
         description: form.description,
         remarks: form.remarks,
 
-        buy_rates: form.buy_rates,
-        sell_rates: form.sell_rates,
-        vehicles: form.vehicles,
+        buy_rates: normalizedBuyRates,
+        sell_rates: normalizedSellRates,
+        vehicles: form.vehicles || [],
       };
 
       const payload = {
@@ -1944,16 +1952,16 @@ export function SIMasterBLForm() {
                 </div>
               )}
               <RateGrid
-                rows={form.buy_rates}
+                rows={form.buy_rates || []}
                 customers={customers}
                 isBuy={true}
                 chargeOptions={chargeOptions}
                 errors={valErrors.buy_rates || []}
                 onChange={(updated) => setForm(prev => ({ ...prev, buy_rates: updated }))}
-                onAddRow={(newRow) => setForm(prev => ({ ...prev, buy_rates: [...prev.buy_rates, newRow] }))}
+                onAddRow={(newRow) => setForm(prev => ({ ...prev, buy_rates: [...(prev.buy_rates || []), newRow] }))}
                 onDeleteRow={(idx) => setForm(prev => ({
                   ...prev,
-                  buy_rates: prev.buy_rates.filter((_, i) => i !== idx)
+                  buy_rates: (prev.buy_rates || []).filter((_, i) => i !== idx)
                 }))}
                 isLocked={isRatesLocked}
                 isEditApproved={hasActiveApproval}
@@ -1990,17 +1998,17 @@ export function SIMasterBLForm() {
                 </div>
               )}
               <RateGrid
-                rows={form.sell_rates}
+                rows={form.sell_rates || []}
                 customers={customers}
                 isBuy={false}
                 consignee={form.consignee}
                 chargeOptions={chargeOptions}
                 errors={valErrors.sell_rates || []}
                 onChange={(updated) => setForm(prev => ({ ...prev, sell_rates: updated }))}
-                onAddRow={(newRow) => setForm(prev => ({ ...prev, sell_rates: [...prev.sell_rates, newRow] }))}
+                onAddRow={(newRow) => setForm(prev => ({ ...prev, sell_rates: [...(prev.sell_rates || []), newRow] }))}
                 onDeleteRow={(idx) => setForm(prev => ({
                   ...prev,
-                  sell_rates: prev.sell_rates.filter((_, i) => i !== idx)
+                  sell_rates: (prev.sell_rates || []).filter((_, i) => i !== idx)
                 }))}
                 isLocked={isRatesLocked}
                 isEditApproved={hasActiveApproval}
@@ -2045,9 +2053,23 @@ export function SIMasterBLForm() {
 
           {/* Save Error Overlay */}
           {saveError && (
-            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-              <div className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-red-100 dark:border-red-950/30 transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200">
-                <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4">
+            <div 
+              className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+              onClick={() => setSaveError(null)}
+            >
+              <div 
+                className="bg-white dark:bg-slate-900 rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-red-100 dark:border-red-950/30 transform transition-all scale-100 animate-in fade-in zoom-in-95 duration-200 relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSaveError(null)}
+                  className="absolute top-4 right-4 p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  title="Close"
+                >
+                  <X size={18} />
+                </button>
+                <div className="flex items-center gap-3 text-red-600 dark:text-red-400 mb-4 pr-8">
                   <span className="p-2 bg-red-50 dark:bg-red-950/30 rounded-xl">
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -2064,7 +2086,7 @@ export function SIMasterBLForm() {
                   <button
                     type="button"
                     onClick={() => setSaveError(null)}
-                    className="px-5 py-2 bg-slate-850 hover:bg-slate-800 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all"
+                    className="px-5 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold uppercase tracking-wider transition-all cursor-pointer"
                   >
                     Close
                   </button>

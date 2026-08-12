@@ -187,7 +187,6 @@ const menuConfig = [
         groupKey: 'dashboard',
         children: [
             { text: 'Booking Updates', to: '/booking-updates', icon: <Scroll size={18} /> },
-            { text: 'User Booking Updates', to: '/user-booking-updates', icon: <Scroll size={18} /> },
             { text: 'KYC', to: '/kyc', permission: 'canAccessKYC', icon: <ShieldCheck size={18} /> },
             { text: 'Users', to: '/users', permission: 'canAccessUsers', icon: <Users size={18} /> },
             { text: 'Charge', to: '/charges', icon: <DollarSign size={18} /> },
