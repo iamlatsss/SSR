@@ -9,6 +9,7 @@ import * as XLSX from 'xlsx';
 import api from '../services/api';
 import DashboardLayout from '../components/DashboardLayout';
 import PortSelect from '../components/PortSelect';
+import { useAuth } from '../context/AuthContext';
 
 const ALL_COLUMNS = [
     { key: 'date_of_nomination', label: 'Date of Nomination', type: 'date', width: 90 },
@@ -121,18 +122,39 @@ const PartySelect = ({ label, value, onChange, name, parties, category, placehol
 };
 
 const BookingUpdates = () => {
+    const { user } = useAuth();
+    const userRole = String(user?.role || user?.user_role || '').toLowerCase();
+    const isDirectorOrAdmin = userRole === 'admin' || userRole === 'director';
+
+    const allowedColumns = useMemo(() => {
+        if (isDirectorOrAdmin) {
+            return ALL_COLUMNS;
+        }
+        return ALL_COLUMNS.filter(col => col.key !== 'freight');
+    }, [isDirectorOrAdmin]);
+
     const [rows, setRows] = useState([]);
     const [parties, setParties] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     
-    // Column settings: only the 17 display columns are visible in the table grid by default
-    const [visibleColumns, setVisibleColumns] = useState(
+    // Column settings: only the display columns are visible in the table grid by default
+    const [visibleColumns, setVisibleColumns] = useState(() =>
         ALL_COLUMNS.reduce((acc, col) => ({ 
             ...acc, 
-            [col.key]: DISPLAY_COLUMNS_KEYS.includes(col.key) 
+            [col.key]: DISPLAY_COLUMNS_KEYS.includes(col.key) && (isDirectorOrAdmin || col.key !== 'freight')
         }), {})
     );
+
+    useEffect(() => {
+        setVisibleColumns(prev => {
+            const updated = { ...prev };
+            if (!isDirectorOrAdmin) {
+                updated.freight = false;
+            }
+            return updated;
+        });
+    }, [isDirectorOrAdmin]);
     const [showColSettings, setShowColSettings] = useState(false);
     const colSettingsRef = useRef(null);
 
@@ -398,7 +420,7 @@ const BookingUpdates = () => {
 
     // Keyboard Navigation for inline grid
     const handleKeyDown = (e, rowIndex, colKey) => {
-        const colKeys = ALL_COLUMNS.filter(col => visibleColumns[col.key]).map(col => col.key);
+        const colKeys = allowedColumns.filter(col => visibleColumns[col.key]).map(col => col.key);
         const colIndex = colKeys.indexOf(colKey);
 
         let nextRow = rowIndex;
@@ -469,9 +491,9 @@ const BookingUpdates = () => {
 
     // Export to Excel
     const handleExportExcel = () => {
-        const headers = ALL_COLUMNS.filter(col => visibleColumns[col.key]).map(col => col.label);
+        const headers = allowedColumns.filter(col => visibleColumns[col.key]).map(col => col.label);
         const dataRows = filteredRows.map(row => 
-            ALL_COLUMNS.filter(col => visibleColumns[col.key]).map(col => row[col.key] || '')
+            allowedColumns.filter(col => visibleColumns[col.key]).map(col => row[col.key] || '')
         );
 
         const csvContent = [
@@ -592,7 +614,7 @@ const BookingUpdates = () => {
                         if (cell === undefined || cell === null || cell === '') return;
                         const normalizedCell = String(cell).trim().toLowerCase().replace(/[._\-\s]+/g, '');
                         
-                        ALL_COLUMNS.forEach(col => {
+                        allowedColumns.forEach(col => {
                             const cleanLabel = col.label.toLowerCase().replace(/[._\-\s]+/g, '');
                             const cleanKey = col.key.toLowerCase().replace(/[._\-\s]+/g, '');
                             if (normalizedCell === cleanLabel || normalizedCell === cleanKey || 
@@ -619,7 +641,7 @@ const BookingUpdates = () => {
                         firstRow.forEach((cell, idx) => {
                             if (cell === undefined || cell === null || cell === '') return;
                             const normalizedCell = String(cell).trim().toLowerCase().replace(/[._\-\s]+/g, '');
-                            ALL_COLUMNS.forEach(col => {
+                            allowedColumns.forEach(col => {
                                 const cleanLabel = col.label.toLowerCase().replace(/[._\-\s]+/g, '');
                                 const cleanKey = col.key.toLowerCase().replace(/[._\-\s]+/g, '');
                                 if (normalizedCell === cleanLabel || normalizedCell === cleanKey || 
@@ -650,7 +672,7 @@ const BookingUpdates = () => {
                     if (!row || !Array.isArray(row)) return null;
                     const parsedRow = {};
                     let hasValue = false;
-                    ALL_COLUMNS.forEach(col => {
+                    allowedColumns.forEach(col => {
                         const idx = colMap[col.key];
                         if (idx !== undefined && row[idx] !== undefined && row[idx] !== null && row[idx] !== '') {
                             let cellVal = row[idx];
@@ -1003,7 +1025,7 @@ const BookingUpdates = () => {
                             <div className="absolute right-0 mt-1.5 w-60 max-h-96 overflow-y-auto bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg shadow-xl p-3 z-50">
                                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Show/Hide Columns</h4>
                                 <div className="space-y-1.5">
-                                    {ALL_COLUMNS.filter(col => col.key !== 'status').map(col => (
+                                    {allowedColumns.filter(col => col.key !== 'status').map(col => (
                                         <label key={col.key} className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer">
                                             <input 
                                                 type="checkbox"
@@ -1040,7 +1062,7 @@ const BookingUpdates = () => {
                                 <th className="w-10 px-1 py-1 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center">
                                     Sr No.
                                 </th>
-                                {ALL_COLUMNS.filter(col => col.key !== 'status' && visibleColumns[col.key]).map(col => (
+                                {allowedColumns.filter(col => col.key !== 'status' && visibleColumns[col.key]).map(col => (
                                     <th 
                                         key={col.key}
                                         style={{ width: col.width }}
@@ -1066,7 +1088,7 @@ const BookingUpdates = () => {
                                     <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                                     <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                                     <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
-                                    {ALL_COLUMNS.filter(col => col.key !== 'status' && visibleColumns[col.key]).map(col => (
+                                    {allowedColumns.filter(col => col.key !== 'status' && visibleColumns[col.key]).map(col => (
                                         <th key={col.key} className="p-0.5 border border-slate-200 dark:border-slate-700">
                                             {col.type === 'date' ? (
                                                 <select
@@ -1101,7 +1123,7 @@ const BookingUpdates = () => {
                             {loading ? (
                                 <tr>
                                     <td 
-                                        colSpan={ALL_COLUMNS.filter(col => visibleColumns[col.key]).length + 3}
+                                        colSpan={allowedColumns.filter(col => visibleColumns[col.key]).length + 3}
                                         className="px-6 py-12 text-center text-slate-500 dark:text-slate-400"
                                     >
                                         <div className="flex flex-col items-center justify-center gap-2">
@@ -1113,7 +1135,7 @@ const BookingUpdates = () => {
                             ) : filteredRows.length === 0 ? (
                                 <tr>
                                     <td 
-                                        colSpan={ALL_COLUMNS.filter(col => visibleColumns[col.key]).length + 3}
+                                        colSpan={allowedColumns.filter(col => visibleColumns[col.key]).length + 3}
                                         className="px-6 py-12 text-center text-slate-500 dark:text-slate-400 font-semibold"
                                     >
                                         No booking updates found. Click "Add Job" to create a new row manually or upload an Excel file.
@@ -1185,7 +1207,7 @@ const BookingUpdates = () => {
                                         </td>
 
                                         {/* Display visible cells */}
-                                        {ALL_COLUMNS.filter(col => col.key !== 'status' && visibleColumns[col.key]).map(col => {
+                                        {allowedColumns.filter(col => col.key !== 'status' && visibleColumns[col.key]).map(col => {
                                             const isSelected = selectedCell.rowIndex === rowIndex && selectedCell.colKey === col.key;
                                             const value = row[col.key] || '';
 
@@ -1290,7 +1312,7 @@ const BookingUpdates = () => {
                             </div>
                             <form onSubmit={handleAddJobSubmit} className="flex-1 overflow-y-auto p-4">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    {ALL_COLUMNS.map(col => (
+                                    {allowedColumns.map(col => (
                                         <div key={col.key} className="flex flex-col gap-1">
                                             <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{col.label}</label>
                                             {renderFormField(col, false)}
@@ -1332,7 +1354,7 @@ const BookingUpdates = () => {
                             </div>
                             <form onSubmit={handleViewModalSave} className="flex-1 overflow-y-auto p-4">
                                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                                    {ALL_COLUMNS.map(col => {
+                                    {allowedColumns.map(col => {
                                         const isHiddenField = !DISPLAY_COLUMNS_KEYS.includes(col.key);
                                         return (
                                             <div key={col.key} className={`flex flex-col gap-1 p-1.5 px-2 rounded-md ${isHiddenField ? 'bg-indigo-50/20 dark:bg-indigo-950/10 border border-indigo-100/30 dark:border-indigo-900/20' : ''}`}>

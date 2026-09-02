@@ -170,6 +170,9 @@ router.get("/", authenticateJWT, async (req, res) => {
       .select("BookingUpdates.*", "MasterBL.invoice_totals as mbl_invoice_totals")
       .orderBy("BookingUpdates.id", "asc");
 
+    const userRole = String(req.user?.role || '').toLowerCase();
+    const isDirectorOrAdmin = userRole === 'admin' || userRole === 'director';
+
     const processed = rows.map(row => {
       let invAmt = row.invoice_amount;
       if (row.mbl_invoice_totals) {
@@ -187,6 +190,9 @@ router.get("/", authenticateJWT, async (req, res) => {
       // Remove mbl_invoice_totals from output to keep it clean
       const cleaned = { ...row, invoice_amount: invAmt };
       delete cleaned.mbl_invoice_totals;
+      if (!isDirectorOrAdmin) {
+        delete cleaned.freight;
+      }
       return cleaned;
     });
 
