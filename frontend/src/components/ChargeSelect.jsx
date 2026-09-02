@@ -31,7 +31,11 @@ const ChargeSelect = ({ value, onChange, options = [], placeholder = "Select Cha
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchstart", handleClickOutside);
+        };
     }, [wrapperRef]);
 
     // Scroll active item into view

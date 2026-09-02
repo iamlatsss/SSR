@@ -423,4 +423,15 @@ router.post("/delete-multiple", authenticateJWT, async (req, res) => {
   }
 });
 
+// Delete all booking updates endpoint for users/admin
+router.delete("/delete-all", authenticateJWT, async (req, res) => {
+  try {
+    await knexDB("BookingUpdates").del();
+    res.json({ success: true, message: "All booking updates deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting all user booking updates:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 export default router;

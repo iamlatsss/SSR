@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
@@ -256,6 +256,26 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
     const [editRequests, setEditRequests] = useState([]);
     const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
+    const profileRef = useRef(null);
+    const notificationsRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (profileRef.current && !profileRef.current.contains(event.target)) {
+                setIsProfileOpen(false);
+            }
+            if (notificationsRef.current && !notificationsRef.current.contains(event.target)) {
+                setIsNotificationsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, []);
+
     useEffect(() => {
         if (user && (user.role === 'Admin' || user.role === 'Director')) {
             const fetchPendingRequests = async () => {
@@ -512,7 +532,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                         >
                             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                         </button>
-                        <div className="relative">
+                        <div className="relative" ref={notificationsRef}>
                             <button
                                 onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
                                 className="relative p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors"
@@ -585,6 +605,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                             )}
                         </div>
                         <div
+                            ref={profileRef}
                             className="relative flex items-center gap-3 pl-4 sm:pl-6 border-l border-slate-200 dark:border-slate-700 cursor-pointer"
                             onClick={() => setIsProfileOpen(!isProfileOpen)}
                         >

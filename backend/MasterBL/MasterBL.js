@@ -84,11 +84,93 @@ function processHybridFields(inputBody, targetData) {
   }
 }
 
-// Helper to sanitize dates
+// Helper to parse and convert dates to valid YYYY-MM-DD or NULL for MySQL
+function formatMySQLDate(val) {
+  if (val === undefined || val === null || val === '') return null;
+
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    const yyyy = val.getFullYear();
+    const mm = String(val.getMonth() + 1).padStart(2, '0');
+    const dd = String(val.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  const str = String(val).trim();
+  if (!str) return null;
+
+  const parts = str.split(/[-/]/);
+  if (parts.length === 3) {
+    let [p1, p2, p3] = parts.map(p => parseInt(p, 10));
+    if (!isNaN(p1) && !isNaN(p2) && !isNaN(p3)) {
+      // YYYY-MM-DD or YYYY-DD-MM
+      if (parts[0].length === 4) {
+        let year = p1;
+        let month = p2;
+        let day = p3;
+        if (month > 12 && day <= 12) {
+          const temp = month;
+          month = day;
+          day = temp;
+        }
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
+      // DD-MM-YYYY or MM-DD-YYYY
+      if (parts[2].length === 4) {
+        let year = p3;
+        let month = p2;
+        let day = p1;
+        if (month > 12 && day <= 12) {
+          const temp = month;
+          month = day;
+          day = temp;
+        }
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
+    }
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  return null;
+}
+
+// Helper to sanitize dates and numeric fields
 function sanitizeDates(targetData) {
   const dateFields = ["date_of_nomination", "eta", "etd", "invoice_date", "hbl_date"];
   dateFields.forEach(f => {
-    if (targetData[f] === "") {
+    targetData[f] = formatMySQLDate(targetData[f]);
+  });
+
+  // Also sanitize dates in additional_details JSON if present
+  if (targetData.additional_details) {
+    try {
+      const isString = typeof targetData.additional_details === 'string';
+      const addDetails = isString ? JSON.parse(targetData.additional_details) : targetData.additional_details;
+      if (addDetails && typeof addDetails === 'object') {
+        ['mbl_date', 'igm_date', 'do_date', 'delivery_date'].forEach(df => {
+          if (addDetails[df] !== undefined) {
+            addDetails[df] = formatMySQLDate(addDetails[df]) || '';
+          }
+        });
+        targetData.additional_details = isString ? JSON.stringify(addDetails) : addDetails;
+      }
+    } catch (e) {}
+  }
+
+  const numericFields = ["net_weight", "gross_weight", "no_of_palette", "freight_amount", "container_count"];
+  numericFields.forEach(f => {
+    if (targetData[f] === "" || targetData[f] === undefined || (typeof targetData[f] === 'number' && isNaN(targetData[f]))) {
       targetData[f] = null;
     }
   });
@@ -149,7 +231,46 @@ router.post("/insert", authenticateJWT, async (req, res) => {
       insertData.status = 'Sell Rate Updated';
     }
 
+    if (!insertData.job_no) {
+      const rowsBu = await knexDB("BookingUpdates").select("job_no");
+      const rowsMbl = await knexDB("MasterBL").select("job_no");
+      const allJobNos = [
+        ...rowsBu.map(r => parseInt(r.job_no, 10)),
+        ...rowsMbl.map(r => parseInt(r.job_no, 10))
+      ].filter(n => !isNaN(n));
+      const maxJob = allJobNos.length > 0 ? Math.max(...allJobNos) : 5530;
+      insertData.job_no = Math.max(maxJob, 5530) + 1;
+    }
+
     const [jobNo] = await knexDB('MasterBL').insert(insertData);
+
+    // Sync to BookingUpdates if matching job_no or MBL/HBL exists
+    try {
+      const syncObj = {};
+      if (insertData.mbl_no) syncObj.mbl = insertData.mbl_no;
+      if (insertData.hbl_no) syncObj.hbl = insertData.hbl_no;
+      if (insertData.date_of_nomination) syncObj.date_of_nomination = insertData.date_of_nomination;
+      if (insertData.pol) syncObj.pol = insertData.pol;
+      if (insertData.pod) syncObj.pod = insertData.pod;
+      if (insertData.container_size) syncObj.container_size = insertData.container_size;
+      if (insertData.eta) syncObj.eta = insertData.eta;
+      if (insertData.etd) syncObj.etd = insertData.etd;
+      if (insertData.shipping_line_name) syncObj.shipping_line = insertData.shipping_line_name;
+
+      if (Object.keys(syncObj).length > 0) {
+        const buQuery = knexDB('BookingUpdates').where({ job_no: insertData.job_no || jobNo });
+        if (insertData.mbl_no || insertData.hbl_no) {
+          buQuery.orWhere(builder => {
+            if (insertData.mbl_no) builder.orWhere({ mbl: insertData.mbl_no });
+            if (insertData.hbl_no) builder.orWhere({ hbl: insertData.hbl_no });
+          });
+        }
+        await buQuery.update(syncObj);
+      }
+    } catch (syncErr) {
+      console.error("[MasterBL -> BookingUpdates sync error]:", syncErr.message);
+    }
+
     res.status(201).json({ success: true, message: "MasterBL Job created", JobNo: jobNo });
   } catch (error) {
     console.error("Error inserting MasterBL:", error);
@@ -398,6 +519,33 @@ router.put("/update/:jobNo", authenticateJWT, async (req, res) => {
     const affectedRows = await knexDB('MasterBL').where({ job_no: req.params.jobNo }).update(updateData);
     if (affectedRows === 0) {
       return res.status(404).json({ success: false, message: "MasterBL job not found" });
+    }
+
+    // Sync to BookingUpdates if matching job_no or MBL/HBL exists
+    try {
+      const syncObj = {};
+      if (updateData.mbl_no) syncObj.mbl = updateData.mbl_no;
+      if (updateData.hbl_no) syncObj.hbl = updateData.hbl_no;
+      if (updateData.date_of_nomination) syncObj.date_of_nomination = updateData.date_of_nomination;
+      if (updateData.pol) syncObj.pol = updateData.pol;
+      if (updateData.pod) syncObj.pod = updateData.pod;
+      if (updateData.container_size) syncObj.container_size = updateData.container_size;
+      if (updateData.eta) syncObj.eta = updateData.eta;
+      if (updateData.etd) syncObj.etd = updateData.etd;
+      if (updateData.shipping_line_name) syncObj.shipping_line = updateData.shipping_line_name;
+
+      if (Object.keys(syncObj).length > 0) {
+        const buQuery = knexDB('BookingUpdates').where({ job_no: req.params.jobNo });
+        if (updateData.mbl_no || updateData.hbl_no) {
+          buQuery.orWhere(builder => {
+            if (updateData.mbl_no) builder.orWhere({ mbl: updateData.mbl_no });
+            if (updateData.hbl_no) builder.orWhere({ hbl: updateData.hbl_no });
+          });
+        }
+        await buQuery.update(syncObj);
+      }
+    } catch (syncErr) {
+      console.error("[MasterBL -> BookingUpdates update sync error]:", syncErr.message);
     }
 
     // Auto-sync sell_rates to linked Proforma & Tax Invoices
@@ -652,12 +800,13 @@ router.get("/document/search", authenticateJWT, async (req, res) => {
   }
 });
 
-// GET lookup details from BookingUpdates using MBL number
-router.get("/lookup-mbl/:mbl_no", authenticateJWT, async (req, res) => {
-  const { mbl_no } = req.params;
+// GET lookup details from BookingUpdates using MBL or HBL number
+router.get("/lookup-mbl/:number", authenticateJWT, async (req, res) => {
+  const { number } = req.params;
   try {
     const booking = await knexDB("BookingUpdates")
-      .where({ mbl: mbl_no })
+      .where({ mbl: number })
+      .orWhere({ hbl: number })
       .first();
 
     if (!booking) {
@@ -666,7 +815,7 @@ router.get("/lookup-mbl/:mbl_no", authenticateJWT, async (req, res) => {
 
     res.json({ success: true, booking });
   } catch (error) {
-    console.error("Error looking up MBL number:", error);
+    console.error("Error looking up MBL/HBL number:", error);
     res.status(500).json({ success: false, message: error.message });
   }
 });
@@ -675,7 +824,10 @@ router.get("/lookup-mbl/:mbl_no", authenticateJWT, async (req, res) => {
 router.delete("/delete-all", authenticateJWT, async (req, res) => {
   try {
     await knexDB("MasterBL").del();
-    res.json({ success: true, message: "All MasterBL jobs deleted successfully." });
+    await knexDB("Invoices").del();
+    await knexDB("ProformaInvoices").del();
+    await knexDB("JobEditRequests").del();
+    res.json({ success: true, message: "All MasterBL jobs and associated invoices deleted successfully." });
   } catch (error) {
     console.error("Error deleting all MasterBL jobs:", error);
     res.status(500).json({ success: false, message: error.message });

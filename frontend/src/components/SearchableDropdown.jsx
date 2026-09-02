@@ -78,7 +78,11 @@ const SearchableDropdown = ({
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick);
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
   }, [isOpen, searchQuery, options, labelKey, allowCustom, onChange]);
 
   // Intelligent dynamic scoring and filtering

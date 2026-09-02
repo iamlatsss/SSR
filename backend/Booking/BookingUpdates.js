@@ -30,6 +30,69 @@ const ALLOWED_FIELDS = [
   "status"
 ];
 
+function formatMySQLDate(val) {
+  if (val === undefined || val === null || val === '') return null;
+  if (val instanceof Date) {
+    if (isNaN(val.getTime())) return null;
+    const yyyy = val.getFullYear();
+    const mm = String(val.getMonth() + 1).padStart(2, '0');
+    const dd = String(val.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  const str = String(val).trim();
+  if (!str) return null;
+
+  const parts = str.split(/[-/]/);
+  if (parts.length === 3) {
+    let [p1, p2, p3] = parts.map(p => parseInt(p, 10));
+    if (!isNaN(p1) && !isNaN(p2) && !isNaN(p3)) {
+      if (parts[0].length === 4) {
+        let year = p1;
+        let month = p2;
+        let day = p3;
+        if (month > 12 && day <= 12) {
+          const temp = month;
+          month = day;
+          day = temp;
+        }
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
+      if (parts[2].length === 4) {
+        let year = p3;
+        let month = p2;
+        let day = p1;
+        if (month > 12 && day <= 12) {
+          const temp = month;
+          month = day;
+          day = temp;
+        }
+        if (month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+          return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        }
+      }
+    }
+  }
+
+  const d = new Date(str);
+  if (!isNaN(d.getTime())) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  }
+  return null;
+}
+
+function sanitizeBookingDates(data) {
+  ['date_of_nomination', 'etd', 'eta'].forEach(df => {
+    if (data[df] !== undefined) {
+      data[df] = formatMySQLDate(data[df]);
+    }
+  });
+}
+
 // Helper to check if a job can be closed
 async function checkClosedStatusAllowed(jobNo, rowData) {
   const requiredFields = [
@@ -143,6 +206,7 @@ router.post("/", authenticateJWT, async (req, res) => {
         insertData[key] = req.body[key];
       }
     }
+    sanitizeBookingDates(insertData);
 
     if (insertData.status === 'Closed') {
       const validation = await checkClosedStatusAllowed(insertData.job_no, insertData);
@@ -189,6 +253,7 @@ router.put("/:id", authenticateJWT, async (req, res) => {
         updateData[key] = req.body[key];
       }
     }
+    sanitizeBookingDates(updateData);
 
     if (updateData.job_no) {
       const existing = await knexDB("BookingUpdates")
@@ -246,6 +311,7 @@ router.post("/bulk", authenticateJWT, async (req, res) => {
           rowData[key] = row[key];
         }
       }
+      sanitizeBookingDates(rowData);
 
       if (row.id) {
         // Update existing row
@@ -296,6 +362,17 @@ router.post("/delete-multiple", authenticateJWT, async (req, res) => {
   } catch (error) {
     console.error("Error doing bulk delete:", error);
     res.status(500).json({ success: false, message: "Internal server error: " + error.message });
+  }
+});
+
+// Delete all booking updates endpoint
+router.delete("/delete-all", authenticateJWT, async (req, res) => {
+  try {
+    await knexDB("BookingUpdates").del();
+    res.json({ success: true, message: "All booking updates deleted successfully." });
+  } catch (error) {
+    console.error("Error deleting all booking updates:", error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 

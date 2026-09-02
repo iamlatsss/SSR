@@ -11,28 +11,28 @@ import DashboardLayout from '../components/DashboardLayout';
 import PortSelect from '../components/PortSelect';
 
 const ALL_COLUMNS = [
-    { key: 'date_of_nomination', label: 'Date of Nomination', type: 'date', width: 150 },
-    { key: 'consignee', label: 'Consignee', type: 'text', width: 180 },
-    { key: 'job_no', label: 'Job No.', type: 'text', width: 85 }, // Made small for 4-5 digit numbers
-    { key: 'hbl', label: 'HBL', type: 'text', width: 150 },
-    { key: 'mbl', label: 'MBL', type: 'text', width: 150 },
-    { key: 'pol', label: 'POL', type: 'text', width: 130 },
-    { key: 'pod', label: 'POD', type: 'text', width: 130 },
-    { key: 'container_size', label: 'Cntr Size', type: 'text', width: 140 },
-    { key: 'teus', label: 'TEUs', type: 'number', width: 90 },
-    { key: 'agent', label: 'Agent', type: 'text', width: 160 },
-    { key: 'shipping_line', label: 'S/L Line', type: 'text', width: 160 },
-    { key: 'freight', label: 'Buy/Sell', type: 'text', width: 110 },
-    { key: 'etd', label: 'ETD', type: 'date', width: 150 },
-    { key: 'eta', label: 'ETA', type: 'date', width: 150 },
-    { key: 'swb', label: 'SWB', type: 'text', width: 90 },
-    { key: 'igm', label: 'IGM', type: 'text', width: 130 },
-    { key: 'invoice_amount', label: 'Invoice Amount', type: 'number', width: 140 },
-    { key: 'cha', label: 'CHA', type: 'text', width: 100 }, // Made small
-    { key: 'cfs', label: 'CFS', type: 'text', width: 100 }, // Made small
-    { key: 'container_no', label: 'Container No.', type: 'text', width: 160 },
-    { key: 'remarks', label: 'Remarks', type: 'longtext', width: 220 },
-    { key: 'status', label: 'Status', type: 'text', width: 120 }
+    { key: 'date_of_nomination', label: 'Date of Nomination', type: 'date', width: 90 },
+    { key: 'consignee', label: 'Consignee', type: 'text', width: 135 },
+    { key: 'job_no', label: 'Job No.', type: 'text', width: 58 },
+    { key: 'hbl', label: 'HBL', type: 'text', width: 130 },
+    { key: 'mbl', label: 'MBL', type: 'text', width: 130 },
+    { key: 'pol', label: 'POL', type: 'text', width: 70 },
+    { key: 'pod', label: 'POD', type: 'text', width: 85 },
+    { key: 'container_size', label: 'Cntr Size', type: 'text', width: 70 },
+    { key: 'teus', label: 'TEUs', type: 'number', width: 45 },
+    { key: 'agent', label: 'Agent', type: 'text', width: 95 },
+    { key: 'shipping_line', label: 'S/L Line', type: 'text', width: 75 },
+    { key: 'freight', label: 'Buy/Sell', type: 'text', width: 80 },
+    { key: 'etd', label: 'ETD', type: 'date', width: 88 },
+    { key: 'eta', label: 'ETA', type: 'date', width: 88 },
+    { key: 'swb', label: 'SWB', type: 'text', width: 45 },
+    { key: 'igm', label: 'IGM', type: 'text', width: 50 },
+    { key: 'invoice_amount', label: 'Invoice Amount', type: 'number', width: 95 },
+    { key: 'cha', label: 'CHA', type: 'text', width: 65 },
+    { key: 'cfs', label: 'CFS', type: 'text', width: 65 },
+    { key: 'container_no', label: 'Container No.', type: 'text', width: 110 },
+    { key: 'remarks', label: 'Remarks', type: 'longtext', width: 130 },
+    { key: 'status', label: 'Status', type: 'text', width: 80 }
 ];
 
 // Columns to be displayed in the main table grid
@@ -134,6 +134,22 @@ const BookingUpdates = () => {
         }), {})
     );
     const [showColSettings, setShowColSettings] = useState(false);
+    const colSettingsRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (colSettingsRef.current && !colSettingsRef.current.contains(event.target)) {
+                setShowColSettings(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('touchstart', handleClickOutside);
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+            document.removeEventListener('touchstart', handleClickOutside);
+        };
+    }, []);
+
     const [freezeHeader, setFreezeHeader] = useState(true);
     
     // Sorting & Filtering
@@ -638,9 +654,16 @@ const BookingUpdates = () => {
                         const idx = colMap[col.key];
                         if (idx !== undefined && row[idx] !== undefined && row[idx] !== null && row[idx] !== '') {
                             let cellVal = row[idx];
-                            // Parse dates correctly
+                            // Parse dates & checkbox fields correctly
                             if (col.type === 'date') {
                                 cellVal = formatExcelDate(cellVal);
+                            } else if (col.key === 'swb' || col.key === 'igm') {
+                                const cleanVal = String(cellVal).trim().toUpperCase();
+                                if (['Y', 'YES', 'TRUE', '1'].includes(cleanVal)) {
+                                    cellVal = 'Yes';
+                                } else {
+                                    cellVal = 'No';
+                                }
                             } else {
                                 cellVal = String(cellVal).trim();
                             }
@@ -813,7 +836,8 @@ const BookingUpdates = () => {
 
         // 6. SWB and IGM use tickboxes (checkboxes)
         if (col.key === 'swb' || col.key === 'igm') {
-            const isChecked = formData[col.key] === 'Yes' || formData[col.key] === true || formData[col.key] === 'true';
+            const valStr = String(formData[col.key] || '').trim().toUpperCase();
+            const isChecked = ['YES', 'Y', 'TRUE', '1'].includes(valStr) || formData[col.key] === true;
             return (
                 <div className="flex items-center h-8 pl-1">
                     <input
@@ -965,7 +989,7 @@ const BookingUpdates = () => {
                     </div>
 
                     {/* Column Configuration Show/Hide */}
-                    <div className="relative">
+                    <div className="relative" ref={colSettingsRef}>
                         <button 
                             onClick={() => setShowColSettings(!showColSettings)}
                             className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 rounded-md text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-750 transition"
@@ -1007,13 +1031,13 @@ const BookingUpdates = () => {
                     <table className="table-fixed min-w-full border-collapse select-text">
                         <thead className={freezeHeader ? "sticky top-0 bg-slate-100 dark:bg-slate-800 shadow-sm z-20" : "bg-slate-100 dark:bg-slate-800"}>
                             <tr>
-                                <th className="w-10 px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center select-none">
+                                <th className="w-8 px-1 py-1 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center select-none">
                                     View
                                 </th>
-                                <th className="w-28 px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center select-none">
+                                <th className="w-20 px-1 py-1 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center select-none">
                                     Status
                                 </th>
-                                <th className="w-16 px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 font-bold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center">
+                                <th className="w-10 px-1 py-1 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center">
                                     Sr No.
                                 </th>
                                 {ALL_COLUMNS.filter(col => col.key !== 'status' && visibleColumns[col.key]).map(col => (
@@ -1021,15 +1045,15 @@ const BookingUpdates = () => {
                                         key={col.key}
                                         style={{ width: col.width }}
                                         onClick={() => handleSort(col.key)}
-                                        className="px-3 py-1.5 border border-slate-200 dark:border-slate-700 text-left text-slate-600 dark:text-slate-300 font-bold text-xs uppercase tracking-wider hover:bg-slate-200 dark:hover:bg-slate-750 cursor-pointer transition select-none"
+                                        className="px-1.5 py-1 border border-slate-200 dark:border-slate-700 text-left text-slate-700 dark:text-slate-200 font-semibold text-xs uppercase hover:bg-slate-200 dark:hover:bg-slate-750 cursor-pointer transition select-none whitespace-normal break-words leading-tight"
                                     >
-                                        <div className="flex items-center justify-between">
-                                            <span>{col.label}</span>
-                                            <span className="text-slate-400 dark:text-slate-500">
+                                        <div className="flex items-center justify-between gap-0.5">
+                                            <span className="break-words leading-tight">{col.label}</span>
+                                            <span className="text-slate-400 dark:text-slate-500 shrink-0">
                                                 {sortConfig.key === col.key ? (
-                                                    sortConfig.direction === 'asc' ? <ChevronUp size={12} /> : <ChevronDown size={12} />
+                                                    sortConfig.direction === 'asc' ? <ChevronUp size={11} /> : <ChevronDown size={11} />
                                                 ) : (
-                                                    <ArrowUpDown size={10} />
+                                                    <ArrowUpDown size={9} />
                                                 )}
                                             </span>
                                         </div>
@@ -1043,12 +1067,12 @@ const BookingUpdates = () => {
                                     <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                                     <th className="border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800" />
                                     {ALL_COLUMNS.filter(col => col.key !== 'status' && visibleColumns[col.key]).map(col => (
-                                        <th key={col.key} className="p-1 border border-slate-200 dark:border-slate-700">
+                                        <th key={col.key} className="p-0.5 border border-slate-200 dark:border-slate-700">
                                             {col.type === 'date' ? (
                                                 <select
                                                     value={filters[col.key] || ''}
                                                     onChange={(e) => handleFilterChange(col.key, e.target.value)}
-                                                    className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-755 bg-white dark:bg-slate-900 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 font-normal"
+                                                    className="w-full px-1 py-0.5 text-xs border border-slate-200 dark:border-slate-755 bg-white dark:bg-slate-900 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 font-normal"
                                                 >
                                                     <option value="">All</option>
                                                     {getUniqueDateFilterOptions(col.key).map(opt => (
@@ -1059,7 +1083,7 @@ const BookingUpdates = () => {
                                                 <select
                                                     value={filters[col.key] || ''}
                                                     onChange={(e) => handleFilterChange(col.key, e.target.value)}
-                                                    className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-755 bg-white dark:bg-slate-900 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 font-normal"
+                                                    className="w-full px-1 py-0.5 text-xs border border-slate-200 dark:border-slate-755 bg-white dark:bg-slate-900 rounded focus:outline-none focus:ring-1 focus:ring-indigo-500 font-normal"
                                                 >
                                                     <option value="">All</option>
                                                     {getUniqueColumnValues(col.key).map(val => (
@@ -1102,18 +1126,18 @@ const BookingUpdates = () => {
                                         className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 group transition duration-150"
                                     >
                                         {/* View Details Eye Icon Column */}
-                                        <td className="px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-center select-none">
+                                        <td className="px-1 py-1 border border-slate-200 dark:border-slate-700 text-center select-none w-8">
                                             <button 
                                                 onClick={() => handleOpenViewModal(row)}
-                                                className="p-1 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-400 dark:text-slate-500 rounded transition"
+                                                className="p-0.5 hover:text-indigo-600 dark:hover:text-indigo-400 text-slate-400 dark:text-slate-500 rounded transition"
                                                 title="View All Details"
                                             >
-                                                <Eye size={15} />
+                                                <Eye size={14} />
                                             </button>
                                         </td>
 
                                         {/* Status select column */}
-                                        <td className="px-1 py-1 border border-slate-200 dark:border-slate-700 text-center select-none bg-slate-550/10 dark:bg-slate-800/20 w-28">
+                                        <td className="px-0.5 py-0.5 border border-slate-200 dark:border-slate-700 text-center select-none bg-slate-550/10 dark:bg-slate-800/20 w-20">
                                             <div className="relative flex items-center justify-center w-full">
                                                 <select
                                                     value={row.status || 'Current'}
@@ -1136,7 +1160,7 @@ const BookingUpdates = () => {
                                                             }
                                                         }
                                                     }}
-                                                    className={`text-[10px] font-bold rounded px-1.5 pr-4.5 py-0 border focus:outline-none cursor-pointer transition-colors duration-200 w-full h-6 appearance-none text-left
+                                                    className={`text-[11px] font-semibold rounded px-1 pr-3 py-0.5 border focus:outline-none cursor-pointer transition-colors duration-200 w-full h-5.5 appearance-none text-left
                                                         ${row.status === 'Closed' 
                                                             ? 'bg-emerald-100 border-emerald-300 text-emerald-800 dark:bg-emerald-950/60 dark:border-emerald-800 dark:text-emerald-300' 
                                                             : row.status === 'Cancelled' 
@@ -1149,14 +1173,14 @@ const BookingUpdates = () => {
                                                     <option value="Cancelled">Cancelled</option>
                                                     <option value="Closed">Closed</option>
                                                 </select>
-                                                <div className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-550 dark:text-slate-400">
-                                                    <ChevronDown size={10} />
+                                                <div className="absolute right-1 top-1/2 -translate-y-1/2 pointer-events-none text-slate-550 dark:text-slate-400">
+                                                    <ChevronDown size={9} />
                                                 </div>
                                             </div>
                                         </td>
 
                                         {/* Sr No. */}
-                                        <td className="px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800 select-none">
+                                        <td className="px-1 py-1 border border-slate-200 dark:border-slate-700 text-center text-xs font-semibold text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 select-none w-10">
                                             {rowIndex + 1}
                                         </td>
 
@@ -1174,17 +1198,25 @@ const BookingUpdates = () => {
                                                 }
                                             }
 
-                                            // Determine background color based on value present (darker/more visible green) or empty (darker/more visible red)
-                                            const hasValue = value !== undefined && value !== null && String(value).trim() !== '';
+                                            const isCheckboxField = col.key === 'swb' || col.key === 'igm';
+                                            const valStr = String(value || '').trim().toUpperCase();
+                                            const isChecked = isCheckboxField && (['YES', 'Y', 'TRUE', '1'].includes(valStr) || value === true);
+
+                                            // Determine background color: for checkboxes, green if checked ('Yes'), red if unchecked ('No')
+                                            let hasValue = value !== undefined && value !== null && String(value).trim() !== '';
+                                            if (isCheckboxField) {
+                                                hasValue = isChecked;
+                                            }
+
                                             let cellBgClass = hasValue
                                                 ? 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-950 dark:text-emerald-200 border-emerald-250 dark:border-emerald-900/60 font-medium'
                                                 : 'bg-rose-100 dark:bg-rose-950/40 text-rose-955 dark:text-rose-200 border-rose-250 dark:border-rose-900/60 font-medium';
 
                                             if (isETAWarning) {
-                                                cellBgClass = 'bg-rose-200 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 font-semibold';
+                                                cellBgClass = 'bg-rose-200 dark:bg-rose-900/40 text-rose-800 dark:text-rose-300 font-medium';
                                             }
 
-                                            const isCheckboxField = col.key === 'swb' || col.key === 'igm';
+                                            const isWrapField = col.key === 'consignee' || col.key === 'remarks';
 
                                             return (
                                                 <td 
@@ -1192,7 +1224,7 @@ const BookingUpdates = () => {
                                                     onClick={() => setSelectedCell({ rowIndex, colKey: col.key })}
                                                     onKeyDown={(e) => handleKeyDown(e, rowIndex, col.key)}
                                                     tabIndex={0}
-                                                    className={`px-2 py-1.5 border border-slate-200 dark:border-slate-700 text-sm focus:outline-none transition relative cursor-default select-text truncate
+                                                    className={`px-1.5 py-1 border border-slate-200 dark:border-slate-700 text-[13px] font-medium focus:outline-none transition relative cursor-default select-text ${isWrapField ? 'whitespace-normal break-words leading-snug' : 'whitespace-nowrap'}
                                                         ${isSelected ? 'ring-2 ring-indigo-550 ring-inset bg-indigo-50/20 dark:bg-indigo-950/10' : ''}
                                                         ${cellBgClass}
                                                     `}
@@ -1201,9 +1233,22 @@ const BookingUpdates = () => {
                                                         <div className="flex items-center justify-center">
                                                             <input 
                                                                 type="checkbox"
-                                                                checked={value === 'Yes' || value === true || value === 'true'}
-                                                                disabled
-                                                                className="rounded border-slate-350 dark:border-slate-600 text-indigo-650 focus:ring-indigo-500 h-4 w-4 cursor-not-allowed"
+                                                                checked={isChecked}
+                                                                onChange={async (e) => {
+                                                                    const newVal = e.target.checked ? 'Yes' : 'No';
+                                                                    try {
+                                                                        const res = await api.put(`/booking-updates/${row.id}`, { [col.key]: newVal });
+                                                                        if (res.data.success) {
+                                                                            const updated = rows.map(r => r.id === row.id ? { ...r, [col.key]: newVal } : r);
+                                                                            setRows(updated);
+                                                                            toast.success(`${col.label} updated to ${newVal}`);
+                                                                        }
+                                                                    } catch (err) {
+                                                                        console.error(err);
+                                                                        toast.error(`Failed to update ${col.label}`);
+                                                                    }
+                                                                }}
+                                                                className="rounded border-slate-350 dark:border-slate-600 text-indigo-650 focus:ring-indigo-500 h-3.5 w-3.5 cursor-pointer"
                                                             />
                                                         </div>
                                                     ) : (

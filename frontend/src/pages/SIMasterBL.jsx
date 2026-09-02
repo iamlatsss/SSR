@@ -78,12 +78,15 @@ export function SIMasterBLList() {
   const loadMBLJobs = async () => {
     try {
       setLoading(true);
-      const res = await api.get("/masterbl/get");
+      const [res, resInit] = await Promise.all([
+        api.get("/masterbl/get"),
+        api.get("/masterbl/init")
+      ]);
+
       if (res.data.success) {
         setJobs(res.data.jobs || []);
       }
 
-      const resInit = await api.get("/masterbl/init");
       if (resInit.data.success) {
         setNextJobNo(resInit.data.nextJobNo);
       }
@@ -264,7 +267,7 @@ export function SIMasterBLList() {
           onClick={handleCreateJob}
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg transition-colors font-medium text-sm shadow-sm hover:shadow-md ml-auto whitespace-nowrap"
         >
-          <Plus size={18} /> New MBL Job (#{nextJobNo})
+          <Plus size={18} /> New MBL Job
         </button>
       </div>
 
@@ -850,46 +853,32 @@ export function SIMasterBLForm() {
     loadedContainersInfo.current = { count: null, size: null };
     try {
       setLoading(true);
-      try {
-        const chargesRes = await api.get("/invoice/charges");
-        if (chargesRes.data.success) {
-          setChargeOptions(chargesRes.data.charges || []);
-        }
-      } catch (err) {
-        console.error("Error loading charges:", err);
+
+      const [chargesRes, pkgRes, cfsRes, empRes, initRes] = await Promise.allSettled([
+        api.get("/invoice/charges"),
+        api.get("/package-types"),
+        api.get("/cfs"),
+        api.get("/user-booking-updates/employees"),
+        api.get("/masterbl/init")
+      ]);
+
+      if (chargesRes.status === "fulfilled" && chargesRes.value.data.success) {
+        setChargeOptions(chargesRes.value.data.charges || []);
       }
-      try {
-        const pkgRes = await api.get("/package-types");
-        if (pkgRes.data.success) {
-          setPackageTypes(pkgRes.data.packageTypes || []);
-        }
-      } catch (err) {
-        console.error("Error loading package types:", err);
+      if (pkgRes.status === "fulfilled" && pkgRes.value.data.success) {
+        setPackageTypes(pkgRes.value.data.packageTypes || []);
       }
-      try {
-        const cfsRes = await api.get("/cfs");
-        if (cfsRes.data.success) {
-          setCfsOptions((cfsRes.data.parties || []).map(p => p.name));
-        }
-      } catch (err) {
-        console.error("Error loading CFS list:", err);
+      if (cfsRes.status === "fulfilled" && cfsRes.value.data.success) {
+        setCfsOptions((cfsRes.value.data.parties || []).map(p => p.name));
       }
-      try {
-        const empRes = await api.get("/user-booking-updates/employees");
-        if (empRes.data.success) {
-          setEmployees(empRes.data.employees || []);
-        }
-      } catch (err) {
-        console.error("Error loading employees:", err);
+      if (empRes.status === "fulfilled" && empRes.value.data.employees) {
+        setEmployees(empRes.value.data.employees || []);
       }
-      const initRes = await api.get("/masterbl/init");
-      let nextJobNumber = 8000;
-      if (initRes.data.success) {
-        setCustomers(initRes.data.customers || []);
-        nextJobNumber = initRes.data.nextJobNo;
-        if (!jobNoParam) {
-          setJobNo(nextJobNumber);
-        }
+
+      let nextJobNumber = null;
+      if (initRes.status === "fulfilled" && initRes.value.data.success) {
+        setCustomers(initRes.value.data.customers || []);
+        nextJobNumber = initRes.value.data.nextJobNo;
       }
 
       const activeJobId = jobNoParam || cloneJobNoParam;
@@ -1075,13 +1064,13 @@ export function SIMasterBLForm() {
     }
   };
 
-  const handleMBLNoBlur = async () => {
+  const handleLookupBLNumber = async (blValue) => {
     if (jobNoParam) return; // Do not auto-fill booking details in Edit mode
-    const mblNo = form.mbl_no?.trim();
-    if (!mblNo) return;
+    const num = blValue?.trim();
+    if (!num) return;
 
     try {
-      const res = await api.get(`/masterbl/lookup-mbl/${encodeURIComponent(mblNo)}`);
+      const res = await api.get(`/masterbl/lookup-mbl/${encodeURIComponent(num)}`);
       if (res.data.success && res.data.booking) {
         const booking = res.data.booking;
         toast.info("Found matching booking update. Autofilling details...");
@@ -1092,6 +1081,7 @@ export function SIMasterBLForm() {
 
         setForm(prev => ({
           ...prev,
+          mbl_no: booking.mbl || prev.mbl_no,
           hbl_no: booking.hbl || prev.hbl_no,
           date_of_nomination: booking.date_of_nomination ? booking.date_of_nomination.slice(0, 10) : prev.date_of_nomination,
           pol: booking.pol || prev.pol,
@@ -1105,9 +1095,12 @@ export function SIMasterBLForm() {
         }));
       }
     } catch (error) {
-      console.error("Error looking up MBL number:", error);
+      console.error("Error looking up BL number:", error);
     }
   };
+
+  const handleMBLNoBlur = () => handleLookupBLNumber(form.mbl_no);
+  const handleHBLNoBlur = () => handleLookupBLNumber(form.hbl_no);
 
   const getInputClass = (fieldName) => {
     const isError = valErrors[fieldName];
@@ -1345,7 +1338,11 @@ export function SIMasterBLForm() {
           <Edit2 size={16} className="text-slate-500" />
           <h2 className="text-sm font-semibold select-none flex items-center">
             <span>{jobNoParam ? "Edit Sea Master BL Job" : "New Sea Master BL Job"}</span>
-            <span className="ml-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 rounded-lg text-sm font-bold border border-indigo-150/40 font-mono">Job #{jobNo}</span>
+            {jobNo && (
+              <span className="ml-3 px-3 py-1 bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 rounded-lg text-sm font-bold border border-indigo-150/40 font-mono">
+                Job #{jobNo}
+              </span>
+            )}
           </h2>
         </div>
         <button
@@ -1396,7 +1393,7 @@ export function SIMasterBLForm() {
                 </div>
                 <div>
                   <label className={labelStyle}>HBL No.</label>
-                  <input type="text" name="hbl_no" value={form.hbl_no} onChange={handleInputChange} placeholder="Enter HBL No" className={inputStyle + " font-mono font-semibold"} />
+                  <input type="text" name="hbl_no" value={form.hbl_no} onChange={handleInputChange} onBlur={handleHBLNoBlur} placeholder="Enter HBL No" className={inputStyle + " font-mono font-semibold"} />
                 </div>
                 <div>
                   <label className={labelStyle}>HBL Date</label>

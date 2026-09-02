@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import api from "../services/api";
 import { Search, Printer, FileText } from "lucide-react";
@@ -15,6 +15,9 @@ const DOFC = () => {
     // Searchable Select State
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const [activeIndex, setActiveIndex] = useState(-1);
+    const jobWrapperRef = useRef(null);
+    const listRef = useRef(null);
 
     const [bookingUpdates, setBookingUpdates] = useState([]);
 
@@ -22,6 +25,32 @@ const DOFC = () => {
         fetchJobs();
         fetchBookingUpdates();
     }, []);
+
+    // Close dropdown on click/touch outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (jobWrapperRef.current && !jobWrapperRef.current.contains(event.target)) {
+                setIsDropdownOpen(false);
+                setActiveIndex(-1);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchstart", handleClickOutside);
+        };
+    }, []);
+
+    // Auto-scroll active item into view when using keyboard arrow keys
+    useEffect(() => {
+        if (isDropdownOpen && listRef.current && activeIndex >= 0) {
+            const activeItem = listRef.current.children[activeIndex];
+            if (activeItem) {
+                activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+            }
+        }
+    }, [activeIndex, isDropdownOpen]);
 
     const fetchBookingUpdates = async () => {
         try {
@@ -53,25 +82,28 @@ const DOFC = () => {
         [jobs, selectedJobNo]
     );
 
-    // Filter jobs for dropdown
+    // Filter jobs for dropdown by job_no, shipper, consignee, mbl_no, hbl_no
     const filteredOptions = useMemo(() => {
-        // Commenting out strict status check to debug visibility
-        // const allowedStatuses = ["confirmed", "completed", "in-transit"]; 
-        // const validJobs = jobs.filter(j => allowedStatuses.includes(j.status));
-        const validJobs = jobs; // Show all jobs for now
+        const validJobs = jobs;
 
-        if (!searchQuery) return validJobs;
+        if (!searchQuery || !searchQuery.trim()) return validJobs;
+        const q = searchQuery.toLowerCase().trim();
 
         return validJobs.filter(j =>
-            String(j.job_no).toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (j.shipper_name || "").toLowerCase().includes(searchQuery.toLowerCase())
+            String(j.job_no || '').toLowerCase().includes(q) ||
+            (j.shipper_name || "").toLowerCase().includes(q) ||
+            (j.consignee_name || "").toLowerCase().includes(q) ||
+            (j.mbl_no || "").toLowerCase().includes(q) ||
+            (j.hbl_no || "").toLowerCase().includes(q)
         );
     }, [jobs, searchQuery]);
 
     const handleSelectJob = (job) => {
         setSelectedJobNo(job.job_no);
-        setSearchQuery(`#${job.job_no} - ${job.shipper_name}`);
+        const displayName = job.shipper_name ? `#${job.job_no} - ${job.shipper_name}` : `#${job.job_no}`;
+        setSearchQuery(displayName);
         setIsDropdownOpen(false);
+        setActiveIndex(-1);
         setPreviewData(null);
     };
 
@@ -360,45 +392,82 @@ const DOFC = () => {
                     <div className="relative">
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select Job</label>
                         {/* Searchable Input */}
-                        <div className="relative">
+                        <div className="relative" ref={jobWrapperRef}>
                             <input
                                 type="text"
-                                placeholder="Type Job No or Shipper..."
+                                placeholder="Type Job No, Shipper, MBL or HBL..."
                                 value={searchQuery}
                                 onChange={(e) => {
                                     setSearchQuery(e.target.value);
                                     setIsDropdownOpen(true);
+                                    setActiveIndex(-1);
                                     if (e.target.value === "") setSelectedJobNo("");
                                 }}
-                                onFocus={() => setIsDropdownOpen(true)}
-                                // Delay blur to allow click on option
-                                onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                                onFocus={() => {
+                                    setIsDropdownOpen(true);
+                                    setActiveIndex(-1);
+                                }}
+                                onKeyDown={(e) => {
+                                    if (!isDropdownOpen) {
+                                        if (e.key === 'ArrowDown' || e.key === 'Enter') {
+                                            setIsDropdownOpen(true);
+                                        }
+                                        return;
+                                    }
+                                    if (e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        setActiveIndex(prev => (prev < filteredOptions.length - 1 ? prev + 1 : prev));
+                                    } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        setActiveIndex(prev => (prev > 0 ? prev - 1 : prev));
+                                    } else if (e.key === 'Enter') {
+                                        e.preventDefault();
+                                        if (activeIndex >= 0 && filteredOptions[activeIndex]) {
+                                            handleSelectJob(filteredOptions[activeIndex]);
+                                        }
+                                    } else if (e.key === 'Escape') {
+                                        setIsDropdownOpen(false);
+                                        setActiveIndex(-1);
+                                    }
+                                }}
                                 className="w-full px-3 py-2 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
                             />
                             <div className="absolute right-3 top-2.5 text-slate-400 pointer-events-none">
                                 <Search size={16} />
                             </div>
-                        </div>
 
-                        {/* Dropdown Options */}
-                        {isDropdownOpen && (
-                            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                                {filteredOptions.length > 0 ? (
-                                    filteredOptions.map((job) => (
-                                        <div
-                                            key={job.job_no}
-                                            onClick={() => handleSelectJob(job)}
-                                            className="px-4 py-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer text-sm"
-                                        >
-                                            <div className="font-medium text-slate-900 dark:text-white">#{job.job_no}</div>
-                                            <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{job.shipper_name}</div>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="px-4 py-3 text-sm text-slate-500 text-center">No jobs found</div>
-                                )}
-                            </div>
-                        )}
+                            {/* Dropdown Options */}
+                            {isDropdownOpen && (
+                                <div
+                                    ref={listRef}
+                                    className="absolute z-30 w-full mt-1 bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg max-h-60 overflow-y-auto"
+                                >
+                                    {filteredOptions.length > 0 ? (
+                                        filteredOptions.map((job, idx) => (
+                                            <div
+                                                key={job.job_no}
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    handleSelectJob(job);
+                                                }}
+                                                className={`px-4 py-2 cursor-pointer text-sm transition-colors ${
+                                                    activeIndex === idx
+                                                        ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 font-semibold'
+                                                        : 'hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-900 dark:text-white'
+                                                }`}
+                                            >
+                                                <div className="font-medium">#{job.job_no}</div>
+                                                {job.shipper_name && (
+                                                    <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{job.shipper_name}</div>
+                                                )}
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="px-4 py-3 text-sm text-slate-500 text-center">No jobs found</div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Document Type</label>

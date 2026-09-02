@@ -29,6 +29,33 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
   const finalCharges = safeChargeOptions.length > 0 ? safeChargeOptions.map(c => c.name) : CHARGE_TYPES;
 
   const [activeRowIdx, setActiveRowIdx] = React.useState(0);
+  const defaultExRate = safeRows.find(r => r.ex_rate && parseFloat(r.ex_rate) > 0)?.ex_rate || "1";
+  const [globalExRate, setGlobalExRate] = React.useState(defaultExRate);
+
+  React.useEffect(() => {
+    if (safeRows.length > 0 && safeRows[0].ex_rate) {
+      setGlobalExRate(safeRows[0].ex_rate);
+    }
+  }, [safeRows]);
+
+  const handleGlobalExRateChange = (val) => {
+    setGlobalExRate(val);
+    const ex = parseFloat(val) || 1;
+    const updated = safeRows.map(row => {
+      const q = parseFloat(row.quantity) || 0;
+      const r = parseFloat(row.rate) || 0;
+      const amtFc = (q * r);
+      return {
+        ...row,
+        ex_rate: val,
+        amt_fc: amtFc.toFixed(2),
+        amount: (amtFc * ex).toFixed(2)
+      };
+    });
+    if (typeof onChange === 'function') {
+      onChange(updated);
+    }
+  };
 
   const getCellClass = (idx, fieldName) => {
     const hasError = safeErrors[idx] && safeErrors[idx][fieldName];
@@ -63,7 +90,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
       // Foreign Currency Amount (AMT_FC) = Quantity * Rate
       updated[index].amt_fc = (q * r).toFixed(2);
       
-      const ex = parseFloat(updated[index].ex_rate) || 1;
+      const ex = parseFloat(updated[index].ex_rate || globalExRate) || 1;
       // Final calculated Amount in INR = Foreign Currency Amount * Ex Rate
       updated[index].amount = (q * r * ex).toFixed(2);
     }
@@ -149,55 +176,75 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
   return (
     <div className="space-y-6">
       {/* 1. Header & Actions */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
           {isBuy ? "Buy Rates / Expenses" : "Sell Rates / Revenue"}
         </h4>
-        <button
-          type="button"
-          disabled={isLocked && !isEditApproved}
-          onClick={() => {
-            const defaultCharge = finalCharges[0] || "Ocean Freight";
-            const selectedCharge = chargeOptions.find(c => c.name === defaultCharge);
-            let defaultGst = "0%";
-            if (selectedCharge) {
-              if (selectedCharge.percentage !== undefined && selectedCharge.percentage !== null) {
-                defaultGst = `${selectedCharge.percentage}%`;
+        <div className="flex items-center gap-3">
+          {!isBuy && (
+            <div className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-lg px-2.5 py-1 shadow-sm">
+              <label className="text-xs font-bold text-slate-600 dark:text-slate-300 uppercase tracking-wider whitespace-nowrap">
+                Ex Rate:
+              </label>
+              <input
+                type="number"
+                step="any"
+                min="0"
+                disabled={isLocked && !isEditApproved}
+                value={globalExRate}
+                onChange={(e) => handleGlobalExRateChange(e.target.value)}
+                placeholder="1.00"
+                className="w-20 px-2 py-0.5 text-xs font-bold text-right border border-slate-300 dark:border-slate-600 rounded bg-white dark:bg-slate-900 text-slate-900 dark:text-white focus:ring-1 focus:ring-indigo-500 outline-none"
+              />
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={isLocked && !isEditApproved}
+            onClick={() => {
+              const defaultCharge = finalCharges[0] || "Ocean Freight";
+              const selectedCharge = chargeOptions.find(c => c.name === defaultCharge);
+              let defaultGst = "0%";
+              if (selectedCharge) {
+                if (selectedCharge.percentage !== undefined && selectedCharge.percentage !== null) {
+                  defaultGst = `${selectedCharge.percentage}%`;
+                }
               }
-            }
 
-            const defaultSac = selectedCharge?.sac || "";
-            const newRow = {
-              doc_type: "INV",
-              drcr: "DR",
-              party: !isBuy && consignee ? consignee : "",
-              address: "",
-              charge: defaultCharge,
-              sac: defaultSac,
-              hsn_sac: defaultSac,
-              gst: defaultGst,
-              unit: "--- None ---",
-              quantity: "1",
-              rate: "0",
-              currency: "USD",
-              ex_rate: "1",
-              amount: "0.00",
-              amt_fc: "0.00",
-              narration: "",
-              group: ""
-            };
-            onAddRow(newRow);
-            setActiveRowIdx(rows.length); // Focus newly created row
-          }}
-          className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Plus size={14} /> Add Rate Row
-        </button>
+              const defaultSac = selectedCharge?.sac || "";
+              const newRow = {
+                doc_type: "INV",
+                drcr: "DR",
+                party: !isBuy && consignee ? consignee : "",
+                address: "",
+                charge: defaultCharge,
+                sac: defaultSac,
+                hsn_sac: defaultSac,
+                gst: defaultGst,
+                unit: "--- None ---",
+                quantity: "1",
+                rate: "0",
+                currency: "USD",
+                ex_rate: isBuy ? "1" : (globalExRate || "1"),
+                amount: "0.00",
+                amt_fc: "0.00",
+                rebate: "",
+                narration: "",
+                group: ""
+              };
+              onAddRow(newRow);
+              setActiveRowIdx(rows.length); // Focus newly created row
+            }}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Plus size={14} /> Add Rate Row
+          </button>
+        </div>
       </div>
 
       {/* 2. GST Summary Panel */}
       {activeRow && (
-        <div className="bg-slate-50 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl p-4 shadow-sm space-y-3">
+        <div className="bg-slate-550/10 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-700/80 rounded-xl p-4 shadow-sm space-y-3">
           <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-750 pb-2">
             <h5 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider">
               GST Information (Active Row #{activeRowIdx + 1}: {activeRow.charge || "No Charge Selected"})
@@ -264,16 +311,21 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
               <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[40px] text-right">Qty</th>
               <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[65px] text-right">Rate</th>
               <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[50px]">Cur.</th>
-              <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[60px] text-right">Ex Rate</th>
+              {isBuy && (
+                <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[60px] text-right">Ex Rate</th>
+              )}
               <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[70px] text-right">Amount</th>
               <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[75px] text-right">AMT_FC</th>
               <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-center w-[35px]">Act</th>
+              {!isBuy && (
+                <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[65px] text-right">Rebate</th>
+              )}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-700/60">
             {safeRows.length === 0 ? (
               <tr>
-                <td colSpan="14" className="p-8 text-center text-slate-500 dark:text-slate-400 italic border border-slate-200 dark:border-slate-700/80">
+                <td colSpan={isBuy ? 14 : 14} className="p-8 text-center text-slate-500 dark:text-slate-400 italic border border-slate-200 dark:border-slate-700/80">
                   No rate rows added yet. Click "Add Rate Row" to start.
                 </td>
               </tr>
@@ -420,15 +472,17 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       disabled={isRowLocked}
                     />
                   </td>
-                  <td className={`${getCellClass(idx, "ex_rate")} p-0`}>
-                    <input
-                      type="number"
-                      value={row.ex_rate || "1"}
-                      onChange={(e) => handleRowChange(idx, "ex_rate", e.target.value)}
-                      disabled={isRowLocked}
-                      className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
-                    />
-                  </td>
+                  {isBuy && (
+                    <td className={`${getCellClass(idx, "ex_rate")} p-0`}>
+                      <input
+                        type="number"
+                        value={row.ex_rate || "1"}
+                        onChange={(e) => handleRowChange(idx, "ex_rate", e.target.value)}
+                        disabled={isRowLocked}
+                        className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
+                      />
+                    </td>
+                  )}
                   <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right font-medium text-slate-750 dark:text-slate-350 bg-slate-50/10 dark:bg-slate-850/10 text-xs">
                     {row.amount || "0.00"}
                   </td>
@@ -450,6 +504,20 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       </button>
                     )}
                   </td>
+                  {!isBuy && (
+                    <td className={`${getCellClass(idx, "rebate")} p-0`}>
+                      <input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={row.rebate || ""}
+                        onChange={(e) => handleRowChange(idx, "rebate", e.target.value)}
+                        disabled={isRowLocked}
+                        placeholder="0.00"
+                        className={`w-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white text-right rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 font-medium ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : ""}`}
+                      />
+                    </td>
+                  )}
                 </tr>
                 );
               })
@@ -458,7 +526,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
             {/* 4. Column Totals Row */}
             {safeRows.length > 0 && (
               <tr className="bg-slate-100 dark:bg-slate-800/40 text-slate-800 dark:text-white font-bold border-t border-slate-200 dark:border-slate-700/80">
-                <td colSpan="11" className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-slate-500 font-semibold uppercase tracking-wider text-xs">
+                <td colSpan={isBuy ? "11" : "10"} className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-slate-500 font-semibold uppercase tracking-wider text-xs">
                   Totals:
                 </td>
                 <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-slate-900 dark:text-white font-bold bg-slate-100/30 dark:bg-slate-800/30 text-xs">
@@ -468,6 +536,11 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                   {safeRows.reduce((acc, r) => acc + (parseFloat(r.amt_fc) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </td>
                 <td className="border border-slate-200 dark:border-slate-700/80 p-1"></td>
+                {!isBuy && (
+                  <td className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 text-right text-slate-750 dark:text-slate-350 font-bold bg-slate-100/30 dark:bg-slate-800/30 text-xs">
+                    {safeRows.reduce((acc, r) => acc + (parseFloat(r.rebate) || 0), 0).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </td>
+                )}
               </tr>
             )}
           </tbody>

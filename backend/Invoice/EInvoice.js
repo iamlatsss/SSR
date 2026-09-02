@@ -30,6 +30,7 @@ router.get("/approval/list", authenticateJWT, async (req, res) => {
 
     let query = knexDB("Invoices")
       .select('*')
+      .whereIn('job_no', knexDB('MasterBL').select('job_no'))
       .whereNot('einvoice_status', 'Cancelled') // Only display non-cancelled active invoices in approval lists
       .orderBy('created_at', 'desc');
 
@@ -155,11 +156,8 @@ router.get("/posting/list", authenticateJWT, async (req, res) => {
     } = req.query;
 
     let query = knexDB("Invoices")
-      .leftJoin("MasterBL", "Invoices.job_no", "MasterBL.job_no")
-      .select(
-        "Invoices.*",
-        "MasterBL.branch_code as branch"
-      )
+      .select("Invoices.*")
+      .whereIn('Invoices.job_no', knexDB('MasterBL').select('job_no'))
       .where({ "Invoices.approval_status": 'Approved' })
       .whereNot("Invoices.einvoice_status", 'Cancelled')
       .orderBy('Invoices.created_at', 'desc');
@@ -183,9 +181,6 @@ router.get("/posting/list", authenticateJWT, async (req, res) => {
     }
     if (gstin) {
       query = query.where('Invoices.client_gstin', 'like', `%${gstin}%`);
-    }
-    if (branch) {
-      query = query.where('MasterBL.branch_code', 'like', `%${branch}%`);
     }
     if (fromDate) {
       query = query.where('Invoices.invoice_date', '>=', fromDate);
@@ -222,8 +217,7 @@ router.get("/posting/list", authenticateJWT, async (req, res) => {
 router.get("/posting/:id", authenticateJWT, async (req, res) => {
   try {
     const invoice = await knexDB("Invoices")
-      .leftJoin("MasterBL", "Invoices.job_no", "MasterBL.job_no")
-      .select("Invoices.*", "MasterBL.branch_code as branch")
+      .select("Invoices.*")
       .where({ "Invoices.id": req.params.id })
       .first();
 
@@ -454,7 +448,6 @@ router.get("/posting/export", authenticateJWT, async (req, res) => {
   try {
     const { ids } = req.query;
     let query = knexDB("Invoices")
-      .leftJoin("MasterBL", "Invoices.job_no", "MasterBL.job_no")
       .select(
         "Invoices.invoice_no",
         "Invoices.job_no",
@@ -465,8 +458,7 @@ router.get("/posting/export", authenticateJWT, async (req, res) => {
         "Invoices.einvoice_status",
         "Invoices.irn",
         "Invoices.ack_no",
-        "Invoices.ack_date",
-        "MasterBL.branch_code as branch"
+        "Invoices.ack_date"
       );
 
     if (ids) {

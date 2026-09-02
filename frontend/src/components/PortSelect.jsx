@@ -53,7 +53,11 @@ const PortSelect = ({ label, value, onChange, name, placeholder = "Type to searc
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
+        document.addEventListener("touchstart", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+            document.removeEventListener("touchstart", handleClickOutside);
+        };
     }, [wrapperRef]);
 
     // Scroll active item into view
