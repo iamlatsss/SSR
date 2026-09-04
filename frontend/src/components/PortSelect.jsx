@@ -80,9 +80,6 @@ const PortSelect = ({ label, value, onChange, name, placeholder = "Type to searc
 
     const handleKeyDown = (e) => {
         if (!isOpen) {
-            if (e.key === 'ArrowDown' || e.key === 'Enter') {
-                setIsOpen(true);
-            }
             return;
         }
 
@@ -97,8 +94,6 @@ const PortSelect = ({ label, value, onChange, name, placeholder = "Type to searc
             if (activeIndex >= 0 && filteredOptions[activeIndex]) {
                 handleSelect(filteredOptions[activeIndex]);
             } else if (filteredOptions.length > 0 && activeIndex === -1) {
-                // If enter pressed without selection but options exist, select first? 
-                // Better to force user to select or just keep current value.
                 handleSelect(filteredOptions[0]);
             }
         } else if (e.key === 'Escape') {
@@ -113,8 +108,13 @@ const PortSelect = ({ label, value, onChange, name, placeholder = "Type to searc
     };
 
     const handleInputChange = (e) => {
+        const val = e.target.value;
         onChange(e);
-        setIsOpen(true);
+        if (val.trim().length > 0) {
+            setIsOpen(true);
+        } else {
+            setIsOpen(false);
+        }
         setActiveIndex(-1);
     };
 
@@ -128,9 +128,6 @@ const PortSelect = ({ label, value, onChange, name, placeholder = "Type to searc
                     name={name}
                     value={value || ""}
                     onChange={handleInputChange}
-                    onFocus={() => {
-                        if (value) setIsOpen(true);
-                    }}
                     onKeyDown={handleKeyDown}
                     placeholder={placeholder}
                     autoComplete="off"

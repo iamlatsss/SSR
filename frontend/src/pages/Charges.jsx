@@ -10,6 +10,13 @@ const CURRENCIES = ["USD", "INR", "EUR", "AED"];
 const GST_CHARGE_TYPES = ["Taxable", "Nil Rated", "Zero Rated / Export", "Exempted"];
 const CHARGE_TYPES = ["Exemption", "NonTaxable", "Pure Agent", "Reverse Charge", "Taxable"];
 const TAX_TYPES = ["Standard GST", "HSN Based By Price", "Charge Based IGST Fixed"];
+const TAX_CLASSES = [
+    "5% GST On Freight",
+    "5% GST On Transportation",
+    "12% GST On Rail Freight",
+    "12% GST On Purchase",
+    "18% GST"
+];
 const INCOME_TYPES = ["Both", "Expense", "Income"];
 
 const Charges = () => {
@@ -38,6 +45,7 @@ const Charges = () => {
         income_type: 'Both',
         rcm: 'No',
         tax_type: 'Standard GST',
+        tax_class: '',
         tds_applicable: 'No',
         reimbursement_applicable: 'No',
         status: 'Enabled'
@@ -92,6 +100,7 @@ const Charges = () => {
             income_type: 'Both',
             rcm: 'No',
             tax_type: 'Standard GST',
+            tax_class: '',
             tds_applicable: 'No',
             reimbursement_applicable: 'No',
             status: 'Enabled'
@@ -114,6 +123,7 @@ const Charges = () => {
             income_type: charge.income_type || 'Both',
             rcm: charge.rcm || 'No',
             tax_type: charge.tax_type || 'Standard GST',
+            tax_class: charge.tax_class || '',
             tds_applicable: charge.tds_applicable || 'No',
             reimbursement_applicable: charge.reimbursement_applicable || 'No',
             status: charge.status || 'Enabled'
@@ -237,8 +247,8 @@ const Charges = () => {
                         </div>
 
                         {/* Charges Table */}
-                        <div className="border border-slate-100 dark:border-slate-800 rounded-xl mb-4 overflow-x-auto overflow-y-visible">
-                            <table className="w-full text-left border-collapse text-xs table-auto">
+                        <div className="border border-slate-100 dark:border-slate-800 rounded-xl mb-4 overflow-x-auto custom-scrollbar">
+                            <table className="w-full text-left border-collapse text-xs table-auto min-w-[750px]">
                                 <thead>
                                     <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-150 dark:border-slate-850 text-slate-550 dark:text-slate-400 font-bold uppercase tracking-wider select-none">
                                         <th className="p-3.5 pl-6">Charge Title</th>
@@ -351,7 +361,7 @@ const Charges = () => {
                         <div className="space-y-6 pb-2">
                             
                             {/* Row 1: Charge Title | GST Charge Type | Unit */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5 flex items-center gap-1">
                                         <span className="text-red-500 font-bold">*</span> Charge Title
@@ -405,7 +415,7 @@ const Charges = () => {
                             </div>
 
                             {/* Row 2: SAC | Short Name | Currency */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">
                                         HSN/SAC Code
@@ -452,7 +462,7 @@ const Charges = () => {
                             </div>
 
                             {/* Row 3: Charge Type | Income Type | RCM */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">
                                         Charge Type
@@ -506,8 +516,8 @@ const Charges = () => {
                                 </div>
                             </div>
 
-                            {/* Row 4: Tax Type | TDS Applicable (Radio) | Reimbursement Applicable (Radio) */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {/* Row 4: Tax Type | Tax Class (if Standard GST) | TDS Applicable | Reimbursement Applicable */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5 flex items-center gap-1">
                                         <span className="text-red-500 font-bold">*</span> Tax Type
@@ -528,6 +538,25 @@ const Charges = () => {
                                         <span className="text-[10px] text-rose-550 font-semibold mt-1 block">{validationErrors.tax_type}</span>
                                     )}
                                 </div>
+
+                                {form.tax_type === 'Standard GST' && (
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">
+                                            Tax Class
+                                        </label>
+                                        <select
+                                            name="tax_class"
+                                            value={form.tax_class || ''}
+                                            onChange={handleInputChange}
+                                            className="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-dark-card text-xs text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition-all cursor-pointer"
+                                        >
+                                            <option value="">Select GST tax_class</option>
+                                            {TAX_CLASSES.map(tc => (
+                                                <option key={tc} value={tc}>{tc}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                )}
 
                                 <div className="flex flex-col justify-center">
                                     <label className="block text-xs font-bold text-slate-655 dark:text-slate-350 mb-3 flex items-center gap-1">
@@ -588,10 +617,7 @@ const Charges = () => {
                                         </label>
                                     </div>
                                 </div>
-                            </div>
 
-                            {/* Row 5: Status */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div>
                                     <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5 flex items-center gap-1">
                                         <span className="text-red-500 font-bold">*</span> Status

@@ -607,7 +607,7 @@ const getChargeCategory = (charge, pol, pod) => {
                             <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); }}>
                                 
                                 {/* Row 1: Client Info */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
                                     <div className="flex flex-col gap-0.5">
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider h-4 flex items-center">Client Name</label>
                                         <SearchableDropdown
@@ -630,7 +630,7 @@ const getChargeCategory = (charge, pol, pod) => {
                                 </div>
 
                                 {/* Row 1.5: Address, Commodity, Incoterms */}
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-end">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 items-end">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 mb-1 uppercase tracking-wider h-4 flex items-center">Client Address</label>
                                         <input type="text" value={formData.address} onChange={(e) => handleQuotationChange(qIndex, 'address', e.target.value)} placeholder="Address" className="w-full px-3 py-1.5 h-[38px] text-sm bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all" />
@@ -660,7 +660,7 @@ const getChargeCategory = (charge, pol, pod) => {
                                 </div>
 
                                  {/* Row 2: Route & Cargo */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 items-end">
                                     <div>
                                         <PortSelect
                                             label="POL"
@@ -735,7 +735,7 @@ const getChargeCategory = (charge, pol, pod) => {
                                             .filter(c => c.computedCat === sec.key);
 
                                         return (
-                                            <div key={sec.key} className="space-y-2 border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50/40 dark:bg-slate-800/20 relative focus-within:z-40">
+                                            <div key={sec.key} className="space-y-2 border border-slate-200 dark:border-slate-700 rounded-xl p-3 bg-slate-50/40 dark:bg-slate-800/20 relative overflow-visible focus-within:z-40">
                                                 <div className="flex justify-between items-center">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider">{sec.title}</span>
@@ -754,8 +754,8 @@ const getChargeCategory = (charge, pol, pod) => {
                                                     </button>
                                                 </div>
 
-                                                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-visible bg-white dark:bg-dark-card relative focus-within:z-50">
-                                                    <table className="w-full text-left text-xs border-collapse table-fixed">
+                                                <div className="border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-dark-card relative overflow-visible focus-within:z-50">
+                                                    <table className="w-full text-left text-xs border-collapse table-fixed min-w-full">
                                                         <thead className="bg-slate-100 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-[11px] uppercase font-bold text-slate-700 dark:text-slate-300">
                                                             <tr>
                                                                 <th className="px-2 py-1.5 border-r border-slate-200 dark:border-slate-700 text-left w-[28%]">Charge Head</th>
@@ -785,17 +785,17 @@ const getChargeCategory = (charge, pol, pod) => {
 
                                                                     return (
                                                                         <tr key={cIndex} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors relative focus-within:z-50">
-                                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-left align-middle relative">
+                                                                            <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-left align-middle relative overflow-visible">
                                                                                 <SearchableDropdown
                                                                                     options={availableCharges.map(c => cleanChargeName(c.name)).filter(Boolean)}
                                                                                     value={charge.chargeName}
                                                                                     onChange={(val) => handleChargeChange(qIndex, cIndex, 'chargeName', val)}
                                                                                     placeholder="Type to search..."
                                                                                     allowCustom={true}
-                                                                                    showOnlyWhenTyping={true}
+                                                                                    showOnlyWhenTyping={false}
                                                                                     variant="grid"
                                                                                     className="!py-0.5 !px-1.5 !rounded bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 text-xs w-full text-left"
-                                                                                    dropdownClassName="!z-[9999] top-full left-0 shadow-2xl border border-slate-200 dark:border-slate-700"
+                                                                                    dropdownClassName="!z-[99999] top-full left-0 shadow-2xl border border-slate-200 dark:border-slate-700 min-w-[280px]"
                                                                                 />
                                                                             </td>
                                                                             <td className="p-1 border-r border-slate-200 dark:border-slate-700 text-left align-middle">

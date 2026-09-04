@@ -23,6 +23,7 @@ import EditRequests from './MasterBL/EditRequests.js';
 import Party from './Party/Party.js';
 import PackageTypes from './Data/PackageTypes.js';
 import CFS from './CFS/CFS.js';
+import HBLRoutes from './HBL/HBLRoutes.js';
 import { startBackupScheduler } from './database-maintenance/scheduler.js';
 
 const app = express();
@@ -59,17 +60,18 @@ app.use('/booking-updates', authenticateJWT, BookingUpdates);
 app.use('/user-booking-updates', authenticateJWT, UserBookingUpdates);
 app.use('/masterbl', authenticateJWT, MasterBL);
 app.use('/masterbl/edit-requests', authenticateJWT, EditRequests);
-app.use('/mail', Mail);
+app.use('/mail', authenticateJWT, Mail);
 app.use('/kyc', authenticateJWT, checkPermission('canAccessKYC'), KYC);
 app.use('/ports', Ports);
 app.use('/invoice', authenticateJWT, Invoice);
 app.use('/proforma', authenticateJWT, ProformaInvoice);
 app.use('/einvoice', authenticateJWT, EInvoice);
-app.use('/quotation', Quotation);
+app.use('/quotation', authenticateJWT, Quotation);
 app.use('/s3', authenticateJWT, S3Routes);
 app.use('/party', authenticateJWT, Party);
 app.use('/package-types', PackageTypes);
 app.use('/cfs', authenticateJWT, CFS);
+app.use('/hbl', authenticateJWT, HBLRoutes);
 
 app.get('/', (req, res) => {
   res.send('Backend is running 🚀');

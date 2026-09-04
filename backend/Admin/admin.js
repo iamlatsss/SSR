@@ -38,6 +38,7 @@ router.put("/user/:user_id", authenticateJWT, async (req, res) => {
         if (key === "password") {
           if (req.body.password && req.body.password.trim() !== "") {
             updates.password = await bcrypt.hash(req.body.password, SALT_ROUNDS);
+            updates.password_changed_at = new Date();
           }
         } else {
           updates[key] = req.body[key];

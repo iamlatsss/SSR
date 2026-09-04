@@ -198,10 +198,96 @@ export default function ProformaInvoice() {
     fetchJobDetails(selectedMblJobNo);
   }, [selectedMblJobNo]);
 
+  const getClientDetails = () => {
+    if (!selectedClient) return null;
+    return filteredCustomers.find(c => String(c.customer_id) === String(selectedClient) || c.name === selectedClient) || customers.find(c => String(c.customer_id) === String(selectedClient) || c.name === selectedClient) || null;
+  };
+
+  const displayedCharges = useMemo(() => {
+    if (!selectedClient) {
+      return allCharges.map((item, originalIndex) => ({ ...item, originalIndex }));
+    }
+    const client = getClientDetails();
+    const allCustList = [...filteredCustomers, ...customers];
+
+    return allCharges
+      .map((item, originalIndex) => ({ ...item, originalIndex }))
+      .filter(row => {
+        if (!row.party) return true;
+        if (String(row.party) === String(selectedClient)) return true;
+        if (client) {
+          if (String(row.party).toLowerCase().trim() === String(client.name || '').toLowerCase().trim()) return true;
+          if (String(row.party) === String(client.customer_id)) return true;
+          const partyCust = allCustList.find(c => String(c.customer_id) === String(row.party));
+          if (partyCust && String(partyCust.name).toLowerCase().trim() === String(client.name || '').toLowerCase().trim()) return true;
+        }
+        return false;
+      });
+  }, [allCharges, selectedClient, filteredCustomers, customers]);
+
+  const calculateGridTotals = () => {
+    let subtotal = 0;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+
+    const client = getClientDetails();
+    const isMaharashtra = client && (String(client.gstin || '').startsWith('27') || String(client.address || '').toLowerCase().includes('maharashtra'));
+
+    displayedCharges.forEach((item) => {
+      if (!checkedItems[item.originalIndex]) return;
+
+      const qty = parseFloat(item.quantity || 1);
+      const rate = parseFloat(item.rate || 0);
+      const itemCurrency = item.currency || 'USD';
+      const rowExRate = parseFloat(item.ex_rate || jobExchangeRate || 85.00);
+
+      let baseAmount = qty * rate; // in native currency
+
+      if (printType === 'USD') {
+        // We sum everything in USD values with no GST for USD Invoices
+        let amountUSD = baseAmount;
+        if (itemCurrency === 'INR') {
+          amountUSD = baseAmount / rowExRate;
+        }
+
+        subtotal += amountUSD;
+        // No GST added for USD Invoices
+      } else {
+        // INR LOCAL
+        let amountINR = baseAmount;
+        if (itemCurrency === 'USD') {
+          amountINR = baseAmount * rowExRate;
+        }
+
+        subtotal += amountINR;
+
+        const gstRate = parseFloat(item.gst || 0);
+        const taxValINR = amountINR * (gstRate / 100);
+
+        if (gstRate > 0) {
+          if (isMaharashtra) {
+            cgst += taxValINR / 2;
+            sgst += taxValINR / 2;
+          } else {
+            igst += taxValINR;
+          }
+        }
+      }
+    });
+
+    const grandTotal = subtotal + cgst + sgst + igst;
+    setTotalsState({ subtotal, cgst, sgst, igst, grandTotal });
+  };
+
+  const setTotalsState = (t) => {
+    setCalcTotals(t);
+  };
+
   // Trigger real-time calculation whenever selected charges, client, print type, or ex-rate changes
   useEffect(() => {
     calculateGridTotals();
-  }, [checkedItems, allCharges, selectedClient, printType, jobExchangeRate]);
+  }, [checkedItems, displayedCharges, selectedClient, printType, jobExchangeRate]);
 
   const loadInitData = async () => {
     try {
@@ -395,81 +481,6 @@ export default function ProformaInvoice() {
     }
   };
 
-  const getClientDetails = () => {
-    if (!selectedClient) return null;
-    return filteredCustomers.find(c => c.customer_id == selectedClient) || customers.find(c => c.customer_id == selectedClient) || null;
-  };
-
-  const calculateGridTotals = () => {
-    let subtotal = 0;
-    let cgst = 0;
-    let sgst = 0;
-    let igst = 0;
-
-    const client = getClientDetails();
-    const isMaharashtra = client && (String(client.gstin || '').startsWith('27') || String(client.address || '').toLowerCase().includes('maharashtra'));
-
-    allCharges.forEach((item, index) => {
-      if (!checkedItems[index]) return;
-
-      const qty = parseFloat(item.quantity || 1);
-      const rate = parseFloat(item.rate || 0);
-      const itemCurrency = item.currency || 'USD';
-      const rowExRate = parseFloat(item.ex_rate || jobExchangeRate || 85.00);
-
-      let baseAmount = qty * rate; // in native currency
-
-      if (printType === 'USD') {
-        // We sum everything in USD values
-        let amountUSD = baseAmount;
-        if (itemCurrency === 'INR') {
-          amountUSD = baseAmount / rowExRate;
-        }
-
-        subtotal += amountUSD;
-
-        const gstRate = parseFloat(item.gst || 0);
-        const taxValUSD = amountUSD * (gstRate / 100);
-
-        if (gstRate > 0) {
-          if (isMaharashtra) {
-            cgst += taxValUSD / 2;
-            sgst += taxValUSD / 2;
-          } else {
-            igst += taxValUSD;
-          }
-        }
-      } else {
-        // INR LOCAL
-        let amountINR = baseAmount;
-        if (itemCurrency === 'USD') {
-          amountINR = baseAmount * rowExRate;
-        }
-
-        subtotal += amountINR;
-
-        const gstRate = parseFloat(item.gst || 0);
-        const taxValINR = amountINR * (gstRate / 100);
-
-        if (gstRate > 0) {
-          if (isMaharashtra) {
-            cgst += taxValINR / 2;
-            sgst += taxValINR / 2;
-          } else {
-            igst += taxValINR;
-          }
-        }
-      }
-    });
-
-    const grandTotal = subtotal + cgst + sgst + igst;
-    setTotalsState({ subtotal, cgst, sgst, igst, grandTotal });
-  };
-
-  const setTotalsState = (t) => {
-    setCalcTotals(t);
-  };
-
   const handleCheckboxChange = (index) => {
     setCheckedItems(prev => ({
       ...prev,
@@ -478,11 +489,13 @@ export default function ProformaInvoice() {
   };
 
   const handleSelectAll = (checked) => {
-    const checks = {};
-    allCharges.forEach((_, idx) => {
-      checks[idx] = checked;
+    setCheckedItems(prev => {
+      const checks = { ...prev };
+      displayedCharges.forEach(item => {
+        checks[item.originalIndex] = checked;
+      });
+      return checks;
     });
-    setCheckedItems(checks);
   };
 
   const handleProcessProforma = async () => {
@@ -492,7 +505,7 @@ export default function ProformaInvoice() {
       return;
     }
 
-    const selectedItems = allCharges.filter((_, idx) => checkedItems[idx]);
+    const selectedItems = displayedCharges.filter(item => checkedItems[item.originalIndex]);
     if (selectedItems.length === 0) {
       toast.error("Please tick/select at least one charge item!");
       return;
@@ -546,7 +559,7 @@ export default function ProformaInvoice() {
           <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <FileText size={20} className="text-indigo-500" /> Filter Billing Context
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             
             {/* 1. MBL Job Selector */}
             <div className="flex flex-col gap-1.5">
@@ -612,7 +625,7 @@ export default function ProformaInvoice() {
 
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mt-4">
             {/* Ex-Rate setting */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">USD Exchange Rate (Ex Rate)</label>
@@ -644,7 +657,7 @@ export default function ProformaInvoice() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-end gap-3 md:col-span-2">
+            <div className="flex items-end gap-3 sm:col-span-2">
               <button
                 type="button"
                 onClick={handleSearchCharges}
@@ -683,14 +696,14 @@ export default function ProformaInvoice() {
               </span>
             </h3>
 
-            <div className="overflow-x-auto border border-slate-200 dark:border-slate-700/80 rounded-xl">
+            <div className="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-700/80 rounded-xl">
               <table className="w-full text-left border-collapse table-fixed text-xs min-w-[1150px]">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
                     <th className="p-3.5 text-center w-[40px]">
                       <input
                         type="checkbox"
-                        checked={allCharges.length > 0 && allCharges.every((_, idx) => checkedItems[idx])}
+                        checked={displayedCharges.length > 0 && displayedCharges.every(item => checkedItems[item.originalIndex])}
                         onChange={(e) => handleSelectAll(e.target.checked)}
                         className="accent-indigo-600 w-4 h-4 rounded cursor-pointer"
                       />
@@ -709,14 +722,15 @@ export default function ProformaInvoice() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {allCharges.length === 0 ? (
+                  {displayedCharges.length === 0 ? (
                     <tr>
                       <td colSpan="12" className="p-8 text-center text-slate-500 italic">
-                        No Sell Rates found for this BL number.
+                        {allCharges.length === 0 ? "No Sell Rates found for this BL number." : "No charge rows found for the selected company."}
                       </td>
                     </tr>
                   ) : (
-                    allCharges.map((row, idx) => {
+                    displayedCharges.map((row) => {
+                      const idx = row.originalIndex;
                       const qty = parseFloat(row.quantity || 1);
                       const baseRate = parseFloat(row.rate || 0);
                       const fcAmt = qty * baseRate;

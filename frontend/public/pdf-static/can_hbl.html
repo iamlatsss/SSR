@@ -4,27 +4,35 @@
 <meta charset="UTF-8">
 <title>Cargo Arrival Notice</title>
 <style>
+  @page {
+    size: A4 portrait;
+    margin: 6mm 8mm;
+  }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
     padding: 0;
     background: #e8e8e8;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   body {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 12px;
+    font-size: 11px;
     color: #000000;
-    padding: 20px;
+    padding: 10px;
   }
 
   .can-container {
-    width: 850px;
+    width: 800px;
     max-width: 100%;
     margin: 0 auto;
     background: #ffffff;
     overflow: hidden;
-    padding: 24px 30px 30px 30px;
+    padding: 16px 22px 18px 22px;
     border: 1.5px solid #000000;
+    page-break-inside: avoid;
+    break-inside: avoid;
   }
 
   /* ===== HEADER ===== */
@@ -32,15 +40,15 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 14px;
+    gap: 12px;
   }
   .header .logo {
-    width: 130px;
-    flex: 0 0 130px;
+    width: 115px;
+    flex: 0 0 115px;
   }
   .header .logo img {
     width: 100%;
-    max-width: 120px;
+    max-width: 110px;
     height: auto;
     display: block;
   }
@@ -48,8 +56,8 @@
     flex: 1 1 auto;
     min-width: 0;
     text-align: right;
-    font-size: 11.5px;
-    line-height: 1.5;
+    font-size: 10.5px;
+    line-height: 1.35;
   }
   .addr-block div { word-wrap: break-word; overflow-wrap: break-word; }
   .addr-block b { font-weight: bold; }
@@ -57,27 +65,27 @@
   hr.top-rule {
     border: none;
     border-top: 1px solid #000000;
-    margin: 14px 0 0 0;
+    margin: 8px 0 0 0;
   }
 
   /* ===== TITLE ===== */
   .title-bar {
     text-align: center;
-    font-weight: normal;
-    font-size: 15px;
-    padding: 10px 0 2px 0;
+    font-weight: bold;
+    font-size: 14px;
+    padding: 6px 0 2px 0;
   }
   .type-line {
     text-align: right;
-    font-size: 12px;
-    margin: 2px 0 8px 0;
+    font-size: 11px;
+    margin: 1px 0 4px 0;
   }
   .type-line .dynamic { display: inline-block; }
 
   hr.rule {
     border: none;
     border-top: 1px solid #000000;
-    margin: 6px 0 0 0;
+    margin: 4px 0 0 0;
   }
 
   /* ===== SHIPPER / CONSIGNEE BOX ===== */
@@ -90,8 +98,9 @@
   .sc-box .sc-col {
     flex: 1 1 50%;
     min-width: 0;
-    padding: 8px 10px;
-    font-size: 12px;
+    padding: 5px 8px;
+    font-size: 11px;
+    line-height: 1.3;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
@@ -103,8 +112,8 @@
   /* ===== TWO-COLUMN DETAILS ===== */
   .details {
     display: flex;
-    gap: 20px;
-    margin-top: 10px;
+    gap: 16px;
+    margin-top: 6px;
     width: 100%;
   }
   .details .col {
@@ -112,21 +121,22 @@
     min-width: 0;
   }
   .details .row {
-    margin: 3px 0;
+    margin: 2px 0;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    font-size: 12px;
+    font-size: 11px;
+    line-height: 1.3;
   }
   .details .row b { font-weight: bold; }
 
   /* ===== NOTICE PARAGRAPH ===== */
   .notice {
-    margin-top: 14px;
+    margin-top: 8px;
   }
   .notice p {
-    margin: 4px 0;
-    font-size: 12px;
-    line-height: 1.5;
+    margin: 2px 0;
+    font-size: 9.5px;
+    line-height: 1.3;
     word-wrap: break-word;
     overflow-wrap: break-word;
   }
@@ -134,17 +144,38 @@
 
   /* ===== SIGN-OFF ===== */
   .signoff {
-    margin-top: 28px;
-    font-size: 12px;
+    margin-top: 10px;
+    font-size: 10.5px;
   }
   .signoff .bold { font-weight: bold; }
-  .signoff .gap { margin-top: 34px; }
-  .signoff .gap2 { margin-top: 34px; }
+  .signoff .gap { margin-top: 12px; }
+  .signoff .gap2 { margin-top: 12px; }
 
-  /* dynamic field highlight - removed yellow background for professional look */
+  /* dynamic field highlight */
   .dynamic {
     max-width: 100%;
     display: inline-block;
+  }
+
+  @media print {
+    html, body {
+      background: #ffffff !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    body {
+      padding: 0 !important;
+    }
+    .can-container {
+      width: 100% !important;
+      max-width: 100% !important;
+      border: 1.5px solid #000000 !important;
+      padding: 10px 16px !important;
+      margin: 0 auto !important;
+      box-shadow: none !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
+    }
   }
 </style>
 </head>
@@ -168,7 +199,7 @@
   <hr class="top-rule">
 
   <!-- ===================== TITLE ===================== -->
-  <div class="title-bar"><b>CARGO ARRIVAL NOTICE</b></div>
+  <div class="title-bar">CARGO ARRIVAL NOTICE</div>
   <div class="type-line">Type: <span class="dynamic">{{DOC_TYPE}}</span></div>
   <hr class="rule">
 
@@ -186,9 +217,9 @@
   <!-- ===================== DETAILS ===================== -->
   <div class="details">
     <div class="col">
-      <div class="row"><b>HBL No:</b> <span class="dynamic">{{HBL_NO}}</span> / <span class="dynamic">{{HBL_DATE}}</span></div>
-      <div class="row"><b>MBL No:</b> <span class="dynamic">{{MBL_NO}}</span> / <span class="dynamic">{{MBL_DATE}}</span></div>
-      <div class="row"><b>IGM No:</b> <span class="dynamic">{{IGM_NO}}</span> / <span class="dynamic">{{IGM_DATE}}</span></div>
+      <div class="row"><b>HBL No:</b> <span class="dynamic">{{HBL_NO}}</span><span class="dynamic">{{HBL_DATE}}</span></div>
+      <div class="row"><b>MBL No:</b> <span class="dynamic">{{MBL_NO}}</span><span class="dynamic">{{MBL_DATE}}</span></div>
+      <div class="row"><b>IGM No. / Date:</b> <span class="dynamic">{{IGM_NO_DATE}}</span></div>
       <div class="row"><b>FPD:</b> <span class="dynamic">{{FPD}}</span></div>
       <div class="row"><b>PKGS:</b> <span class="dynamic">{{PKGS}}</span></div>
       <div class="row"><b>POL:</b> <span class="dynamic">{{POL}}</span></div>
@@ -222,9 +253,12 @@
   <div class="signoff">
     <div class="bold">Thanking You</div>
     <div class="bold gap">For SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
+    <div style="margin: 3px 0;">
+      <img src="/images/ssr_stamp_signature.png" alt="Stamp and signature" style="width: 95px; height: auto;" />
+    </div>
     <div class="gap2">
       <div class="bold">Authorised Signatory</div>
-      <div class="bold" style="margin-top: 8px;">Our GST Details</div>
+      <div class="bold" style="margin-top: 6px;">Our GST Details</div>
       <div class="bold">GST NO: 27ABMCS1941A1ZI</div>
     </div>
   </div>

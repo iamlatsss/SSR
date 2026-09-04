@@ -4,6 +4,7 @@ import { authenticateJWT } from "../AuthAPI/Auth.js";
 import fs from 'fs/promises';
 import path from 'path';
 import puppeteer from 'puppeteer';
+import { getBrowser } from '../utils/pdfGenerator.js';
 import { uploadFile } from '../S3/S3Service.js';
 import { fileURLToPath } from 'url';
 import { STANDARD_CHARGES } from '../StandardCharges.js';
@@ -209,6 +210,7 @@ router.post("/charges", async (req, res) => {
         charge_type,
         income_type,
         tax_type,
+        tax_class,
         unit,
         currency,
         rcm,
@@ -229,6 +231,12 @@ router.post("/charges", async (req, res) => {
 
         if (gst_charge_type === 'Taxable' || charge_type === 'Taxable') {
             percentage = 18;
+            if (tax_class) {
+                if (tax_class.includes('5%')) percentage = 5;
+                else if (tax_class.includes('12%')) percentage = 12;
+                else if (tax_class.includes('18%')) percentage = 18;
+            }
+
             if (tax_type === 'Standard GST') {
                 gst = true;
                 igst = false;
@@ -248,6 +256,7 @@ router.post("/charges", async (req, res) => {
             charge_type: charge_type || 'Taxable',
             income_type,
             tax_type,
+            tax_class: tax_class || '',
             unit: unit || '--- None ---',
             currency: currency || 'INR',
             rcm: rcm || 'No',
@@ -283,6 +292,7 @@ router.put("/charges/:id", async (req, res) => {
         charge_type,
         income_type,
         tax_type,
+        tax_class,
         unit,
         currency,
         rcm,
@@ -303,6 +313,12 @@ router.put("/charges/:id", async (req, res) => {
 
         if (gst_charge_type === 'Taxable' || charge_type === 'Taxable') {
             percentage = 18;
+            if (tax_class) {
+                if (tax_class.includes('5%')) percentage = 5;
+                else if (tax_class.includes('12%')) percentage = 12;
+                else if (tax_class.includes('18%')) percentage = 18;
+            }
+
             if (tax_type === 'Standard GST') {
                 gst = true;
                 igst = false;
@@ -322,6 +338,7 @@ router.put("/charges/:id", async (req, res) => {
             charge_type: charge_type || 'Taxable',
             income_type,
             tax_type,
+            tax_class: tax_class || '',
             unit: unit || '--- None ---',
             currency: currency || 'INR',
             rcm: rcm || 'No',
@@ -433,6 +450,24 @@ router.get("/job-details/:jobNo", authenticateJWT, async (req, res) => {
             });
         }
 
+        try {
+            const hblDocs = await knexDB('HBLDocuments')
+                .where({ job_no: jobNo })
+                .select('id', 'job_no', 'bl_no');
+            
+            for (const doc of hblDocs) {
+                if (doc.bl_no && !relatedHBLs.some(r => r.hbl_no === doc.bl_no)) {
+                    relatedHBLs.push({
+                        id: doc.id,
+                        job_no: doc.job_no,
+                        hbl_no: doc.bl_no
+                    });
+                }
+            }
+        } catch (hblErr) {
+            console.error("Error fetching HBLDocuments for job:", hblErr);
+        }
+
         if (!job) {
             return res.status(404).json({ success: false, message: "Job not found" });
         }
@@ -514,27 +549,31 @@ router.post("/save", authenticateJWT, async (req, res) => {
     }
 
     try {
-        // Prevent modifying or re-saving if already approved or posted
-        // Prevent modifying or re-saving if already approved or posted
-        const existingApproved = await knexDB("Invoices")
-            .where({ job_no: jobNo })
+        // Check if there is an existing invoice for this specific job, BL, and print type
+        const existingMatch = await knexDB("Invoices")
+            .where({
+                job_no: jobNo,
+                mbl_hbl_type: mblHblType,
+                mbl_hbl_no: mblHblNo,
+                print_type: printType || 'Invoice'
+            })
             .first();
 
-        if (existingApproved) {
-            if (existingApproved.approval_status === 'Approved') {
+        if (existingMatch) {
+            if (existingMatch.approval_status === 'Approved') {
                 return res.status(400).json({
                     success: false,
                     message: "Cannot modify or re-generate this invoice. It has already been Approved."
                 });
             }
-            if (existingApproved.irn) {
+            if (existingMatch.irn) {
                 return res.status(400).json({
                     success: false,
                     message: "Cannot modify or re-generate this invoice. E-Invoice IRN has already been generated."
                 });
             }
-            // If it exists but is rejected or pending, delete it first to overwrite it
-            await knexDB("Invoices").where({ id: existingApproved.id }).delete();
+            // Overwrite/replace this specific existing document
+            await knexDB("Invoices").where({ id: existingMatch.id }).delete();
         }
 
         const getFinancialYear = (dateStr) => {
@@ -551,7 +590,25 @@ router.post("/save", authenticateJWT, async (req, res) => {
             }
             return `${startYear}-${endYear}`;
         };
-        const invoiceNoStr = `SSRINV${getFinancialYear(invoiceDate || new Date())}-${jobNo}`;
+
+        const prefix = (printType === 'USD') ? 'SSRDN' : 'SSRINV';
+        const baseInvoiceNo = `${prefix}${getFinancialYear(invoiceDate || new Date())}-${jobNo}`;
+
+        // Ensure unique invoice number if multiple invoices / debit notes exist for this job
+        let invoiceNoStr = baseInvoiceNo;
+        const collision = await knexDB("Invoices").where({ invoice_no: invoiceNoStr }).first();
+        if (collision) {
+            let suffixNum = 1;
+            while (true) {
+                const candidate = `${baseInvoiceNo}-${suffixNum}`;
+                const exists = await knexDB("Invoices").where({ invoice_no: candidate }).first();
+                if (!exists) {
+                    invoiceNoStr = candidate;
+                    break;
+                }
+                suffixNum++;
+            }
+        }
 
         const payload = {
             invoice_no: invoiceNoStr,
@@ -670,8 +727,9 @@ router.post("/save", authenticateJWT, async (req, res) => {
                 }
             }
 
-            const gstRate = parseFloat(item.gst || 0);
-            const gstAmount = amount * (gstRate / 100);
+            const isUSDFx = (printType === 'USD' || targetCurrency === 'USD');
+            const gstRate = isUSDFx ? 0 : parseFloat(item.gst || 0);
+            const gstAmount = isUSDFx ? 0 : amount * (gstRate / 100);
             const totalAmount = amount + gstAmount;
 
             return {
@@ -750,8 +808,28 @@ router.post("/save", authenticateJWT, async (req, res) => {
             }
         }
 
-        // Build Payload matching tax_invoice.html expectations
+        let logoBase64 = "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg";
+        try {
+            const logoPath = path.join(__dirname, '..', '..', 'frontend', 'public', 'images', 'SSR_Logo.png');
+            const logoBuf = await fs.readFile(logoPath);
+            logoBase64 = `data:image/png;base64,${logoBuf.toString('base64')}`;
+        } catch (err) {}
+
+        let containerNumbersStr = jobRecord?.container_number || '';
+        if (!containerNumbersStr && addDetails.containers && Array.isArray(addDetails.containers) && addDetails.containers.length > 0) {
+            containerNumbersStr = addDetails.containers
+                .map(c => (typeof c === 'string' ? c : (c.container_no || c.containerNo || c.container_number || '')))
+                .filter(Boolean)
+                .join(', ');
+        }
+        if (!containerNumbersStr) {
+            containerNumbersStr = '—';
+        }
+
+        // Build Payload matching tax_invoice.html and debit_note.html expectations
         const fillPayload = {
+            companyLogo: logoBase64,
+            companyName: "SSR LOGISTIC SOLUTIONS PVT. LTD.",
             partyName: clientName || '—',
             partyAddress: clientAddress || '—',
             partyGstNo: clientGstin || 'N/A',
@@ -759,12 +837,14 @@ router.post("/save", authenticateJWT, async (req, res) => {
             placeOfSupply: stateInfo.name,
             invoiceNo: invoiceNoStr,
             invoiceDate: formatDate(invoiceDate || new Date()),
-            refNo: jobNo,
+            jobNo: String(jobNo),
+            refNo: String(jobNo),
+            job_no: String(jobNo),
             irn: addDetails.irn || '',
             narration: addDetails.narration || 'NIL',
             consignee: consigneeName || '—',
             shipperName: shipperName || '—',
-            shippingLine: addDetails.carrier || '—',
+            shippingLine: addDetails.carrier || jobRecord?.shipping_line_name || '—',
             cargoType: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
             cargoWeight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
             cbm: jobRecord?.volume || addDetails.volume || '—',
@@ -784,8 +864,21 @@ router.post("/save", authenticateJWT, async (req, res) => {
             lineNo: addDetails.item_no || '—',
             subLineNo: addDetails.sub_no || '—',
             etdDate: formatDate(jobRecord?.etd || addDetails.etd_date),
-            cntrsType: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'}`,
-            containerNo: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.container_no || c.containerNo).join(', ')) || '—',
+            partyCityCountry: (clientAddress && (clientAddress.toLowerCase().includes('dubai') || clientAddress.toLowerCase().includes('uae'))) ? 'DUBAI United Arab Emirates' : '',
+            notifyParty: addDetails.notify_party || jobRecord?.notify_party || '—',
+            containerNo: containerNumbersStr,
+            container_numbers: containerNumbersStr,
+            cntrsType: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'} ,`,
+            description: addDetails.description || jobRecord?.description || '',
+            reference: addDetails.reference || addDetails.reference_no || '',
+            grossWeight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
+            volume: jobRecord?.volume || addDetails.volume || '0',
+            vesselVoyage: `${jobRecord?.shipping_line_name || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
+            dischargePort: podVal,
+            loadPort: polVal,
+            shipmentType: jobRecord?.cargo_type || addDetails.shipment_type || 'FCL',
+            cfs: addDetails.cfs || '',
+            shippingBillNo: addDetails.shipping_bill_no || '',
             
             lineItems: chargesList,
             totals: {
@@ -798,52 +891,49 @@ router.post("/save", authenticateJWT, async (req, res) => {
                 igst18: igst18Val.toFixed(2),
                 igstFreight5: igstFreight5Val.toFixed(2),
                 roundOff: (roundedINRGrandTotal - inrGrandTotal).toFixed(2),
-                inrTotal: targetCurrency === 'USD' ? grandTotalVal.toFixed(2) : roundedINRGrandTotal.toFixed(2)
+                inrTotal: (targetCurrency === 'USD' || printType === 'USD') ? grandTotalVal.toFixed(2) : roundedINRGrandTotal.toFixed(2)
             },
             amountInWords: amountInWordsStr,
             reverseCharge: 'No'
         };
 
         // Render PDF locally on backend using headless Puppeteer & public template file
-        const templatePath = path.join(__dirname, '..', '..', 'frontend', 'public', 'pdf-static', 'tax_invoice.html');
+        const templateFileName = (printType === 'USD' || targetCurrency === 'USD') ? 'debit_note.html' : 'tax_invoice.html';
+        const templatePath = path.join(__dirname, '..', '..', 'frontend', 'public', 'pdf-static', templateFileName);
         let htmlContent = "";
         try {
             htmlContent = await fs.readFile(templatePath, 'utf-8');
         } catch (readErr) {
             // Fallback for different build structures if any
-            const altTemplatePath = path.join(__dirname, '..', 'static', 'tax_invoice.html');
+            const altTemplatePath = path.join(__dirname, '..', 'static', templateFileName);
             htmlContent = await fs.readFile(altTemplatePath, 'utf-8');
         }
 
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
+        const browser = await getBrowser();
         const page = await browser.newPage();
-        
-        // Load html and append embed=1 query to clean screen style
-        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-        
-        // Evaluate the fillDocument javascript directly in Puppeteer page context
-        await page.evaluate((data) => {
-            window.fillDocument(data);
-            // Hide preview top bar
-            var bar = document.querySelector(".no-print");
-            if (bar) bar.style.display = "none";
-            document.body.classList.remove("screen");
-        }, fillPayload);
+        let pdfBuffer;
+        try {
+            await page.setContent(htmlContent, { waitUntil: 'domcontentloaded', timeout: 5000 });
+            await page.evaluate((data) => {
+                window.fillDocument(data);
+                var bar = document.querySelector(".no-print");
+                if (bar) bar.style.display = "none";
+                document.body.classList.remove("screen");
+            }, fillPayload);
 
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: {
-                top: '6mm',
-                bottom: '6mm',
-                left: '6mm',
-                right: '6mm'
-            }
-        });
-        await browser.close();
+            pdfBuffer = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                margin: {
+                    top: '6mm',
+                    bottom: '6mm',
+                    left: '6mm',
+                    right: '6mm'
+                }
+            });
+        } finally {
+            await page.close().catch(() => {});
+        }
 
         // Upload generated PDF buffer to S3
         const filename = `TaxInvoice_${jobNo}_${Date.now()}.pdf`;
@@ -1068,8 +1158,9 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
                 }
             }
 
-            const gstRate = parseFloat(item.gst || item.taxPercent || 0);
-            const gstAmount = amount * (gstRate / 100);
+            const isUSDFx = (print_type === 'USD' || targetCurrency === 'USD');
+            const gstRate = isUSDFx ? 0 : parseFloat(item.gst || item.taxPercent || 0);
+            const gstAmount = isUSDFx ? 0 : amount * (gstRate / 100);
             const totalAmount = amount + gstAmount;
 
             return {
@@ -1146,7 +1237,27 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             }
         }
 
+        let logoBase64 = "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg";
+        try {
+            const logoPath = path.join(__dirname, '..', '..', 'frontend', 'public', 'images', 'SSR_Logo.png');
+            const logoBuf = await fs.readFile(logoPath);
+            logoBase64 = `data:image/png;base64,${logoBuf.toString('base64')}`;
+        } catch (err) {}
+
+        let containerNumbersStr = jobRecord?.container_number || '';
+        if (!containerNumbersStr && addDetails.containers && Array.isArray(addDetails.containers) && addDetails.containers.length > 0) {
+            containerNumbersStr = addDetails.containers
+                .map(c => (typeof c === 'string' ? c : (c.container_no || c.containerNo || c.container_number || '')))
+                .filter(Boolean)
+                .join(', ');
+        }
+        if (!containerNumbersStr) {
+            containerNumbersStr = '—';
+        }
+
         const fillPayload = {
+            companyLogo: logoBase64,
+            companyName: "SSR LOGISTIC SOLUTIONS PVT. LTD.",
             partyName: client_name || '—',
             partyAddress: client_address || '—',
             partyGstNo: client_gstin || 'N/A',
@@ -1154,12 +1265,14 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             placeOfSupply: stateInfo.name,
             invoiceNo: invoice.invoice_no,
             invoiceDate: formatDate(updatedDate),
-            refNo: job_no,
+            jobNo: String(job_no),
+            refNo: String(job_no),
+            job_no: String(job_no),
             irn: addDetails.irn || '',
             narration: remarks || addDetails.narration || 'NIL',
             consignee: consigneeName || '—',
             shipperName: shipperName || '—',
-            shippingLine: addDetails.carrier || '—',
+            shippingLine: addDetails.carrier || jobRecord?.shipping_line_name || '—',
             cargoType: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
             cargoWeight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
             cbm: jobRecord?.volume || addDetails.volume || '—',
@@ -1179,8 +1292,21 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             lineNo: addDetails.item_no || '—',
             subLineNo: addDetails.sub_no || '—',
             etdDate: formatDate(jobRecord?.etd || addDetails.etd_date),
-            cntrsType: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'}`,
-            containerNo: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.container_no || c.containerNo).join(', ')) || '—',
+            partyCityCountry: (clientAddress && (clientAddress.toLowerCase().includes('dubai') || clientAddress.toLowerCase().includes('uae'))) ? 'DUBAI United Arab Emirates' : '',
+            notifyParty: addDetails.notify_party || jobRecord?.notify_party || '—',
+            containerNo: containerNumbersStr,
+            container_numbers: containerNumbersStr,
+            cntrsType: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'} ,`,
+            description: addDetails.description || jobRecord?.description || '',
+            reference: addDetails.reference || addDetails.reference_no || '',
+            grossWeight: jobRecord?.gross_weight || addDetails.gross_weight || '—',
+            volume: jobRecord?.volume || addDetails.volume || '0',
+            vesselVoyage: `${jobRecord?.shipping_line_name || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
+            dischargePort: podVal,
+            loadPort: polVal,
+            shipmentType: jobRecord?.cargo_type || addDetails.shipment_type || 'FCL',
+            cfs: addDetails.cfs || '',
+            shippingBillNo: addDetails.shipping_bill_no || '',
             
             lineItems: chargesList,
             totals: {
@@ -1193,40 +1319,42 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
                 igst18: igst18Val.toFixed(2),
                 igstFreight5: igstFreight5Val.toFixed(2),
                 roundOff: (roundedINRGrandTotal - inrGrandTotal).toFixed(2),
-                inrTotal: targetCurrency === 'USD' ? grandTotalVal.toFixed(2) : roundedINRGrandTotal.toFixed(2)
+                inrTotal: (targetCurrency === 'USD' || printType === 'USD') ? grandTotalVal.toFixed(2) : roundedINRGrandTotal.toFixed(2)
             },
             amountInWords: amountInWordsStr,
             reverseCharge: 'No'
         };
 
-        const templatePath = path.join(__dirname, '..', '..', 'frontend', 'public', 'pdf-static', 'tax_invoice.html');
+        const templateFileName = (printType === 'USD' || targetCurrency === 'USD') ? 'debit_note.html' : 'tax_invoice.html';
+        const templatePath = path.join(__dirname, '..', '..', 'frontend', 'public', 'pdf-static', templateFileName);
         let htmlContent = "";
         try {
             htmlContent = await fs.readFile(templatePath, 'utf-8');
         } catch (readErr) {
-            const altTemplatePath = path.join(__dirname, '..', 'static', 'tax_invoice.html');
+            const altTemplatePath = path.join(__dirname, '..', 'static', templateFileName);
             htmlContent = await fs.readFile(altTemplatePath, 'utf-8');
         }
 
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
+        const browser = await getBrowser();
         const page = await browser.newPage();
-        await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
-        await page.evaluate((data) => {
-            window.fillDocument(data);
-            var bar = document.querySelector(".no-print");
-            if (bar) bar.style.display = "none";
-            document.body.classList.remove("screen");
-        }, fillPayload);
+        let pdfBuffer;
+        try {
+            await page.setContent(htmlContent, { waitUntil: 'domcontentloaded', timeout: 5000 });
+            await page.evaluate((data) => {
+                window.fillDocument(data);
+                var bar = document.querySelector(".no-print");
+                if (bar) bar.style.display = "none";
+                document.body.classList.remove("screen");
+            }, fillPayload);
 
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: { top: '6mm', bottom: '6mm', left: '6mm', right: '6mm' }
-        });
-        await browser.close();
+            pdfBuffer = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                margin: { top: '6mm', bottom: '6mm', left: '6mm', right: '6mm' }
+            });
+        } finally {
+            await page.close().catch(() => {});
+        }
 
         let filename = `TaxInvoice_${job_no}_${Date.now()}.pdf`;
         if (invoice.pdf_link) {

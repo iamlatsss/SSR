@@ -687,7 +687,7 @@ const Parties = () => {
                             <div className="space-y-6 pb-2">
 
                                 {/* Row 1: Category Type | Party Type | Party Name | E-Mail Id */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">Category Type</label>
                                         <select
@@ -743,7 +743,7 @@ const Parties = () => {
                                 </div>
 
                                 {/* Row 2: Legal Name | GST No. | PAN No | CIN No */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">Legal Name</label>
                                         <input
@@ -791,7 +791,7 @@ const Parties = () => {
                                 </div>
 
                                 {/* Row 3: Type Of Entity | Web URL | Director/Partner Name | Turnover of the Company */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">Type Of Entity</label>
                                         <select
@@ -839,7 +839,7 @@ const Parties = () => {
                                 </div>
 
                                 {/* Row 4: Name of Group Companies | Type Of Business | Date Of Incorporation Year | GST Reg. Type */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">Name of Group Companies</label>
                                         <input
@@ -887,7 +887,7 @@ const Parties = () => {
                                 </div>
 
                                 {/* Row 5: Referred By | FAC | IATA Code | Is IATA Agent */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">Referred By</label>
                                         <input
@@ -937,7 +937,7 @@ const Parties = () => {
                                 </div>
 
                                 {/* Row 6: Is Air Line | Is MSME | MSME Type | MSME No. */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-655 dark:text-slate-355 mb-1.5">Is Air Line</label>
                                         <select
@@ -989,7 +989,7 @@ const Parties = () => {
                                 </div>
 
                                 {/* Row 7: TDS Rate | RCM | USD Party | O/S Active */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">TDS Rate</label>
                                         <input
@@ -1040,7 +1040,7 @@ const Parties = () => {
                                 </div>
 
                                 {/* Row 8: Marketing | Party Status | Status | No. Of Employees */}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                     <div>
                                         <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">Marketing</label>
                                         <input
@@ -1295,7 +1295,7 @@ const Parties = () => {
                                             </div>
 
                                             {/* Line 2: City | Pin Code | District | GST State */}
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">City</label>
                                                     <input
@@ -1339,7 +1339,7 @@ const Parties = () => {
                                             </div>
 
                                             {/* Line 3: State Code | Country | GST No | TAN No */}
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">State Code</label>
                                                     <input
@@ -1383,7 +1383,7 @@ const Parties = () => {
                                             </div>
 
                                             {/* Line 4: E-Mail Id | Telephone | Fax | Is Head Office */}
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-650 dark:text-slate-350 mb-1.5">E-Mail Id</label>
                                                     <input
@@ -1428,7 +1428,7 @@ const Parties = () => {
                                             </div>
 
                                             {/* Line 5: Is SEZ Address | Address Status */}
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
                                                 <div>
                                                     <label className="block text-xs font-bold text-slate-655 dark:text-slate-355 mb-1.5">Is SEZ Address</label>
                                                     <select

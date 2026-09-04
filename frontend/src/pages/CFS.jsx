@@ -339,8 +339,8 @@ const CFS = () => {
                         </button>
                     </div>
 
-                    <div className="overflow-x-auto border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
-                        <table className="w-full text-left text-xs border-collapse">
+                    <div className="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-900 shadow-sm">
+                        <table className="w-full text-left text-xs border-collapse min-w-[650px]">
                             <thead>
                                 <tr className="bg-slate-50 dark:bg-slate-800/40 text-slate-500 font-semibold border-b border-slate-200 dark:border-slate-800 uppercase tracking-wider">
                                     <th className="p-4">Name</th>
@@ -454,7 +454,7 @@ const CFS = () => {
                     </div>
 
                     {activeTab === 'general' ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1">CFS Name *</label>
                                 <input

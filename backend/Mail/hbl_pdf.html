@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bill of Lading</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 7.5pt;
+    color: #000000;
+    line-height: 1.15;
+  }
+
+  .bl-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 1.5px solid #000000;
+    background: #ffffff;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  th, td {
+    border: 1px solid #000000;
+    padding: 2.5px 4px;
+    vertical-align: top;
+  }
+
+  .label-head {
+    font-size: 7pt;
+    font-weight: bold;
+    text-transform: uppercase;
+    margin-bottom: 1px;
+    display: block;
+  }
+  .value-text {
+    font-size: 7.5pt;
+    white-space: pre-line;
+    word-break: break-word;
+  }
+  .bold-val {
+    font-weight: bold;
+  }
+
+  /* Header Section */
+  .header-table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .header-left {
+    width: 52%;
+    vertical-align: top;
+    padding: 0;
+  }
+  .header-right {
+    width: 48%;
+    vertical-align: top;
+    padding: 0;
+  }
+
+  .party-box {
+    border-bottom: 1px solid #000000;
+    padding: 3px 5px;
+    min-height: 52px;
+  }
+  .party-box:last-child {
+    border-bottom: none;
+  }
+
+  .company-brand-box {
+    padding: 4px 6px;
+    text-align: center;
+    border-bottom: 1px solid #000000;
+    position: relative;
+  }
+  .bl-no-box {
+    position: absolute;
+    top: 0;
+    right: 0;
+    border-left: 1px solid #000000;
+    border-bottom: 1px solid #000000;
+    padding: 2px 6px;
+    text-align: center;
+    background: #ffffff;
+  }
+  .bl-no-box .label {
+    font-size: 6.5pt;
+    font-weight: bold;
+    display: block;
+  }
+  .bl-no-box .number {
+    font-size: 9pt;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+  }
+
+  .brand-logo-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 2px;
+    margin-bottom: 2px;
+  }
+  .brand-logo-wrap img {
+    height: 38px;
+    max-width: 100px;
+    object-fit: contain;
+  }
+  .company-titles {
+    font-size: 6.5pt;
+    line-height: 1.25;
+  }
+  .company-name-main {
+    font-size: 8.5pt;
+    font-weight: bold;
+    margin-top: 1px;
+  }
+
+  .bl-title-banner {
+    text-align: center;
+    font-size: 11pt;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    margin-top: 4px;
+  }
+  .draft-badge {
+    text-align: center;
+    font-size: 9pt;
+    font-weight: 900;
+    letter-spacing: 1px;
+    color: #000000;
+    margin-top: 1px;
+  }
+
+  .terms-clause {
+    font-size: 5.5pt;
+    line-height: 1.15;
+    text-align: justify;
+    padding: 3px 5px;
+  }
+
+  /* Routing Grid */
+  .routing-table td {
+    padding: 2px 4px;
+    font-size: 7pt;
+  }
+
+  /* Cargo Particulars Grid */
+  .cargo-table th {
+    font-size: 6.8pt;
+    font-weight: bold;
+    text-align: center;
+    padding: 3px 2px;
+    background: #ffffff;
+  }
+  .cargo-table td {
+    padding: 3px 4px;
+    font-size: 7.2pt;
+    vertical-align: top;
+  }
+  .cargo-table .col-marks { width: 17%; }
+  .cargo-table .col-pkgs  { width: 11%; }
+  .cargo-table .col-desc  { width: 48%; }
+  .cargo-table .col-wt    { width: 14%; }
+  .cargo-table .col-meas  { width: 10%; }
+
+  .detention-highlight {
+    background-color: #ffff00;
+    font-weight: bold;
+    padding: 1px 3px;
+    display: inline-block;
+    margin: 6px 0 4px 0;
+  }
+  .freight-status-center {
+    text-align: center;
+    font-size: 9pt;
+    font-weight: bold;
+    letter-spacing: 0.5px;
+    margin: 10px 0 4px 0;
+  }
+
+  /* Bottom Charges and Sign Section */
+  .charges-table th {
+    font-size: 6.5pt;
+    font-weight: bold;
+    text-align: center;
+    padding: 2px;
+  }
+  .charges-table td {
+    padding: 2px 3px;
+    font-size: 7pt;
+    height: 14px;
+  }
+  .issue-table td {
+    padding: 2px 4px;
+    font-size: 7pt;
+    vertical-align: top;
+  }
+  .company-sign-title {
+    font-size: 8pt;
+    font-weight: bold;
+    text-align: center;
+    padding-top: 4px;
+  }
+  .shipped-board-box {
+    font-weight: bold;
+    font-size: 8pt;
+    letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+
+<div class="bl-container">
+
+  <!-- ================= HEADER SECTION ================= -->
+  <table class="header-table" style="border: none;">
+    <tr>
+      <!-- Left Column: Shipper, Consignee, Notify -->
+      <td class="header-left" style="border: none; border-right: 1px solid #000000; padding: 0;">
+        <div class="party-box" style="min-height: 60px;">
+          <span class="label-head">SHIPPER:</span>
+          <div class="value-text bold-val">{{shipper}}</div>
+        </div>
+        <div class="party-box" style="min-height: 60px;">
+          <span class="label-head">CONSIGNEE:</span>
+          <div class="value-text bold-val">{{consignee}}</div>
+        </div>
+        <div class="party-box" style="min-height: 60px; border-bottom: none;">
+          <span class="label-head">NOTIFY PARTY:</span>
+          <div class="value-text bold-val">{{notify_party}}</div>
+        </div>
+      </td>
+
+      <!-- Right Column: B/L No, SSR Brand Header, Terms -->
+      <td class="header-right" style="border: none; padding: 0;">
+        <div class="company-brand-box">
+          <div class="bl-no-box">
+            <span class="label">B/L No.</span>
+            <span class="number">{{bl_no}}</span>
+          </div>
+          <div class="brand-logo-wrap">
+            <img src="{{company_logo}}" alt="SSR LOGISTIC">
+          </div>
+          <div class="company-titles">
+            <div><b>MTD No.:</b> {{mtd_no}}</div>
+            <div><b>SHIPMENT REFERENCE NO.:</b> {{shipment_ref_no}}</div>
+            <div class="company-name-main">SSR LOGISTIC SOLUTIONS PVT LTD</div>
+            <div>Vashi Infotech Park, Navi Mumbai - 400 703</div>
+            <div>Website: <u>www.ssrlogistic.net</u></div>
+          </div>
+          <div class="bl-title-banner">BILL OF LADING</div>
+          {{#if is_draft}}
+          <div class="draft-badge">DRAFT</div>
+          {{/if}}
+        </div>
+
+        <div class="terms-clause">
+          Taken in charge in apparently good condition herein at the place of receipt for transport & delivery as mentioned above unless otherwise stated. The MTO in accordance with the provision contained in the MTD undertakes to perform or to procure the performance of the multimodal transport from the place at which the goods are taken in charge, to the place designated for delivery & assume responsibility for such transport. One of the MTD (S) must be surrendered, duly endorsed in exchange for the goods in witness where of the original MTD all this tenor & date have been signed in the number indicated below one of which being accomplished the other(s) to be void.
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ================= ROUTING & CARRIER GRID ================= -->
+  <table class="routing-table" style="border-top: 1px solid #000000;">
+    <colgroup>
+      <col style="width: 26%;">
+      <col style="width: 26%;">
+      <col style="width: 48%;">
+    </colgroup>
+    <tr>
+      <td>
+        <span class="label-head">Pre-Carriage:</span>
+        <div class="bold-val">{{pre_carriage}}</div>
+      </td>
+      <td>
+        <span class="label-head">Place of Receipt:</span>
+        <div class="bold-val">{{place_of_receipt}}</div>
+      </td>
+      <td rowspan="2">
+        <span class="label-head">DELIVERY AGENT:</span>
+        <div class="value-text bold-val">{{delivery_agent}}</div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span class="label-head">Ocean Vessel / Voy No.:</span>
+        <div class="bold-val">{{vessel_voyage}}</div>
+      </td>
+      <td>
+        <span class="label-head">Port of Loading:</span>
+        <div class="bold-val">{{port_of_loading}}</div>
+      </td>
+    </tr>
+    <tr>
+      <td>
+        <span class="label-head">Port of Discharge:</span>
+        <div class="bold-val">{{port_of_discharge}}</div>
+      </td>
+      <td>
+        <span class="label-head">Place of Delivery:</span>
+        <div class="bold-val">{{place_of_delivery}}</div>
+      </td>
+      <td>
+        <span class="label-head">Final Destination:</span>
+        <div class="bold-val">{{final_destination}}</div>
+      </td>
+    </tr>
+  </table>
+
+  <!-- ================= CARGO / CONTAINERS GRID (4-COLUMNS) ================= -->
+  <table class="cargo-table" style="border-top: 1px solid #000000; min-height: 270px;">
+    <colgroup>
+      <col class="col-marks">
+      <col class="col-pkgs">
+      <col class="col-desc">
+      <col class="col-wt">
+      <col class="col-meas">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Container No.<br>Marks & Numbers</th>
+        <th>No. of<br>Packages</th>
+        <th>Description of Goods</th>
+        <th>Gross Weight</th>
+        <th>Measurement</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <!-- Col 1: Marks, Container No, Custom Seal No, Line Seal No -->
+        <td>
+          <div style="white-space: pre-line; font-weight: bold; margin-bottom: 4px;">{{marks_and_numbers}}</div>
+          {{#each containers}}
+          <div style="margin-bottom: 6px;">
+            {{#if container_no}}<div style="font-weight: bold;">CONTAINER NO.</div><div>{{container_no}}</div>{{/if}}
+            {{#if custom_seal_no}}<div style="font-weight: bold; margin-top: 2px;">CUSTOM SEAL NO.</div><div>{{custom_seal_no}}</div>{{/if}}
+            {{#if line_seal_no}}<div style="font-weight: bold; margin-top: 2px;">LINE SEAL NO.</div><div>{{line_seal_no}}</div>{{/if}}
+            {{#if seal_no}}{{#unless custom_seal_no}}<div style="font-weight: bold; margin-top: 2px;">SEAL NO.</div><div>{{seal_no}}</div>{{/unless}}{{/if}}
+          </div>
+          {{/each}}
+        </td>
+
+        <!-- Col 2: Packages -->
+        <td style="font-weight: bold;">{{no_of_packages}}</td>
+
+        <!-- Col 3: Goods Description -->
+        <td>
+          <div style="white-space: pre-line; font-weight: bold;">{{description_of_goods}}</div>
+          {{#if detention_clause}}
+          <div class="detention-highlight">{{detention_clause}}</div>
+          {{/if}}
+          <div class="freight-status-center">"{{freight_term_title}}"</div>
+        </td>
+
+        <!-- Col 4: Gross & Net Weights -->
+        <td style="font-weight: bold;">
+          <div>GROSS WT:</div>
+          <div>{{gross_weight}} KGS</div>
+          <div style="margin-top: 4px;">NET WT:</div>
+          <div>{{net_weight}} KGS</div>
+        </td>
+
+        <!-- Col 5: Measurement -->
+        <td style="font-weight: bold;">{{#if measurement}}{{measurement}} CBM{{/if}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ================= BOTTOM FREIGHT CHARGES TABLE ================= -->
+  <table class="charges-table" style="border-top: 1px solid #000000;">
+    <colgroup>
+      <col style="width: 20%;">
+      <col style="width: 15%;">
+      <col style="width: 15%;">
+      <col style="width: 15%;">
+      <col style="width: 17.5%;">
+      <col style="width: 17.5%;">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Freight & Charges</th>
+        <th>Revenue Tons</th>
+        <th>Rate</th>
+        <th>Per</th>
+        <th>Prepaid</th>
+        <th>Collect</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td></td>
+        <td style="font-weight: bold; text-align: center;">{{#if is_prepaid}}FREIGHT PREPAID{{/if}}</td>
+        <td style="font-weight: bold; text-align: center;">{{#unless is_prepaid}}FREIGHT COLLECT{{/unless}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ================= ISSUE DETAILS & SIGNATURE SECTION ================= -->
+  <table class="issue-table" style="border-top: 1px solid #000000;">
+    <colgroup>
+      <col style="width: 25%;">
+      <col style="width: 25%;">
+      <col style="width: 18%;">
+      <col style="width: 32%;">
+    </colgroup>
+    <tr>
+      <td rowspan="2" style="border-right: 1px solid #000000;">
+        <span class="label-head">Exchange Rate</span>
+        <div class="bold-val">{{ex_rate}}</div>
+      </td>
+      <td style="border-right: 1px solid #000000;">
+        <span class="label-head">Prepaid</span>
+        <div class="bold-val">{{#if is_prepaid}}{{prepaid_amount}}{{/if}}</div>
+      </td>
+      <td style="border-right: 1px solid #000000;">
+        <span class="label-head">Payable at</span>
+        <div class="bold-val">{{payable_at}}</div>
+      </td>
+      <td>
+        <span class="label-head">Place & Date of Issue</span>
+        <div class="bold-val">{{place_and_date_of_issue}}</div>
+      </td>
+    </tr>
+    <tr>
+      <td style="border-right: 1px solid #000000;">
+        <span class="label-head">No. of Original B/L</span>
+        <div class="bold-val">{{no_of_originals}}</div>
+      </td>
+      <td style="border-right: 1px solid #000000;">
+        <span class="label-head">Total Prepaid in National Currency</span>
+        <div class="bold-val">{{total_national_currency}}</div>
+      </td>
+      <td style="text-align: center; vertical-align: middle;">
+        <div class="company-sign-title">SSR LOGISTIC SOLUTIONS PVT LTD</div>
+      </td>
+    </tr>
+    <tr style="border-top: 1px solid #000000;">
+      <td style="border-right: 1px solid #000000; padding: 4px 6px;">
+        <span class="label-head">Date:</span>
+        <div class="bold-val">{{bl_date}}</div>
+      </td>
+      <td colspan="3" class="shipped-board-box" style="padding: 4px 6px; vertical-align: middle;">
+        SHIPPED ON BOARD THE MESSRS VESSEL
+      </td>
+    </tr>
+  </table>
+
+</div>
+
+</body>
+</html>

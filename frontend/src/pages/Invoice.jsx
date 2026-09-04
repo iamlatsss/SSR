@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import DashboardLayout from "../components/DashboardLayout";
 import api from "../services/api";
 import {
-  FileText, Search, Printer, Download, Eye, AlertCircle, CheckCircle, RefreshCw, X
+  FileText, Search, Printer, Download, Eye, AlertCircle, CheckCircle, RefreshCw, X,
+  ChevronDown, ChevronUp, ChevronRight, Folder, Layers, Trash2, Building2
 } from "lucide-react";
 import { toast } from "react-toastify";
 import SearchableDropdown from "../components/SearchableDropdown";
@@ -359,10 +360,118 @@ export default function Invoice() {
     }
   };
 
-  const filteredHistory = useMemo(() => {
-    if (!historySearchTerm.trim()) return history;
-    return history.filter(inv => String(inv.job_no).toLowerCase().includes(historySearchTerm.toLowerCase().trim()));
-  }, [history, historySearchTerm]);
+  const [expandedJobs, setExpandedJobs] = useState({});
+
+  const groupedJobs = useMemo(() => {
+    const map = new Map();
+
+    history.forEach((inv) => {
+      const jobKey = String(inv.job_no || 'Unknown');
+      if (!map.has(jobKey)) {
+        map.set(jobKey, {
+          job_no: inv.job_no,
+          mbl_no: inv.mbl_hbl_type === 'MBL' ? inv.mbl_hbl_no : '',
+          hbl_no: inv.mbl_hbl_type === 'HBL' ? inv.mbl_hbl_no : '',
+          clients: new Set(),
+          invoices: [],
+          latestDate: inv.invoice_date || inv.created_at,
+          totalInr: 0,
+          totalUsd: 0,
+          taxInvoiceCount: 0,
+          debitNoteCount: 0,
+          creditNoteCount: 0
+        });
+      }
+
+      const group = map.get(jobKey);
+      group.invoices.push(inv);
+      if (inv.client_name) group.clients.add(inv.client_name);
+      if (inv.mbl_hbl_type === 'MBL' && inv.mbl_hbl_no && !group.mbl_no) {
+        group.mbl_no = inv.mbl_hbl_no;
+      }
+      if (inv.mbl_hbl_type === 'HBL' && inv.mbl_hbl_no && !group.hbl_no) {
+        group.hbl_no = inv.mbl_hbl_no;
+      }
+
+      // Parse totals
+      let grandTotal = 0;
+      try {
+        const parsedTotals = typeof inv.totals === 'string' ? JSON.parse(inv.totals) : (inv.totals || {});
+        grandTotal = parseFloat(parsedTotals.grandTotal || 0);
+      } catch (e) {}
+
+      const isDebitNote = inv.print_type === 'USD' || String(inv.invoice_no || '').startsWith('SSRDN');
+      const isCreditNote = inv.print_type === 'CreditNote' || String(inv.invoice_no || '').startsWith('SSRCN');
+
+      if (isCreditNote) {
+        group.creditNoteCount++;
+      } else if (isDebitNote) {
+        group.debitNoteCount++;
+        group.totalUsd += grandTotal;
+      } else {
+        group.taxInvoiceCount++;
+        group.totalInr += grandTotal;
+      }
+
+      const invDate = new Date(inv.invoice_date || inv.created_at);
+      if (invDate > new Date(group.latestDate)) {
+        group.latestDate = inv.invoice_date || inv.created_at;
+      }
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      const numA = parseInt(a.job_no) || 0;
+      const numB = parseInt(b.job_no) || 0;
+      return numB - numA;
+    });
+  }, [history]);
+
+  const filteredGroupedJobs = useMemo(() => {
+    if (!historySearchTerm.trim()) return groupedJobs;
+    const q = historySearchTerm.toLowerCase().trim();
+
+    return groupedJobs.filter((group) => {
+      const matchJob = String(group.job_no).toLowerCase().includes(q);
+      const matchMbl = String(group.mbl_no || '').toLowerCase().includes(q);
+      const matchHbl = String(group.hbl_no || '').toLowerCase().includes(q);
+      const matchClient = Array.from(group.clients).some(c => String(c).toLowerCase().includes(q));
+      const matchAnyInv = group.invoices.some(inv =>
+        String(inv.invoice_no || '').toLowerCase().includes(q) ||
+        String(inv.mbl_hbl_no || '').toLowerCase().includes(q)
+      );
+      return matchJob || matchMbl || matchHbl || matchClient || matchAnyInv;
+    });
+  }, [groupedJobs, historySearchTerm]);
+
+  // When searching, auto-expand matching jobs
+  useEffect(() => {
+    if (historySearchTerm.trim()) {
+      const autoExp = {};
+      filteredGroupedJobs.forEach(g => {
+        autoExp[g.job_no] = true;
+      });
+      setExpandedJobs(autoExp);
+    }
+  }, [historySearchTerm, filteredGroupedJobs]);
+
+  const toggleJobExpand = (jobNo) => {
+    setExpandedJobs(prev => ({
+      ...prev,
+      [jobNo]: !prev[jobNo]
+    }));
+  };
+
+  const expandAllJobs = () => {
+    const all = {};
+    filteredGroupedJobs.forEach(g => {
+      all[g.job_no] = true;
+    });
+    setExpandedJobs(all);
+  };
+
+  const collapseAllJobs = () => {
+    setExpandedJobs({});
+  };
 
   useEffect(() => {
     loadInitData();
@@ -381,10 +490,107 @@ export default function Invoice() {
     fetchJobDetails(selectedMblJobNo);
   }, [selectedMblJobNo]);
 
+  const getClientDetails = () => {
+    if (!selectedClient) return null;
+    return (
+      filteredCustomers.find(c => String(c.customer_id) === String(selectedClient) || c.name === selectedClient) ||
+      customers.find(c => String(c.customer_id) === String(selectedClient) || c.name === selectedClient) ||
+      { customer_id: selectedClient, name: selectedClient, address: '', gstin: '' }
+    );
+  };
+
+  const displayedCharges = useMemo(() => {
+    if (!selectedClient) {
+      return allCharges.map((item, originalIndex) => ({ ...item, originalIndex }));
+    }
+    const client = getClientDetails();
+    const allCustList = [...filteredCustomers, ...customers];
+
+    const filtered = allCharges
+      .map((item, originalIndex) => ({ ...item, originalIndex }))
+      .filter(row => {
+        if (!row.party) return true;
+        const rowPartyStr = String(row.party).toLowerCase().trim();
+        const selClientStr = String(selectedClient).toLowerCase().trim();
+        if (rowPartyStr === selClientStr) return true;
+        if (client) {
+          const clientNameStr = String(client.name || '').toLowerCase().trim();
+          const clientIdStr = String(client.customer_id || '').toLowerCase().trim();
+          if (clientNameStr && (rowPartyStr === clientNameStr || rowPartyStr.includes(clientNameStr) || clientNameStr.includes(rowPartyStr))) return true;
+          if (clientIdStr && rowPartyStr === clientIdStr) return true;
+          const partyCust = allCustList.find(c => String(c.customer_id) === String(row.party));
+          if (partyCust) {
+            const pNameStr = String(partyCust.name || '').toLowerCase().trim();
+            if (pNameStr && (pNameStr === clientNameStr || pNameStr.includes(clientNameStr) || clientNameStr.includes(pNameStr))) return true;
+          }
+        }
+        return false;
+      });
+
+    if (filtered.length === 0 && allCharges.length > 0) {
+      return allCharges.map((item, originalIndex) => ({ ...item, originalIndex }));
+    }
+    return filtered;
+  }, [allCharges, selectedClient, filteredCustomers, customers]);
+
+  const calculateGridTotals = () => {
+    let subtotal = 0;
+    let cgst = 0;
+    let sgst = 0;
+    let igst = 0;
+
+    const client = getClientDetails();
+    const isMaharashtra = client && (String(client.gstin || '').startsWith('27') || String(client.address || '').toLowerCase().includes('maharashtra'));
+
+    displayedCharges.forEach((item) => {
+      if (!checkedItems[item.originalIndex]) return;
+
+      const qty = parseFloat(item.quantity || 1);
+      const rate = parseFloat(item.rate || 0);
+      const itemCurrency = item.currency || 'USD';
+      const rowExRate = parseFloat(item.ex_rate || jobExchangeRate || 85.00);
+
+      let baseAmount = qty * rate; // in native currency
+
+      if (printType === 'USD') {
+        // We sum everything in USD values with 0 GST for USD Invoices
+        let amountUSD = baseAmount;
+        if (itemCurrency === 'INR') {
+          amountUSD = baseAmount / rowExRate;
+        }
+
+        subtotal += amountUSD;
+      } else {
+        // INR LOCAL
+        let amountINR = baseAmount;
+        if (itemCurrency === 'USD') {
+          amountINR = baseAmount * rowExRate;
+        }
+
+        subtotal += amountINR;
+
+        const gstRate = parseFloat(item.gst || 0);
+        const taxValINR = amountINR * (gstRate / 100);
+
+        if (gstRate > 0) {
+          if (isMaharashtra) {
+            cgst += taxValINR / 2;
+            sgst += taxValINR / 2;
+          } else {
+            igst += taxValINR;
+          }
+        }
+      }
+    });
+
+    const grandTotal = subtotal + cgst + sgst + igst;
+    setCalcTotals({ subtotal, cgst, sgst, igst, grandTotal });
+  };
+
   // Trigger real-time calculation whenever selected charges, client, print type, or ex-rate changes
   useEffect(() => {
     calculateGridTotals();
-  }, [checkedItems, allCharges, selectedClient, printType, jobExchangeRate]);
+  }, [checkedItems, displayedCharges, selectedClient, printType, jobExchangeRate]);
 
   const loadInitData = async () => {
     try {
@@ -587,77 +793,6 @@ export default function Invoice() {
     }
   };
 
-  const getClientDetails = () => {
-    if (!selectedClient) return null;
-    return filteredCustomers.find(c => c.customer_id == selectedClient) || customers.find(c => c.customer_id == selectedClient) || null;
-  };
-
-  const calculateGridTotals = () => {
-    let subtotal = 0;
-    let cgst = 0;
-    let sgst = 0;
-    let igst = 0;
-
-    const client = getClientDetails();
-    const isMaharashtra = client && (String(client.gstin || '').startsWith('27') || String(client.address || '').toLowerCase().includes('maharashtra'));
-
-    allCharges.forEach((item, index) => {
-      if (!checkedItems[index]) return;
-
-      const qty = parseFloat(item.quantity || 1);
-      const rate = parseFloat(item.rate || 0);
-      const itemCurrency = item.currency || 'USD';
-      const rowExRate = parseFloat(item.ex_rate || jobExchangeRate || 85.00);
-
-      let baseAmount = qty * rate; // in native currency
-
-      if (printType === 'USD') {
-        // We sum everything in USD values
-        let amountUSD = baseAmount;
-        if (itemCurrency === 'INR') {
-          amountUSD = baseAmount / rowExRate;
-        }
-
-        subtotal += amountUSD;
-
-        const gstRate = parseFloat(item.gst || 0);
-        const taxValUSD = amountUSD * (gstRate / 100);
-
-        if (gstRate > 0) {
-          if (isMaharashtra) {
-            cgst += taxValUSD / 2;
-            sgst += taxValUSD / 2;
-          } else {
-            igst += taxValUSD;
-          }
-        }
-      } else {
-        // INR LOCAL
-        let amountINR = baseAmount;
-        if (itemCurrency === 'USD') {
-          amountINR = baseAmount * rowExRate;
-        }
-
-        subtotal += amountINR;
-
-        const gstRate = parseFloat(item.gst || 0);
-        const taxValINR = amountINR * (gstRate / 100);
-
-        if (gstRate > 0) {
-          if (isMaharashtra) {
-            cgst += taxValINR / 2;
-            sgst += taxValINR / 2;
-          } else {
-            igst += taxValINR;
-          }
-        }
-      }
-    });
-
-    const grandTotal = subtotal + cgst + sgst + igst;
-    setCalcTotals({ subtotal, cgst, sgst, igst, grandTotal });
-  };
-
   const handleCheckboxChange = (index) => {
     setCheckedItems(prev => ({
       ...prev,
@@ -666,11 +801,13 @@ export default function Invoice() {
   };
 
   const handleSelectAll = (checked) => {
-    const checks = {};
-    allCharges.forEach((_, idx) => {
-      checks[idx] = checked;
+    setCheckedItems(prev => {
+      const checks = { ...prev };
+      displayedCharges.forEach(item => {
+        checks[item.originalIndex] = checked;
+      });
+      return checks;
     });
-    setCheckedItems(checks);
   };
 
   const handleProcessInvoice = async () => {
@@ -680,7 +817,7 @@ export default function Invoice() {
       return;
     }
 
-    const selectedItems = allCharges.filter((_, idx) => checkedItems[idx]);
+    const selectedItems = displayedCharges.filter(item => checkedItems[item.originalIndex]);
     if (selectedItems.length === 0) {
       toast.error("Please tick/select at least one charge item!");
       return;
@@ -794,7 +931,7 @@ export default function Invoice() {
           <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider mb-5 flex items-center gap-2 border-b border-slate-100 dark:border-slate-800 pb-3">
             <FileText size={20} className="text-indigo-500" /> Filter Billing Context (Tax Invoice)
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             
             {/* 1. MBL Job Selector */}
             <div className="flex flex-col gap-1.5">
@@ -860,7 +997,7 @@ export default function Invoice() {
 
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 mt-4">
             {/* Ex-Rate setting */}
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">USD Exchange Rate (Ex Rate)</label>
@@ -892,7 +1029,7 @@ export default function Invoice() {
             </div>
 
             {/* Action buttons */}
-            <div className="flex items-end gap-3 md:col-span-2">
+            <div className="flex items-end gap-3 sm:col-span-2">
               <button
                 type="button"
                 onClick={handleSearchCharges}
@@ -931,14 +1068,14 @@ export default function Invoice() {
               </span>
             </h3>
 
-            <div className="overflow-x-auto border border-slate-200 dark:border-slate-700/80 rounded-xl">
+            <div className="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-700/80 rounded-xl">
               <table className="w-full text-left border-collapse table-fixed text-xs min-w-[1150px]">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-wider text-[11px]">
                     <th className="p-3.5 text-center w-[40px]">
                       <input
                         type="checkbox"
-                        checked={allCharges.length > 0 && allCharges.every((_, idx) => checkedItems[idx])}
+                        checked={displayedCharges.length > 0 && displayedCharges.every(item => checkedItems[item.originalIndex])}
                         onChange={(e) => handleSelectAll(e.target.checked)}
                         className="accent-indigo-600 w-4 h-4 rounded cursor-pointer"
                       />
@@ -956,14 +1093,15 @@ export default function Invoice() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {allCharges.length === 0 ? (
+                  {displayedCharges.length === 0 ? (
                     <tr>
                       <td colSpan="11" className="p-8 text-center text-slate-500 italic">
-                        No Sell Rates found for this BL number.
+                        {allCharges.length === 0 ? "No Sell Rates found for this BL number." : "No charge rows found for the selected company."}
                       </td>
                     </tr>
                   ) : (
-                    allCharges.map((row, idx) => {
+                    displayedCharges.map((row) => {
+                      const idx = row.originalIndex;
                       const qty = parseFloat(row.quantity || 1);
                       const baseRate = parseFloat(row.rate || 0);
                       const fcAmt = qty * baseRate;
@@ -1089,105 +1227,313 @@ export default function Invoice() {
         )}
           </>
         ) : (
-          /* TAX INVOICES ARCHIVE HISTORY */
+          /* JOB-WISE TAX INVOICES & DEBIT NOTES ARCHIVE HISTORY */
           <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 shadow-md p-6 rounded-2xl transition-all duration-300">
-            <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 mb-5 gap-4">
-              <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <FileText size={20} className="text-indigo-500" /> Tax Invoices History Log
-              </h3>
-              <div className="flex items-center gap-2 max-w-sm w-full">
-                <input
-                  type="text"
-                  placeholder="Enter Job Number..."
-                  value={searchVal}
-                  onChange={(e) => setSearchVal(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      setHistorySearchTerm(searchVal);
-                    }
-                  }}
-                  className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => setHistorySearchTerm(searchVal)}
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-1.5 whitespace-nowrap"
-                >
-                  <Search size={14} /> Search
-                </button>
+            {/* Top Toolbar */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 mb-6 gap-4">
+              <div>
+                <h3 className="text-md font-bold text-slate-800 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                  <Layers size={20} className="text-indigo-500" /> Job-Wise Invoices & Debit Notes Log
+                </h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  Invoices, Debit Notes, and Credit Notes organized by Job. Open any job to view all its documents.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Search Box */}
+                <div className="flex items-center gap-2 max-w-sm w-full">
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="Search Job No, BL No, Client, Invoice..."
+                      value={searchVal}
+                      onChange={(e) => setSearchVal(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          setHistorySearchTerm(searchVal);
+                        }
+                      }}
+                      className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl pl-9 pr-8 py-2 text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                    <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    {searchVal && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchVal("");
+                          setHistorySearchTerm("");
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setHistorySearchTerm(searchVal)}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all inline-flex items-center gap-1.5 whitespace-nowrap shadow-sm hover:shadow"
+                  >
+                    Search
+                  </button>
+                </div>
+
+                {/* Expand / Collapse All */}
+                <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                  <button
+                    type="button"
+                    onClick={expandAllJobs}
+                    className="px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all"
+                  >
+                    Expand All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={collapseAllJobs}
+                    className="px-2.5 py-1 text-xs font-semibold text-slate-700 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 rounded-lg transition-all"
+                  >
+                    Collapse All
+                  </button>
+                </div>
+
+                {/* Summary badge */}
+                <span className="text-xs font-semibold px-3 py-1.5 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-700 dark:text-indigo-300 rounded-xl border border-indigo-100 dark:border-indigo-900/50">
+                  {filteredGroupedJobs.length} Job{filteredGroupedJobs.length !== 1 ? 's' : ''} ({history.length} Doc{history.length !== 1 ? 's' : ''})
+                </span>
               </div>
             </div>
 
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse table-auto text-sm">
-                <thead>
-                  <tr className="bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold uppercase text-xs">
-                    <th className="p-4">Invoice No</th>
-                    <th className="p-4">Job No</th>
-                    <th className="p-4">BL Type</th>
-                    <th className="p-4">BL Number</th>
-                    <th className="p-4">Billing Client</th>
-                    <th className="p-4 text-center">Print Currency</th>
-                    <th className="p-4">Date</th>
-                    <th className="p-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-                  {filteredHistory.length === 0 ? (
-                    <tr>
-                      <td colSpan="8" className="p-8 text-center text-slate-500 italic">
-                        No matching tax invoices located.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredHistory.map((inv) => (
-                      <tr key={inv.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/10 transition-colors">
-                        <td className="p-4 font-bold text-slate-900 dark:text-white">#{inv.invoice_no || inv.id}</td>
-                        <td className="p-4 font-mono text-indigo-600 dark:text-indigo-400">#{inv.job_no}</td>
-                        <td className="p-4">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                            inv.mbl_hbl_type === 'MBL' ? 'bg-blue-100 text-blue-800' : 'bg-purple-100 text-purple-800'
-                          }`}>
-                            {inv.mbl_hbl_type}
+            {/* Job Wise List */}
+            {filteredGroupedJobs.length === 0 ? (
+              <div className="p-12 text-center text-slate-500 dark:text-slate-400">
+                <FileText size={40} className="mx-auto mb-3 text-slate-300 dark:text-slate-600" />
+                <p className="font-semibold text-base">No matching jobs or invoices located.</p>
+                <p className="text-xs text-slate-400 mt-1">Try clearing your search term or generate a new invoice.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {filteredGroupedJobs.map((group) => {
+                  const isExpanded = !!expandedJobs[group.job_no];
+                  return (
+                    <div
+                      key={group.job_no}
+                      className={`border rounded-2xl transition-all duration-200 overflow-hidden ${
+                        isExpanded
+                          ? "border-indigo-200 dark:border-indigo-900/60 shadow-md bg-white dark:bg-dark-card"
+                          : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 hover:bg-white dark:hover:bg-slate-800/60"
+                      }`}
+                    >
+                      {/* Job Header Summary Bar (Clickable) */}
+                      <div
+                        onClick={() => toggleJobExpand(group.job_no)}
+                        className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 cursor-pointer select-none"
+                      >
+                        {/* Left: Job Number + BL Identifiers */}
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="p-1 text-slate-400 hover:text-indigo-600 transition-colors">
+                            <ChevronDown
+                              size={18}
+                              className={`transition-transform duration-200 ${isExpanded ? "rotate-180 text-indigo-600 dark:text-indigo-400" : ""}`}
+                            />
                           </span>
-                        </td>
-                        <td className="p-4 font-mono font-medium">{inv.mbl_hbl_no}</td>
-                        <td className="p-4 font-semibold">{inv.client_name}</td>
-                        <td className="p-4 text-center font-bold text-teal-600">{inv.print_type === 'USD' ? 'USD' : 'INR'}</td>
-                        <td className="p-4">{new Date(inv.invoice_date || inv.created_at).toLocaleDateString()}</td>
-                        <td className="p-4 text-right flex justify-end gap-3">
+
+                          <span className="px-3 py-1 rounded-xl bg-indigo-600 text-white font-bold font-mono text-sm tracking-wide shadow-sm flex items-center gap-1.5">
+                            <Folder size={14} /> Job #{group.job_no}
+                          </span>
+
+                          {group.mbl_no && (
+                            <span className="px-2.5 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 font-mono text-xs font-semibold border border-blue-200 dark:border-blue-800/60">
+                              MBL: {group.mbl_no}
+                            </span>
+                          )}
+
+                          {group.hbl_no && (
+                            <span className="px-2.5 py-0.5 rounded-lg bg-purple-50 dark:bg-purple-950/50 text-purple-700 dark:text-purple-300 font-mono text-xs font-semibold border border-purple-200 dark:border-purple-800/60">
+                              HBL: {group.hbl_no}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Middle: Client Name & Document Pills */}
+                        <div className="flex flex-wrap items-center gap-3">
+                          {group.clients.size > 0 && (
+                            <span className="text-xs font-medium text-slate-700 dark:text-slate-300 flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 px-3 py-1 rounded-lg max-w-sm truncate">
+                              <Building2 size={13} className="text-slate-400 shrink-0" />
+                              <span className="truncate">{Array.from(group.clients).join(', ')}</span>
+                            </span>
+                          )}
+
+                          {/* Document count pill breakdown */}
+                          <div className="flex items-center gap-1.5">
+                            {group.taxInvoiceCount > 0 && (
+                              <span className="px-2 py-0.5 bg-emerald-100/70 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 text-xs font-bold rounded-full border border-emerald-200 dark:border-emerald-800/50">
+                                {group.taxInvoiceCount} Invoice{group.taxInvoiceCount > 1 ? 's' : ''}
+                              </span>
+                            )}
+                            {group.debitNoteCount > 0 && (
+                              <span className="px-2 py-0.5 bg-amber-100/70 dark:bg-amber-950/40 text-amber-800 dark:text-amber-300 text-xs font-bold rounded-full border border-amber-200 dark:border-amber-800/50">
+                                {group.debitNoteCount} Debit Note{group.debitNoteCount > 1 ? 's' : ''}
+                              </span>
+                            )}
+                            {group.creditNoteCount > 0 && (
+                              <span className="px-2 py-0.5 bg-rose-100/70 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 text-xs font-bold rounded-full border border-rose-200 dark:border-rose-800/50">
+                                {group.creditNoteCount} Credit Note{group.creditNoteCount > 1 ? 's' : ''}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Right: Date & Toggle Button */}
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                            Latest: {new Date(group.latestDate).toLocaleDateString()}
+                          </span>
+
                           <button
-                            onClick={() => openEditModal(inv)}
-                            title="Edit Details"
-                            className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 dark:bg-blue-950/30 dark:hover:bg-blue-900/30 dark:text-blue-400 rounded-lg transition-colors inline-flex items-center justify-center"
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleJobExpand(group.job_no);
+                            }}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-xl transition-all inline-flex items-center gap-1.5 whitespace-nowrap ${
+                              isExpanded
+                                ? "bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-300"
+                                : "bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+                            }`}
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
+                            {isExpanded ? "Hide Documents" : `View Documents (${group.invoices.length})`}
                           </button>
-                          <button
-                            onClick={() => openPastPreview(inv.pdf_link)}
-                            title="Interactive Preview"
-                            className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/30 dark:hover:bg-indigo-900/30 dark:text-indigo-400 rounded-lg transition-colors inline-flex items-center justify-center"
-                            disabled={!inv.pdf_link}
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <a
-                            href={inv.pdf_link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="S3 Download"
-                            className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:hover:bg-emerald-900/30 dark:text-emerald-400 rounded-lg transition-colors inline-flex items-center justify-center"
-                            disabled={!inv.pdf_link}
-                          >
-                            <Download size={16} />
-                          </a>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                        </div>
+                      </div>
+
+                      {/* Expanded View: All Invoices & Notes for this Job */}
+                      {isExpanded && (
+                        <div className="border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/50 p-3">
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse table-auto text-xs">
+                              <thead>
+                                <tr className="bg-slate-50 dark:bg-slate-800/60 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[11px] tracking-wider whitespace-nowrap">
+                                  <th className="py-2.5 px-3 rounded-l-xl">Doc / Invoice No</th>
+                                  <th className="py-2.5 px-3">Doc Type</th>
+                                  <th className="py-2.5 px-3">BL Type & Number</th>
+                                  <th className="py-2.5 px-3">Billing Client</th>
+                                  <th className="py-2.5 px-3 text-right">Amount</th>
+                                  <th className="py-2.5 px-3 text-center">Date</th>
+                                  <th className="py-2.5 px-3 text-right rounded-r-xl">Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
+                                {group.invoices.map((inv) => {
+                                  const isDebit = inv.print_type === 'USD' || String(inv.invoice_no || '').startsWith('SSRDN');
+                                  const isCredit = inv.print_type === 'CreditNote' || String(inv.invoice_no || '').startsWith('SSRCN');
+                                  
+                                  let docGrandTotal = 0;
+                                  try {
+                                    const parsedTotals = typeof inv.totals === 'string' ? JSON.parse(inv.totals) : (inv.totals || {});
+                                    docGrandTotal = parseFloat(parsedTotals.grandTotal || 0);
+                                  } catch (e) {}
+
+                                  return (
+                                    <tr key={inv.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors whitespace-nowrap">
+                                      {/* Invoice No */}
+                                      <td className="py-2 px-3 font-bold text-slate-900 dark:text-white font-mono text-xs whitespace-nowrap">
+                                        #{inv.invoice_no || inv.id}
+                                      </td>
+
+                                      {/* Doc Type Badge */}
+                                      <td className="py-2 px-3 whitespace-nowrap">
+                                        {isCredit ? (
+                                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-100 dark:bg-rose-950/50 text-rose-800 dark:text-rose-300">
+                                            Credit Note
+                                          </span>
+                                        ) : isDebit ? (
+                                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-300">
+                                            Debit Note
+                                          </span>
+                                        ) : (
+                                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300">
+                                            Tax Invoice
+                                          </span>
+                                        )}
+                                      </td>
+
+                                      {/* BL Type & Number */}
+                                      <td className="py-2 px-3 whitespace-nowrap">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                            inv.mbl_hbl_type === 'MBL' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300' : 'bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300'
+                                          }`}>
+                                            {inv.mbl_hbl_type}
+                                          </span>
+                                          <span className="font-mono text-xs text-slate-700 dark:text-slate-300 font-medium">
+                                            {inv.mbl_hbl_no || '—'}
+                                          </span>
+                                        </div>
+                                      </td>
+
+                                      {/* Billing Client */}
+                                      <td className="py-2 px-3 whitespace-nowrap">
+                                        <span className="font-semibold text-slate-800 dark:text-slate-200">
+                                          {inv.client_name || '—'}
+                                        </span>
+                                        {inv.client_gstin && (
+                                          <span className="ml-1.5 text-[11px] text-slate-400 font-mono">
+                                            ({inv.client_gstin})
+                                          </span>
+                                        )}
+                                      </td>
+
+                                      {/* Total Amount */}
+                                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                                        <span className="font-bold text-slate-900 dark:text-white font-mono text-xs">
+                                          {inv.print_type === 'USD'
+                                            ? `$ ${docGrandTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                            : `₹ ${docGrandTotal.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+                                        </span>
+                                      </td>
+
+                                      {/* Date */}
+                                      <td className="py-2 px-3 text-center text-slate-600 dark:text-slate-400 text-xs whitespace-nowrap">
+                                        {new Date(inv.invoice_date || inv.created_at).toLocaleDateString()}
+                                      </td>
+
+                                      {/* Actions (Only Preview & Download) */}
+                                      <td className="py-2 px-3 text-right whitespace-nowrap">
+                                        <div className="flex items-center justify-end gap-1.5">
+                                          <button
+                                            onClick={() => openPastPreview(inv.pdf_link)}
+                                            title="Interactive Preview PDF"
+                                            className="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-950/40 dark:hover:bg-indigo-900/40 dark:text-indigo-400 rounded-lg transition-colors inline-flex items-center justify-center disabled:opacity-40 shadow-xs"
+                                            disabled={!inv.pdf_link}
+                                          >
+                                            <Eye size={15} />
+                                          </button>
+                                          <a
+                                            href={inv.pdf_link}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            title="Download PDF File"
+                                            className="p-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-600 dark:bg-emerald-950/40 dark:hover:bg-emerald-900/40 dark:text-emerald-400 rounded-lg transition-colors inline-flex items-center justify-center disabled:opacity-40 shadow-xs"
+                                            disabled={!inv.pdf_link}
+                                          >
+                                            <Download size={15} />
+                                          </a>
+                                        </div>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

@@ -20,7 +20,7 @@ const PACKAGE_TYPES = [
 /* =========================================================================
    1. RATE GRID COMPONENT (Used for both Buy Rates and Sell Rates)
    ========================================================================= */
-export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true, consignee = "", chargeOptions = [], errors = [], isLocked = false, isEditApproved = false }) {
+export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers = [], isBuy = true, consignee = "", client = "", chargeOptions = [], errors = [], isLocked = false, isEditApproved = false }) {
   const safeRows = Array.isArray(rows) ? rows : [];
   const safeCustomers = Array.isArray(customers) ? customers : [];
   const safeErrors = Array.isArray(errors) ? errors : [];
@@ -68,7 +68,16 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
   const handleRowChange = (index, field, value) => {
     const updated = safeRows.map(r => ({ ...r }));
     if (!updated[index]) return;
-    updated[index][field] = value;
+
+    if (typeof field === "object" && field !== null) {
+      Object.assign(updated[index], field);
+    } else {
+      updated[index][field] = value;
+      if (field === "drcr" || field === "doc_type") {
+        updated[index].drcr = value;
+        updated[index].doc_type = value;
+      }
+    }
 
     if (field === "charge") {
       const selectedCharge = safeChargeOptions.find(c => c.name === value);
@@ -212,10 +221,11 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
               }
 
               const defaultSac = selectedCharge?.sac || "";
+              const defaultParty = !isBuy ? (client || consignee || "") : "";
               const newRow = {
                 doc_type: "INV",
-                drcr: "DR",
-                party: !isBuy && consignee ? consignee : "",
+                drcr: "INV",
+                party: defaultParty,
                 address: "",
                 charge: defaultCharge,
                 sac: defaultSac,
@@ -297,8 +307,8 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
         </div>
       )}
 
-      <div className="overflow-visible border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-dark-card shadow-sm">
-        <table className="w-full text-left border-collapse table-fixed text-xs border border-slate-200 dark:border-slate-700/80">
+      <div className="overflow-x-auto custom-scrollbar border border-slate-200 dark:border-slate-700/80 rounded-xl bg-white dark:bg-dark-card shadow-sm">
+        <table className="w-full text-left border-collapse table-fixed text-xs border border-slate-200 dark:border-slate-700/80 min-w-[1050px]">
           <thead>
             <tr className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold uppercase tracking-wider">
               <th className="border border-slate-200 dark:border-slate-700/80 py-1.5 px-1 w-[50px] text-center">DRCR</th>
@@ -340,16 +350,16 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                   >
                   <td className={`${getCellClass(idx, "drcr")} p-0`}>
                     <select
-                      value={row.doc_type || row.drcr || "INV"}
+                      value={row.drcr || row.doc_type || "INV"}
                       disabled={isRowLocked}
                       onChange={(e) => {
-                        handleRowChange(idx, "doc_type", e.target.value);
                         handleRowChange(idx, "drcr", e.target.value);
                       }}
                       className={`w-full h-full bg-transparent hover:bg-slate-50 dark:hover:bg-slate-800/40 border-0 outline-none py-1.5 px-1 text-slate-900 dark:text-white rounded-none focus:bg-indigo-50/20 dark:focus:bg-indigo-950/20 text-xs focus:ring-0 ${isRowLocked ? "opacity-60 cursor-not-allowed pointer-events-none" : "cursor-pointer"}`}
                     >
                       <option value="INV">INV</option>
                       <option value="DR">DR</option>
+                      <option value="CR">CR</option>
                     </select>
                   </td>
                   <td className={`${getCellClass(idx, "party")} p-0`}>
@@ -359,11 +369,34 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       onChange={(val) => {
                         const updated = [...safeRows];
                         updated[idx].party = val;
-                        updated[idx].address = "";
+                        
+                        // Auto-populate the unique address for the selected company
+                        const clientData = safeCustomers.find(c => String(c.customer_id) === String(val) || c.name === val);
+                        let autoAddr = "";
+                        if (clientData) {
+                          if (Array.isArray(clientData.addresses) && clientData.addresses.length > 0) {
+                            const def = clientData.addresses.find(a => a.is_default) || clientData.addresses[0];
+                            const parts = [
+                              def.address_line1 || def.address1,
+                              def.address_line2 || def.address2,
+                              def.city,
+                              def.pin_code,
+                              def.gst_state || def.state,
+                              def.country
+                            ].filter(p => p && String(p).trim() !== '');
+                            autoAddr = parts.join(', ') || def.address || "";
+                          } else if (clientData.address && clientData.address.trim()) {
+                            autoAddr = clientData.address.trim();
+                          } else if (clientData.office_address && clientData.office_address.trim()) {
+                            autoAddr = clientData.office_address.trim();
+                          }
+                        }
+                        updated[idx].address = autoAddr;
                         onChange(updated);
                       }}
                       placeholder={`Select ${partyLabel}`}
-                      allowCustom={true}
+                      showOnlyWhenTyping={true}
+                      allowCustom={false}
                       variant="grid"
                       disabled={isRowLocked}
                     />
@@ -375,25 +408,25 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       if (clientData) {
                         if (Array.isArray(clientData.addresses) && clientData.addresses.length > 0) {
                           clientData.addresses.forEach(addr => {
-                            const line1 = addr.address_line1 || addr.address1 || '';
-                            const line2 = addr.address_line2 || addr.address2 || '';
-                            const clean = [line1, line2].map(p => p.trim()).filter(Boolean).join(', ');
+                            const parts = [
+                              addr.address_line1 || addr.address1,
+                              addr.address_line2 || addr.address2,
+                              addr.city,
+                              addr.pin_code,
+                              addr.gst_state || addr.state,
+                              addr.country
+                            ].filter(p => p && String(p).trim() !== '');
+                            const clean = parts.join(', ');
                             if (clean) addrs.push(clean);
+                            else if (addr.address && addr.address.trim()) addrs.push(addr.address.trim());
                           });
-                        } else {
-                          const clean = [
-                            clientData.address_line1 || clientData.address1,
-                            clientData.address_line2 || clientData.address2
-                          ].map(p => p && p.trim()).filter(Boolean).join(', ');
-
-                          if (clean) {
-                            addrs.push(clean);
-                          } else if (clientData.address && clientData.address.trim()) {
-                            addrs.push(clientData.address.trim());
-                          }
+                        } else if (clientData.address && clientData.address.trim()) {
+                          addrs.push(clientData.address.trim());
+                        } else if (clientData.office_address && clientData.office_address.trim()) {
+                          addrs.push(clientData.office_address.trim());
                         }
                       }
-                      const unique = [...new Set(addrs)].map(addr => ({ value: addr, label: addr }));
+                      const unique = Array.from(new Set(addrs.map(a => a.trim()))).filter(Boolean).map(addr => ({ value: addr, label: addr }));
                       if (row.address && !unique.some(opt => opt.value === row.address)) {
                         unique.push({ value: row.address, label: row.address });
                       }
@@ -402,8 +435,9 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                           options={unique}
                           value={row.address}
                           onChange={(val) => handleRowChange(idx, "address", val)}
-                          placeholder="Address"
-                          allowCustom={true}
+                          placeholder={clientData ? "Select Address" : "Address"}
+                          showOnlyWhenTyping={false}
+                          allowCustom={false}
                           variant="grid"
                           disabled={isRowLocked}
                         />
@@ -415,6 +449,7 @@ export function RateGrid({ rows = [], onChange, onAddRow, onDeleteRow, customers
                       options={finalCharges.map(ch => ({ value: ch, label: ch }))}
                       value={row.charge}
                       onChange={(val) => handleRowChange(idx, "charge", val)}
+                      allowCustom={false}
                       showOnlyWhenTyping={true}
                       variant="grid"
                       disabled={isRowLocked}

@@ -217,7 +217,7 @@ export default function EInvoiceApproval() {
             <FileText size={20} className="text-indigo-500" /> Filter Billing Context (Approval & Posting)
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Job Type</label>
               <select
@@ -326,7 +326,7 @@ export default function EInvoiceApproval() {
               </select>
             </div>
 
-            <div className="flex items-end gap-3 md:col-span-2 lg:col-span-3">
+            <div className="flex items-end gap-3 sm:col-span-2 lg:col-span-3 xl:col-span-3">
               <button
                 onClick={fetchInvoices}
                 className="flex-1 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 dark:bg-indigo-600 dark:hover:bg-indigo-700 text-white py-2.5 px-4 rounded-xl text-sm font-semibold transition-all duration-200 h-[44px]"
@@ -365,8 +365,8 @@ export default function EInvoiceApproval() {
 
         {/* DATA TABLE */}
         <div className="bg-white dark:bg-dark-card border border-slate-200 dark:border-slate-700/80 rounded-2xl shadow-md overflow-hidden transition-all duration-300">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse table-auto text-[12px]">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full text-left border-collapse table-auto text-[12px] min-w-[1100px]">
               <thead>
                 <tr className="bg-slate-50/75 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 font-semibold uppercase text-[10px] tracking-wider border-b border-slate-200/60 dark:border-slate-700/50">
                   <th className="px-3 py-2.5 text-center w-[35px]">

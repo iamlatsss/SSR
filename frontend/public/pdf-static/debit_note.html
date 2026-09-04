@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Debit Note</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 5mm;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9.5px;
+    color: #000000;
+  }
+
+  .debit-note-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 1px solid #000000;
+    background: #ffffff;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-bottom: 1px solid #000000;
+  }
+  .header .logo {
+    width: 110px;
+    flex: 0 0 110px;
+  }
+  .header .logo img {
+    width: 100%;
+    max-width: 105px;
+    height: auto;
+    display: block;
+  }
+  .header .company-info {
+    flex: 1 1 auto;
+    text-align: center;
+    padding-right: 30px;
+  }
+  .company-info .company-name {
+    font-weight: bold;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+  }
+  .company-info .company-line {
+    font-size: 9.5px;
+    line-height: 1.35;
+  }
+
+  /* ===== TITLE ===== */
+  .title-bar {
+    text-align: center;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 3px 0;
+    border-bottom: 1px solid #000000;
+    background: #ffffff;
+  }
+
+  /* ===== TWO-COLUMN INFO BLOCKS ===== */
+  .info-grid {
+    display: flex;
+    width: 100%;
+    border-bottom: 1px solid #000000;
+  }
+  .info-grid .col-left {
+    flex: 1 1 50%;
+    min-width: 0;
+    padding: 6px 10px;
+    border-right: 1px solid #000000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .info-grid .col-right {
+    flex: 1 1 50%;
+    min-width: 0;
+    padding: 6px 10px;
+  }
+  .info-grid .row {
+    margin: 1.5px 0;
+    line-height: 1.35;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .info-grid b, .info-grid strong { font-weight: bold; }
+
+  /* ===== PARTICULARS TABLE ===== */
+  table.particulars-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 9.5px;
+  }
+  table.particulars-table th, table.particulars-table td {
+    border: 1px solid #000000;
+    padding: 3.5px 6px;
+    vertical-align: middle;
+  }
+  table.particulars-table th {
+    font-weight: bold;
+    text-align: center;
+    background: #ffffff;
+  }
+  table.particulars-table td.num { text-align: right; }
+  table.particulars-table td.center { text-align: center; }
+
+  table.particulars-table col.c-part  { width: 58%; }
+  table.particulars-table col.c-rate  { width: 14%; }
+  table.particulars-table col.c-qty   { width: 11%; }
+  table.particulars-table col.c-fc    { width: 17%; }
+
+  table.particulars-table tr.total-row td {
+    font-weight: bold;
+  }
+  table.particulars-table tr.words-row td {
+    font-weight: bold;
+    padding: 4px 6px;
+  }
+
+  /* ===== BOTTOM SECTION (BANK & SIGNATURE) ===== */
+  .bottom-grid {
+    display: flex;
+    width: 100%;
+  }
+  .bottom-grid .bank-col {
+    flex: 1 1 58%;
+    min-width: 0;
+    padding: 6px 10px;
+    border-right: 1px solid #000000;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  .bottom-grid .bank-col .row { margin: 1px 0; }
+  .bottom-grid .bank-col .tax-header-block { margin-bottom: 6px; }
+
+  .bottom-grid .sign-col {
+    flex: 1 1 42%;
+    min-width: 0;
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 110px;
+  }
+  .sign-col .for-company {
+    font-weight: bold;
+    font-size: 9.5px;
+    text-transform: uppercase;
+  }
+  .sign-col .stamp-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 45px;
+    padding: 2px 0;
+  }
+  .sign-col .accounts-dept {
+    font-weight: bold;
+    font-size: 9.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="debit-note-container">
+
+  <!-- ===================== HEADER ===================== -->
+  <div class="header">
+    <div class="logo">
+      <img id="companyLogo" src="/images/SSR_nobg.png" alt="SSR Logo">
+    </div>
+    <div class="company-info">
+      <div class="company-name" id="companyName">SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
+      <div class="company-line" id="companyAddress">Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela<br>Mall, Vashi, Navi Mumbai-400703, Maharashtra, India</div>
+      <div class="company-line"><b>Tel.No :</b><span id="companyPhone">7700990630</span>, <b>GST No. :</b> <span id="companyGst">27ABMCS1941A1ZI</span></div>
+      <div class="company-line"><b>Website:</b> <span id="companyWebsite">www.ssrlogistic.net</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== TITLE ===================== -->
+  <div class="title-bar">DEBIT NOTE (Original for Recipient)</div>
+
+  <!-- ===================== PARTY & SHIPMENT DETAILS ===================== -->
+  <div class="info-grid">
+    <!-- Left Column: Party & Notify -->
+    <div class="col-left">
+      <div>
+        <div class="row"><b>To,</b> <span id="partyName" style="font-weight: bold;"></span></div>
+        <div class="row" id="partyAddress" style="white-space: pre-line; font-weight: bold;"></div>
+        <div class="row" id="partyCityCountry" style="font-weight: bold; margin-top: 4px;"></div>
+      </div>
+      <div style="margin-top: 14px;">
+        <div class="row"><b>Notify :</b> <span id="notifyParty"></span></div>
+        <div class="row"><b>Container No. :</b> <span id="containerNo"></span></div>
+        <div class="row"><b>Description :</b> <span id="description"></span></div>
+      </div>
+    </div>
+
+    <!-- Right Column: Job & Shipment Details -->
+    <div class="col-right">
+      <div class="row"><b>No. :</b><span id="invoiceNo"></span> / <span id="invoiceDate"></span></div>
+      <div class="row"><b>JOB No. :</b> <span id="jobNo"></span></div>
+      <div class="row"><b>MBL No. :</b> <span id="mblNo"></span> / <span id="mblDate"></span></div>
+      <div class="row"><b>HBL No. :</b> <span id="hblNo"></span> / <span id="hblDate"></span></div>
+      <div class="row"><b>Reference :</b> <span id="reference"></span></div>
+      <div class="row"><b>Gross Weight :</b> <span id="grossWeight"></span> <b>Volume :</b> <span id="volume"></span></div>
+      <div class="row"><b>ETA Date :</b> <span id="etaDate"></span></div>
+      <div class="row"><b>ETD Date :</b> <span id="etdDate"></span></div>
+      <div class="row"><b>Vessel / Voyage :</b> <span id="vesselVoyage"></span></div>
+      <div class="row"><b>Discharge Port :</b> <span id="dischargePort"></span></div>
+      <div class="row"><b>Load Port :</b> <span id="loadPort"></span></div>
+      <div class="row"><b>Shipment Type :</b> <span id="shipmentType"></span></div>
+      <div class="row"><b>IGM No. :</b> <span id="igmNo"></span> <b>Date:</b> <span id="igmDate"></span></div>
+      <div class="row"><b>C.F.S :</b> <span id="cfs"></span></div>
+      <div class="row"><b>Ship Line :</b> <span id="shippingLine"></span></div>
+      <div class="row"><b>Shipping Bill No :</b> <span id="shippingBillNo"></span></div>
+    </div>
+  </div>
+
+  <!-- ===================== PARTICULARS TABLE ===================== -->
+  <table class="particulars-table">
+    <colgroup>
+      <col class="c-part">
+      <col class="c-rate">
+      <col class="c-qty">
+      <col class="c-fc">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>PARTICULARS</th>
+        <th>RATE</th>
+        <th>QTY</th>
+        <th>FC Amount</th>
+      </tr>
+    </thead>
+    <tbody id="chargesBody">
+    </tbody>
+    <tfoot>
+      <!-- Subtotal row -->
+      <tr class="total-row">
+        <td colspan="3"></td>
+        <td class="num" id="grandTotal">0.00</td>
+      </tr>
+      <!-- Words row -->
+      <tr class="words-row">
+        <td colspan="4" id="amountInWords"></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- ===================== BANK DETAILS / SIGNATURE ===================== -->
+  <div class="bottom-grid">
+    <div class="bank-col">
+      <div class="tax-header-block">
+        <div class="row"><b>Pan No :</b> <span id="companyPan">ABMCS1941A</span></div>
+        <div class="row"><b>GST No:</b> <span id="companyGstTax">27ABMCS1941A1ZI</span></div>
+        <div class="row"><b>LUT No:</b> <span id="lutNo"></span></div>
+        <div class="row"><b>CIN No:</b> <span id="cinNo">U52220MH2023PTC414525</span> <b>State Code</b> <span id="stateCode">27- Maharashtra</span></div>
+      </div>
+      <div>
+        <div class="row"><b>Bank Details : Beneficiary Name :</b> <span id="beneficiaryName">SSR LOGISTIC SOLUTIONS PVT LTD</span></div>
+        <div class="row"><b>Bank Name :</b> <span id="bankName">KOTAK MAHINDRA BANK LTD</span></div>
+        <div class="row"><b>IFSC:</b> <span id="ifsc">KKBK0001370</span></div>
+        <div class="row"><b>Swift Code:</b> <span id="swiftCode">KKBKINBB</span></div>
+        <div class="row"><b>Account Number (INR):</b> <span id="accInr">1050002555</span></div>
+        <div class="row"><b>Account Number (USD):</b> <span id="accUsd">8650800452</span></div>
+        <div class="row"><b>Account Number (EUR):</b> <span id="accEur"></span></div>
+      </div>
+    </div>
+    <div class="sign-col">
+      <div class="for-company">FOR SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
+      <div class="stamp-area" style="text-align: center; margin: 2px 0;">
+        <img src="/images/ssr_stamp_signature.png" alt="Stamp and signature" style="width: 100px; height: auto; display: inline-block;" />
+      </div>
+      <div class="accounts-dept">Accounts Department</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  window.fillDocument = function(data) {
+    if (!data) return;
+
+    const setElemText = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.innerText = val !== undefined && val !== null ? val : '';
+    };
+    const setElemHtml = (id, val) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = val !== undefined && val !== null ? val : '';
+    };
+
+    if (data.companyLogo) {
+      const logoEl = document.getElementById('companyLogo');
+      if (logoEl) logoEl.src = data.companyLogo;
+    }
+    if (data.companyName) setElemText('companyName', data.companyName);
+    if (data.companyAddress) setElemHtml('companyAddress', data.companyAddress);
+    if (data.companyPhone) setElemText('companyPhone', data.companyPhone);
+    if (data.companyGst) {
+      setElemText('companyGst', data.companyGst);
+      setElemText('companyGstTax', data.companyGst);
+    }
+    if (data.companyWebsite) setElemText('companyWebsite', data.companyWebsite);
+
+    setElemText('partyName', data.partyName || data.party_name || data.clientName || '—');
+    setElemText('partyAddress', data.partyAddress || data.party_address || data.clientAddress || '—');
+    setElemText('partyCityCountry', data.partyCityCountry || data.party_city_country || '');
+    setElemText('notifyParty', data.notifyParty || data.notify_party || '—');
+    
+    const containerStr = data.containerNo || data.container_numbers || data.container_number || 
+      (data.containers && Array.isArray(data.containers) ? data.containers.map(c => typeof c === 'string' ? c : (c.container_no || c.containerNo || '')).filter(Boolean).join(', ') : '') || '—';
+    setElemText('containerNo', containerStr);
+    
+    setElemText('description', data.description || '');
+
+    setElemText('invoiceNo', data.invoiceNo || data.invoice_no || '');
+    setElemText('invoiceDate', data.invoiceDate || data.invoice_date || '');
+    setElemText('jobNo', data.jobNo || data.refNo || data.job_no || '');
+    setElemText('mblNo', data.mblNo || data.mbl_no || '—');
+    setElemText('mblDate', data.mblDate || data.mbl_date || '');
+    setElemText('hblNo', data.hblNo || data.hbl_no || '—');
+    setElemText('hblDate', data.hblDate || data.hbl_date || '');
+    setElemText('reference', data.reference || data.shipper_ref_no || '');
+    setElemText('grossWeight', data.grossWeight || data.cargoWeight || data.cargo_weight || data.gross_weight || '—');
+    setElemText('volume', data.volume !== undefined && data.volume !== null ? data.volume : (data.cbm || '0'));
+    setElemText('etaDate', data.etaDate || data.eta_date || '');
+    setElemText('etdDate', data.etdDate || data.etd_date || '');
+    setElemText('vesselVoyage', data.vesselVoyage || data.vesselVoy || data.vessel_voy || '—');
+    setElemText('dischargePort', data.dischargePort || data.pod || data.final_pod || '—');
+    setElemText('loadPort', data.loadPort || data.pol || '—');
+    setElemText('shipmentType', data.shipmentType || data.cargoType || data.cargo_type || 'FCL');
+    setElemText('igmNo', data.igmNo || data.igm_no || '');
+    setElemText('igmDate', data.igmDate || data.igm_date || '');
+    setElemText('cfs', data.cfs || '');
+    setElemText('shippingLine', data.shippingLine || data.shipping_line || data.shipperLine || '—');
+    setElemText('shippingBillNo', data.shippingBillNo || data.shipping_bill_no || data.sbNo || '');
+
+    // Render table
+    if (data.lineItems && data.lineItems.length > 0) {
+      const tbody = document.getElementById('chargesBody');
+      if (tbody) {
+        tbody.innerHTML = '';
+        data.lineItems.forEach(item => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${item.charge || item.chargeName || ''}</td>
+            <td class="num">${item.rate || item.ratePerUnit || '0.00'}</td>
+            <td class="center">${item.qty || item.quantity || '1'}</td>
+            <td class="num">${item.amount || item.fcAmount || item.totalAmount || '0.00'}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    if (data.totals) {
+      setElemText('grandTotal', data.totals.inrTotal || data.totals.grandTotal || '0.00');
+    }
+    if (data.amountInWords) {
+      setElemText('amountInWords', data.amountInWords);
+    }
+  };
+</script>
+
+</body>
+</html>

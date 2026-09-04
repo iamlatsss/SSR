@@ -26,9 +26,8 @@ import Parties from './pages/Parties';
 import CFS from './pages/CFS';
 import EInvoiceApproval from './pages/EInvoiceApproval';
 import EInvoicePosting from './pages/EInvoicePosting';
-import HBLConfirmation from './pages/HBLConfirmation';
-import HBLFinal from './pages/HBLFinal';
-import HBLTelexRelease from './pages/HBLTelexRelease';
+import HBLGenerator from './pages/HBLGenerator';
+import HBLRegister from './pages/HBLRegister';
 import BookingUpdates from './pages/BookingUpdates';
 
 // Placeholder for now
@@ -69,9 +68,11 @@ function App() {
             <Route path="/cfs" element={<CFS />} />
             <Route path="/e-invoice-approval" element={<EInvoiceApproval />} />
             <Route path="/e-invoice-posting" element={<EInvoicePosting />} />
-            <Route path="/hbl-confirmation" element={<HBLConfirmation />} />
-            <Route path="/hbl-final" element={<HBLFinal />} />
-            <Route path="/hbl-telex-release" element={<HBLTelexRelease />} />
+            <Route path="/hbl-generator" element={<HBLGenerator />} />
+            <Route path="/hbl-register" element={<HBLRegister />} />
+            <Route path="/hbl-confirmation" element={<Navigate to="/hbl-generator" replace />} />
+            <Route path="/hbl-final" element={<Navigate to="/hbl-generator" replace />} />
+            <Route path="/hbl-telex-release" element={<Navigate to="/hbl-generator" replace />} />
 
             {/* Restricted to Admin */}
             <Route element={<ProtectedRoute allowedRoles={['Admin', 'admin']} />}>

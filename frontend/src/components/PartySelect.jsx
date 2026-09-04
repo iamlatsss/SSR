@@ -38,7 +38,11 @@ const PartySelect = ({
   const handleInputChange = (e) => {
     const val = e.target.value;
     setSearchTerm(val);
-    setIsOpen(true);
+    if (val.trim().length > 0) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
     setActiveIndex(-1);
 
     // Call onChange with the typed string value
@@ -64,7 +68,7 @@ const PartySelect = ({
   // Filter customers by typed search term
   const filteredCustomers = useMemo(() => {
     if (!searchTerm || searchTerm.trim() === "") return [];
-    const term = searchTerm.toLowerCase();
+    const term = searchTerm.toLowerCase().trim();
     return customers.filter(c => c.name.toLowerCase().includes(term));
   }, [customers, searchTerm]);
 
@@ -79,9 +83,6 @@ const PartySelect = ({
 
   const handleKeyDown = (e) => {
     if (!isOpen) {
-      if (e.key === 'ArrowDown' || e.key === 'Enter') {
-        setIsOpen(true);
-      }
       return;
     }
 
@@ -117,7 +118,6 @@ const PartySelect = ({
           name={name}
           value={searchTerm}
           onChange={handleInputChange}
-          onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           autoComplete="off"
@@ -128,7 +128,7 @@ const PartySelect = ({
         </div>
       </div>
 
-      {isOpen && filteredCustomers.length > 0 && (
+      {isOpen && searchTerm.trim().length > 0 && filteredCustomers.length > 0 && (
         <div
           className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded shadow-lg max-h-48 overflow-y-auto custom-scrollbar"
         >

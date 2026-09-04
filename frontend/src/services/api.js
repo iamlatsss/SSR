@@ -6,6 +6,15 @@ const api = axios.create({
     withCredentials: true, // Important for cookies
 });
 
+// Request interceptor to attach Bearer token if present
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem("token");
+    if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+}, (error) => Promise.reject(error));
+
 // Response interceptor to handle errors globally
 api.interceptors.response.use(
     (response) => {
@@ -16,6 +25,16 @@ api.interceptors.response.use(
         return response;
     },
     async (error) => {
+        // If unauthenticated (401), clear local token and redirect if not on public routes
+        if (error.response?.status === 401) {
+            localStorage.removeItem("token");
+            if (!window.location.pathname.includes("/login") && 
+                !window.location.pathname.includes("/forgot-password") && 
+                !window.location.pathname.includes("/reset-password")) {
+                window.location.href = "/login";
+            }
+        }
+
         // Automatically extract and toast standard API, validation, database, or network errors
         const errMsg = error.response?.data?.message || error.response?.data?.error || error.message || "An unexpected network error occurred";
         toast.error(errMsg);

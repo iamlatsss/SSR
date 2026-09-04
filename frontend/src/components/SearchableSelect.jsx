@@ -25,7 +25,11 @@ const SearchableSelect = ({
   const handleInputChange = (e) => {
     const val = e.target.value;
     setSearchTerm(val);
-    setIsOpen(true);
+    if (val.trim().length > 0) {
+      setIsOpen(true);
+    } else {
+      setIsOpen(false);
+    }
     setActiveIndex(-1);
     onChange({ target: { name, value: val } });
   };
@@ -46,8 +50,8 @@ const SearchableSelect = ({
   }, []);
 
   const filteredOptions = useMemo(() => {
-    const term = searchTerm.toLowerCase();
-    if (!term || term.trim() === "") return options;
+    const term = searchTerm.toLowerCase().trim();
+    if (!term) return [];
     return options.filter(opt => opt.toLowerCase().includes(term));
   }, [options, searchTerm]);
 
@@ -60,9 +64,6 @@ const SearchableSelect = ({
 
   const handleKeyDown = (e) => {
     if (!isOpen) {
-      if (e.key === 'ArrowDown' || e.key === 'Enter') {
-        setIsOpen(true);
-      }
       return;
     }
 
@@ -98,7 +99,6 @@ const SearchableSelect = ({
           name={name}
           value={searchTerm}
           onChange={handleInputChange}
-          onFocus={() => setIsOpen(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className={`${inputClassName} pr-8`}
@@ -111,7 +111,7 @@ const SearchableSelect = ({
         </span>
       </div>
 
-      {isOpen && (
+      {isOpen && searchTerm.trim().length > 0 && (
         <div className="absolute z-50 w-full mt-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg max-h-60 overflow-y-auto overflow-x-hidden focus:outline-none">
           {filteredOptions.length > 0 ? (
             <ul className="py-1" ref={listRef}>

@@ -91,8 +91,13 @@ const ChargeSelect = ({ value, onChange, options = [], placeholder = "Select Cha
     };
 
     const handleInputChange = (e) => {
-        onChange(e.target.value);
-        setIsOpen(true);
+        const val = e.target.value;
+        onChange(val);
+        if (val.trim().length > 0) {
+            setIsOpen(true);
+        } else {
+            setIsOpen(false);
+        }
         setActiveIndex(-1);
     };
 
@@ -102,10 +107,6 @@ const ChargeSelect = ({ value, onChange, options = [], placeholder = "Select Cha
                 type="text"
                 value={value || ""}
                 onChange={handleInputChange}
-                onFocus={() => {
-                    // Only open if there is text (User Req: "not fully visible when clicked")
-                    if (value && filteredOptions.length > 0) setIsOpen(true);
-                }}
                 onKeyDown={handleKeyDown}
                 placeholder={placeholder}
                 autoComplete="off"

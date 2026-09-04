@@ -4,7 +4,7 @@ import DashboardLayout from "../components/DashboardLayout";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import {
-  Search, Filter, Plus, Edit2, Eye, CheckCircle, FileText, ChevronLeft, ChevronRight, Save, Anchor, XCircle, Star, Files, Trash2
+  Search, Filter, Plus, Edit2, Eye, CheckCircle, CheckCircle2, FileText, ChevronLeft, ChevronRight, Save, Anchor, XCircle, Star, Files, Trash2, Lock, Unlock, Clock, X
 } from "lucide-react";
 import { toast } from "react-toastify";
 import PortSelect from "../components/PortSelect";
@@ -203,7 +203,7 @@ export function SIMasterBLList() {
 
   return (
     <DashboardLayout title={getPageTitle()}>
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-8">
         <div className="bg-white dark:bg-dark-card p-6 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex items-center gap-4">
           <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl text-blue-600 dark:text-blue-400">
             <Anchor size={24} />
@@ -701,6 +701,7 @@ export function SIMasterBLForm() {
   const [saveError, setSaveError] = useState(null);
   
   const [hasActiveApproval, setHasActiveApproval] = useState(false);
+  const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [requestReason, setRequestReason] = useState("");
   const [submittingRequest, setSubmittingRequest] = useState(false);
@@ -709,6 +710,28 @@ export function SIMasterBLForm() {
   const [valErrors, setValErrors] = useState({});
   const [validationModalErrors, setValidationModalErrors] = useState(null);
   const [employees, setEmployees] = useState([]);
+
+  // Auto-poll approval status if there is a pending request
+  useEffect(() => {
+    if (!jobNoParam || !hasPendingRequest || hasActiveApproval) return;
+    const pollTimer = setInterval(async () => {
+      try {
+        const res = await api.get(`/masterbl/edit-requests/active/${jobNoParam}`);
+        if (res.data.success) {
+          if (res.data.hasActiveApproval) {
+            setHasActiveApproval(true);
+            setHasPendingRequest(false);
+            toast.success("Edit permission has been approved by admin!");
+          } else if (!res.data.hasPendingRequest) {
+            setHasPendingRequest(false);
+          }
+        }
+      } catch (e) {
+        // ignore background poll errors
+      }
+    }, 8000);
+    return () => clearInterval(pollTimer);
+  }, [jobNoParam, hasPendingRequest, hasActiveApproval]);
 
   // Form State containing both main columns and additional JSON fields
   const [form, setForm] = useState({
@@ -888,7 +911,8 @@ export function SIMasterBLForm() {
           try {
             const activeAppRes = await api.get(`/masterbl/edit-requests/active/${jobNoParam}`);
             if (activeAppRes.data.success) {
-              setHasActiveApproval(activeAppRes.data.hasActiveApproval);
+              setHasActiveApproval(!!activeAppRes.data.hasActiveApproval);
+              setHasPendingRequest(!!activeAppRes.data.hasPendingRequest);
             }
           } catch (activeAppErr) {
             console.error("Error loading active edit requests status:", activeAppErr);
@@ -1038,9 +1062,10 @@ export function SIMasterBLForm() {
         reason: requestReason
       });
       if (res.data.success) {
-        toast.success("Edit request submitted successfully to Directors/Admins.");
+        toast.success("Edit request submitted successfully. Status updated to Requested.");
         setShowRequestModal(false);
         setRequestReason("");
+        setHasPendingRequest(true);
       } else {
         toast.error(res.data.message || "Failed to submit request.");
       }
@@ -1054,7 +1079,20 @@ export function SIMasterBLForm() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setForm(prev => ({ ...prev, [name]: value }));
+    setForm(prev => {
+      const updated = { ...prev, [name]: value };
+      if (name === "client") {
+        if (Array.isArray(updated.sell_rates)) {
+          updated.sell_rates = updated.sell_rates.map(sr => {
+            if (!sr.party || sr.party === prev.client) {
+              return { ...sr, party: value };
+            }
+            return sr;
+          });
+        }
+      }
+      return updated;
+    });
     if (valErrors[name]) {
       setValErrors(prev => {
         const copy = { ...prev };
@@ -1163,8 +1201,8 @@ export function SIMasterBLForm() {
 
       return {
         ...row,
-        doc_type: row.doc_type || row.drcr || "INV",
-        drcr: row.drcr || row.doc_type || "DR",
+        doc_type: row.drcr || row.doc_type || "INV",
+        drcr: row.drcr || row.doc_type || "INV",
         hsn_sac: row.hsn_sac || row.sac || "996521",
         sac: row.sac || row.hsn_sac || "996521",
         gst: row.gst || "0%",
@@ -1194,8 +1232,8 @@ export function SIMasterBLForm() {
 
       return {
         ...row,
-        doc_type: row.doc_type || row.drcr || "INV",
-        drcr: row.drcr || row.doc_type || "DR",
+        doc_type: row.drcr || row.doc_type || "INV",
+        drcr: row.drcr || row.doc_type || "INV",
         hsn_sac: row.hsn_sac || row.sac || "996521",
         sac: row.sac || row.hsn_sac || "996521",
         gst: row.gst || "0%",
@@ -1382,7 +1420,7 @@ export function SIMasterBLForm() {
           {activeTab === "Main" && (
             <div className="space-y-6">
               <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Main Shipment Route & Invoicing Info</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                 <div>
                   <label className={labelStyle}>MBL No. <span className="text-red-500 font-bold">*</span></label>
                   <input type="text" name="mbl_no" value={form.mbl_no} onChange={handleInputChange} onBlur={handleMBLNoBlur} placeholder="Enter MBL No" className={getInputClass('mbl_no') + " font-mono font-semibold"} />
@@ -1604,7 +1642,7 @@ export function SIMasterBLForm() {
               {/* MBL Details Section */}
               <div>
                 <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 mb-4">MBL Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   <div>
                     <PartySelect
                       label="Shipper Party"
@@ -1702,7 +1740,7 @@ export function SIMasterBLForm() {
               {/* HBL Details Section */}
               <div>
                 <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2 mb-4">HBL Details</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   <div>
                     <PartySelect
                       label="HBL Shipper Party"
@@ -1803,7 +1841,7 @@ export function SIMasterBLForm() {
           {activeTab === "Packages" && (
             <div className="space-y-6">
               <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Weight, Packages & Dimensions</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 <div>
                   <label className={labelStyle}>No Of Packages</label>
                   <input type="number" name="no_of_packages" value={form.no_of_packages} onChange={handleInputChange} placeholder="e.g. 50" className={inputStyle} />
@@ -1838,7 +1876,7 @@ export function SIMasterBLForm() {
               {/* Cargo Description, Marks & Remarks */}
               <div className="pt-6 border-t border-slate-100 dark:border-slate-800/80">
                 <h4 className="text-sm font-bold text-slate-800 dark:text-white mb-4">Cargo Description, Marks & Remarks</h4>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <div>
                     <label className={labelStyle}>Marks Nos</label>
                     <textarea
@@ -1883,7 +1921,7 @@ export function SIMasterBLForm() {
               {/* Inventory details */}
               <div className="space-y-4">
                 <h3 className="text-base font-bold text-slate-800 dark:text-white border-b border-slate-100 dark:border-slate-800 pb-2">Inventory Overview</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                   <div>
                     <label className={labelStyle}>Container Size Type (CSize)</label>
                     <select name="container_size" value={form.container_size} onChange={handleInputChange} className={inputStyle}>
@@ -1923,31 +1961,6 @@ export function SIMasterBLForm() {
           {/* TAB 6: BUYRATES */}
           {activeTab === "BuyRates" && (
             <div className="space-y-6">
-              {isRatesLocked && (
-                <div className={`p-4 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
-                  hasActiveApproval 
-                    ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 animate-in slide-in-from-top-2 duration-300" 
-                    : "bg-amber-50/50 dark:bg-amber-950/10 border-amber-250/60 dark:border-amber-900 text-amber-800 dark:text-amber-400 animate-in slide-in-from-top-2 duration-300"
-                }`}>
-                  <div className="text-xs leading-normal">
-                    <span className="font-bold flex items-center gap-1.5">
-                      🔒 Rate Edit Lock Status:
-                    </span>{" "}
-                    {hasActiveApproval 
-                      ? "Permission approved. You can edit Buy/Sell rates and regenerate invoices/documents." 
-                      : "Tax invoice has been generated. Rate tables are locked. Request permission to unlock."}
-                  </div>
-                  {!hasActiveApproval && (
-                    <button
-                      type="button"
-                      onClick={() => setShowRequestModal(true)}
-                      className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all transform hover:-translate-y-0.5"
-                    >
-                      Request Edit Permission
-                    </button>
-                  )}
-                </div>
-              )}
               <RateGrid
                 rows={form.buy_rates || []}
                 customers={customers}
@@ -1960,8 +1973,8 @@ export function SIMasterBLForm() {
                   ...prev,
                   buy_rates: (prev.buy_rates || []).filter((_, i) => i !== idx)
                 }))}
-                isLocked={isRatesLocked}
-                isEditApproved={hasActiveApproval}
+                isLocked={false}
+                isEditApproved={true}
               />
             </div>
           )}
@@ -1972,33 +1985,49 @@ export function SIMasterBLForm() {
               {isRatesLocked && (
                 <div className={`p-4 rounded-xl border flex items-center justify-between shadow-sm transition-all ${
                   hasActiveApproval 
-                    ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-250 dark:border-emerald-800 text-emerald-800 dark:text-emerald-400 animate-in slide-in-from-top-2 duration-300" 
-                    : "bg-amber-50/50 dark:bg-amber-950/10 border-amber-250/60 dark:border-amber-900 text-amber-800 dark:text-amber-400 animate-in slide-in-from-top-2 duration-300"
+                    ? "bg-emerald-50 dark:bg-emerald-950/20 border-emerald-300 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300 animate-in slide-in-from-top-2 duration-300" 
+                    : hasPendingRequest
+                      ? "bg-sky-50 dark:bg-sky-950/20 border-sky-300 dark:border-sky-800 text-sky-800 dark:text-sky-300 animate-in slide-in-from-top-2 duration-300"
+                      : "bg-amber-50/70 dark:bg-amber-950/20 border-amber-300/80 dark:border-amber-800 text-amber-900 dark:text-amber-300 animate-in slide-in-from-top-2 duration-300"
                 }`}>
-                  <div className="text-xs leading-normal">
-                    <span className="font-bold flex items-center gap-1.5">
-                      🔒 Rate Edit Lock Status:
+                  <div className="text-xs leading-normal pr-4">
+                    <span className="font-bold flex items-center gap-1.5 mb-0.5">
+                      {hasActiveApproval ? <Unlock size={14} className="text-emerald-600 dark:text-emerald-400" /> : <Lock size={14} className={hasPendingRequest ? "text-sky-600 dark:text-sky-400" : "text-amber-600 dark:text-amber-400"} />}
+                      Rate Edit Lock Status:
                     </span>{" "}
                     {hasActiveApproval 
-                      ? "Permission approved. You can edit Buy/Sell rates and regenerate invoices/documents." 
-                      : "Tax invoice has been generated. Rate tables are locked. Request permission to unlock."}
+                      ? "Permission approved. You can edit Sell Rates and regenerate invoices/documents." 
+                      : hasPendingRequest
+                        ? "Edit permission request has been sent to Directors/Admins. Status: Requested (Waiting for approval)."
+                        : "Tax invoice has been generated. Sell rate tables are locked. Request permission to unlock."}
                   </div>
-                  {!hasActiveApproval && (
-                    <button
-                      type="button"
-                      onClick={() => setShowRequestModal(true)}
-                      className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all transform hover:-translate-y-0.5"
-                    >
-                      Request Edit Permission
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {hasActiveApproval ? (
+                      <span className="px-3.5 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5">
+                        <CheckCircle2 size={14} /> Approved
+                      </span>
+                    ) : hasPendingRequest ? (
+                      <span className="px-3.5 py-1.5 bg-sky-600 dark:bg-sky-700 text-white rounded-lg text-xs font-semibold shadow-sm flex items-center gap-1.5 select-none">
+                        <Clock size={14} className="animate-spin" /> Requested
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setShowRequestModal(true)}
+                        className="px-3.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold shadow-sm transition-all transform hover:-translate-y-0.5 cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Lock size={13} /> Request Edit Permission
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
               <RateGrid
                 rows={form.sell_rates || []}
                 customers={customers}
                 isBuy={false}
-                consignee={form.consignee}
+                client={form.client}
+                consignee={form.client || form.consignee}
                 chargeOptions={chargeOptions}
                 errors={valErrors.sell_rates || []}
                 onChange={(updated) => setForm(prev => ({ ...prev, sell_rates: updated }))}

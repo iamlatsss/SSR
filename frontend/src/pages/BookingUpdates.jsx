@@ -173,6 +173,14 @@ const BookingUpdates = () => {
     }, []);
 
     const [freezeHeader, setFreezeHeader] = useState(true);
+
+    const totalTableWidth = useMemo(() => {
+        const baseWidth = 152; // View (32px) + Status (80px) + Sr No (40px)
+        const colsWidth = allowedColumns
+            .filter(col => col.key !== 'status' && visibleColumns[col.key])
+            .reduce((sum, col) => sum + (Number(col.width) || 100), 0);
+        return Math.max(1200, baseWidth + colsWidth);
+    }, [allowedColumns, visibleColumns]);
     
     // Sorting & Filtering
     const [sortConfig, setSortConfig] = useState({ key: null, direction: 'asc' });
@@ -1048,9 +1056,12 @@ const BookingUpdates = () => {
                 {/* Spreadsheet Grid Container */}
                 <div 
                     ref={gridRef}
-                    className="flex-1 overflow-auto border-t border-slate-200 dark:border-slate-700"
+                    className="flex-1 overflow-auto border-t border-slate-200 dark:border-slate-700 custom-scrollbar"
                 >
-                    <table className="table-fixed min-w-full border-collapse select-text">
+                    <table 
+                        className="table-fixed border-collapse select-text" 
+                        style={{ minWidth: `${totalTableWidth}px`, width: '100%' }}
+                    >
                         <thead className={freezeHeader ? "sticky top-0 bg-slate-100 dark:bg-slate-800 shadow-sm z-20" : "bg-slate-100 dark:bg-slate-800"}>
                             <tr>
                                 <th className="w-8 px-1 py-1 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 font-semibold text-xs uppercase bg-slate-100 dark:bg-slate-800 text-center select-none">

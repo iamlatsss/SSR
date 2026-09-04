@@ -94,7 +94,7 @@ router.put('/:id/status', authenticateJWT, async (req, res) => {
   }
 });
 
-// 4. Check if there is an active approved request for a specific job
+// 4. Check if there is an active approved or pending request for a specific job
 router.get('/active/:jobNo', authenticateJWT, async (req, res) => {
   const { jobNo } = req.params;
 
@@ -103,7 +103,18 @@ router.get('/active/:jobNo', authenticateJWT, async (req, res) => {
       .where({ job_no: jobNo, status: 'Approved' })
       .first();
 
-    res.json({ success: true, hasActiveApproval: !!activeRequest, approvalDetails: activeRequest || null });
+    const pendingRequest = await knexDB('JobEditRequests')
+      .where({ job_no: jobNo, status: 'Pending' })
+      .first();
+
+    res.json({
+      success: true,
+      hasActiveApproval: !!activeRequest,
+      hasPendingRequest: !!pendingRequest,
+      status: activeRequest ? 'Approved' : (pendingRequest ? 'Pending' : 'None'),
+      approvalDetails: activeRequest || null,
+      pendingDetails: pendingRequest || null
+    });
   } catch (error) {
     console.error("Error checking active approval status:", error);
     res.status(500).json({ success: false, message: "Internal server error." });

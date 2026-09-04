@@ -2,23 +2,27 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Proforma Invoice - Preview</title>
+<title>Proforma Invoice</title>
 <style>
+  @page {
+    size: A4 portrait;
+    margin: 5mm;
+  }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
     padding: 0;
-    background: #e8e8e8;
+    background: #ffffff;
   }
   body {
     font-family: Arial, Helvetica, sans-serif;
-    font-size: 11.5px;
+    font-size: 10px;
     color: #000000;
-    padding: 20px;
+    padding: 4px;
   }
 
   .inv-container {
-    width: 950px;
+    width: 100%;
     max-width: 100%;
     margin: 0 auto;
     border: 1.5px solid #000000;
@@ -31,17 +35,17 @@
     display: flex;
     align-items: flex-start;
     gap: 14px;
-    padding: 12px 16px 8px 16px;
+    padding: 8px 12px 6px 12px;
     border-bottom: 1.5px solid #000000;
   }
   .header .logo {
-    width: 90px;
-    flex: 0 0 90px;
-    padding-top: 4px;
+    width: 80px;
+    flex: 0 0 80px;
+    padding-top: 2px;
   }
   .header .logo img {
     width: 100%;
-    max-width: 85px;
+    max-width: 75px;
     height: auto;
     display: block;
   }
@@ -52,13 +56,13 @@
   }
   .company-info .company-name {
     font-weight: bold;
-    font-size: 17px;
+    font-size: 16px;
     letter-spacing: 0.3px;
-    margin-bottom: 3px;
+    margin-bottom: 2px;
   }
   .company-info .company-line {
-    font-size: 11.5px;
-    line-height: 1.5;
+    font-size: 10.5px;
+    line-height: 1.4;
     word-wrap: break-word;
   }
   .company-info .company-line b { font-weight: bold; }
@@ -67,10 +71,10 @@
   .gst-strip {
     display: flex;
     flex-wrap: wrap;
-    padding: 6px 16px;
+    padding: 4px 12px;
     border-bottom: 1.5px solid #000000;
     font-weight: bold;
-    font-size: 11.5px;
+    font-size: 10.5px;
     gap: 24px;
   }
   .gst-strip .item { white-space: nowrap; }
@@ -80,9 +84,9 @@
   .title-bar {
     text-align: center;
     font-weight: bold;
-    font-size: 14px;
+    font-size: 13px;
     letter-spacing: 1px;
-    padding: 6px 0;
+    padding: 4px 0;
     border-bottom: 1.5px solid #000000;
   }
 
@@ -95,15 +99,15 @@
   .info-grid .col {
     flex: 1 1 50%;
     min-width: 0;
-    padding: 8px 12px;
-    font-size: 11.5px;
+    padding: 4px 10px;
+    font-size: 10.5px;
   }
   .info-grid .col.left { border-right: 1.5px solid #000000; }
   .info-grid .row {
     margin: 2px 0;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    line-height: 1.4;
+    line-height: 1.35;
   }
   .info-grid .row b { font-weight: bold; }
 
@@ -116,22 +120,22 @@
   .ship-grid .col {
     flex: 1 1 50%;
     min-width: 0;
-    padding: 8px 12px;
-    font-size: 11.5px;
+    padding: 4px 10px;
+    font-size: 10.5px;
   }
   .ship-grid .col.left { border-right: 1.5px solid #000000; }
   .ship-grid .row {
     margin: 2px 0;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    line-height: 1.4;
+    line-height: 1.35;
   }
   .ship-grid .row b { font-weight: bold; }
 
   .container-no-strip {
-    padding: 6px 12px;
-    border-bottom: 1.5px solid #000000;
-    font-size: 11.5px;
+    padding: 4px 12px;
+    border-bottom: 1px solid #000000;
+    font-size: 10.5px;
   }
 
   /* ===== CHARGES TABLE ===== */
@@ -139,11 +143,12 @@
     width: 100%;
     border-collapse: collapse;
     table-layout: fixed;
-    font-size: 10.5px;
+    font-size: 9.5px;
+    border-top: none;
   }
   table.charges th, table.charges td {
     border: 1px solid #000000;
-    padding: 4px 5px;
+    padding: 3px 4px;
     word-wrap: break-word;
     overflow-wrap: break-word;
     vertical-align: middle;
@@ -175,20 +180,20 @@
   table.charges tr.words-row td.total-val { text-align: right; font-weight: bold; }
 
   .reverse-charge {
-    padding: 4px 12px;
+    padding: 3px 12px;
     border-bottom: 1.5px solid #000000;
-    font-size: 11.5px;
+    font-size: 10.5px;
   }
 
   /* ===== TERMS ===== */
   .terms {
-    padding: 8px 12px;
+    padding: 4px 10px;
     border-bottom: 1.5px solid #000000;
-    font-size: 11px;
+    font-size: 9.5px;
   }
   .terms .terms-title { font-weight: bold; margin-bottom: 2px; }
   .terms ol { margin: 0; padding-left: 18px; }
-  .terms li { margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; }
+  .terms li { margin: 1px 0; word-wrap: break-word; overflow-wrap: break-word; }
 
   /* ===== BANK / SIGNATURE ===== */
   .bottom-grid {
@@ -199,50 +204,47 @@
   .bottom-grid .bank-col {
     flex: 1 1 45%;
     min-width: 0;
-    padding: 10px 12px;
-    font-size: 11.5px;
+    padding: 6px 10px;
+    font-size: 10.5px;
   }
   .bottom-grid .bank-col .row { margin: 2px 0; word-wrap: break-word; overflow-wrap: break-word; }
   .bottom-grid .sign-col {
     flex: 1 1 55%;
     min-width: 0;
-    padding: 10px 12px;
+    padding: 6px 10px;
     border-left: 1.5px solid #000000;
-    text-align: center;
+    text-align: left;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 85px;
   }
   .sign-col .for-company {
     font-weight: bold;
     text-align: left;
+    text-transform: uppercase;
   }
   .sign-col .stamp {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 85px;
-    margin: 4px 0;
-  }
-  .sign-col .stamp img {
-    height: 80px;
-    max-width: 200px;
-    object-fit: contain;
+    height: 40px;
+    margin: 2px 0;
   }
   .sign-col .eoe {
     position: absolute;
-    top: 10px;
-    right: 12px;
+    top: 6px;
+    right: 10px;
     font-weight: bold;
   }
   .sign-col .accounts-dept {
     font-weight: bold;
     text-align: left;
-    margin-top: 4px;
+    margin-top: 2px;
   }
 
   .footer-note {
     text-align: center;
-    font-size: 11px;
-    padding: 5px;
+    font-size: 9.5px;
+    padding: 3px;
   }
 </style>
 </head>
@@ -253,21 +255,21 @@
   <!-- ===================== HEADER ===================== -->
   <div class="header">
     <div class="logo">
-      <img src="https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg" alt="SSR Logo">
+      <img src="{{company_logo}}" alt="SSR Logo">
     </div>
     <div class="company-info">
-      <div class="company-name">SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
-      <div class="company-line">Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai - 400703, Maharashtra, India</div>
-      <div class="company-line"><b>Website:</b> www.ssrlogistic.net</div>
+      <div class="company-name">{{company_name}}</div>
+      <div class="company-line">{{company_address}}</div>
+      <div class="company-line"><b>Website:</b> {{website}}</div>
     </div>
   </div>
 
   <!-- ===================== STATE / GST STRIP ===================== -->
   <div class="gst-strip">
-    <span class="item">State: Maharashtra</span>
-    <span class="item">State Code: 27</span>
-    <span class="item">GST No. : 27ABMCS1941A1ZI</span>
-    <span class="item">PAN No. : ABMCS1941A</span>
+    <span class="item">State: {{state}}</span>
+    <span class="item">State Code: {{state_code}}</span>
+    <span class="item">GST No. : {{company_gst}}</span>
+    <span class="item">PAN No. : {{company_pan}}</span>
   </div>
 
   <!-- ===================== TITLE ===================== -->
@@ -276,50 +278,49 @@
   <!-- ===================== PARTY / PROFORMA INFO ===================== -->
   <div class="info-grid">
     <div class="col left">
-      <div class="row"><b>Party Name:</b> <span class="dynamic">ENKAY POLYCHEM LLP</span></div>
-      <div class="row" style="white-space: pre-wrap;"><b>Address:</b> <span class="dynamic">KHASRA NO 1074 BHALSWA VILLAGE DELHI
-110033 INDIA</span></div>
-      <div class="row"><b>GST NO :</b> <span class="dynamic">07AAGFE1234F1Z1</span> , <b>State Code:</b> <span class="dynamic">07</span></div>
-      <div class="row"><b>Place of supply :</b> <span class="dynamic">Delhi</span></div>
+      <div class="row"><b>Party Name:</b> <span class="dynamic">{{party_name}}</span></div>
+      <div class="row" style="white-space: pre-wrap;"><b>Address:</b> <span class="dynamic">{{party_address}}</span></div>
+      <div class="row"><b>GST NO :</b> <span class="dynamic">{{party_gst}}</span> , <b>State Code:</b> <span class="dynamic">{{party_state_code}}</span></div>
+      <div class="row"><b>Place of supply :</b> <span class="dynamic">{{place_of_supply}}</span></div>
     </div>
     <div class="col">
-      <div class="row"><b>Proforma No. :</b> <span class="dynamic">5172</span></div>
-      <div class="row"><b>Proforma Date :</b> <span class="dynamic">25-11-2025</span></div>
-      <div class="row"><b>Ref No. :</b> <span class="dynamic">5172</span></div>
+      <div class="row"><b>Proforma No. :</b> <span class="dynamic">{{proforma_no}}</span></div>
+      <div class="row"><b>Proforma Date :</b> <span class="dynamic">{{proforma_date}}</span></div>
+      <div class="row"><b>Ref No. :</b> <span class="dynamic">{{ref_no}}</span></div>
     </div>
   </div>
 
   <!-- ===================== SHIPMENT DETAILS ===================== -->
   <div class="ship-grid">
     <div class="col left">
-      <div class="row"><b>HBL No. :</b> <span class="dynamic">YSQ2504103</span> <b>Date:</b> <span class="dynamic">01-05-2025</span></div>
-      <div class="row"><b>MBL No. :</b> <span class="dynamic">MEDUGJ817675</span> <b>Date :</b> <span class="dynamic">01-05-2025</span></div>
-      <div class="row"><b>Vessel / Voy :</b> <span class="dynamic">MSC BRIDGEPORT / V.QS516A</span></div>
-      <div class="row"><b>POL :</b> <span class="dynamic">SHANGHAI</span></div>
-      <div class="row"><b>FPD :</b> <span class="dynamic">Patli</span></div>
-      <div class="row"><b>IGM No. :</b> <span class="dynamic">1137454</span></div>
-      <div class="row"><b>Line No. :</b> <span class="dynamic">740</span> <b>Date:</b> <span class="dynamic">15-05-2025</span></div>
-      <div class="row"><b>Sub Line No. :</b> <span class="dynamic">1</span></div>
-      <div class="row"><b>ETD Date. :</b> <span class="dynamic">01-05-2025</span></div>
-      <div class="row"><b>No: of Cntrs / Type :</b> <span class="dynamic">1 X 40HQ</span></div>
+      <div class="row"><b>HBL No. :</b> <span class="dynamic">{{hbl_no}}</span> <b>Date:</b> <span class="dynamic">{{hbl_date}}</span></div>
+      <div class="row"><b>MBL No. :</b> <span class="dynamic">{{mbl_no}}</span> <b>Date :</b> <span class="dynamic">{{mbl_date}}</span></div>
+      <div class="row"><b>Vessel / Voy :</b> <span class="dynamic">{{vessel_voy}}</span></div>
+      <div class="row"><b>POL :</b> <span class="dynamic">{{pol}}</span></div>
+      <div class="row"><b>FPD :</b> <span class="dynamic">{{fpd}}</span></div>
+      <div class="row"><b>IGM No. :</b> <span class="dynamic">{{igm_no}}</span></div>
+      <div class="row"><b>Line No. :</b> <span class="dynamic">{{line_no}}</span> <b>Date:</b> <span class="dynamic">{{line_date}}</span></div>
+      <div class="row"><b>Sub Line No. :</b> <span class="dynamic">{{sub_line_no}}</span></div>
+      <div class="row"><b>ETD Date. :</b> <span class="dynamic">{{etd_date}}</span></div>
+      <div class="row"><b>No: of Cntrs / Type :</b> <span class="dynamic">{{container_type_count}}</span></div>
     </div>
     <div class="col">
-      <div class="row"><b>Consignee :</b> <span class="dynamic">SSR LOGISTIC SOLUTIONS PVT LTD</span></div>
-      <div class="row"><b>Shipper :</b> <span class="dynamic">NINGBO B&N IMPORT AND EXPORT CO LTD</span></div>
-      <div class="row"><b>Cargo Type :</b> <span class="dynamic">General</span></div>
-      <div class="row"><b>Shipper Line :</b> <span class="dynamic">MSC MEDITERRANEAN SHIPPING CO. S.A.</span></div>
-      <div class="row"><b>Cargo Weight :</b> <span class="dynamic">26000.00</span></div>
-      <div class="row"><b>Volume :</b> <span class="dynamic">37.80</span></div>
-      <div class="row"><b>POD :</b> <span class="dynamic">MUNDRA, INDIA</span></div>
-      <div class="row"><b>No. of Pkgs :</b> <span class="dynamic">27</span></div>
-      <div class="row"><b>ETA Date :</b> <span class="dynamic">27-05-2025</span></div>
-      <div class="row"><b>Ex Rate :</b> <span class="dynamic">86.10</span></div>
+      <div class="row"><b>Consignee :</b> <span class="dynamic">{{consignee}}</span></div>
+      <div class="row"><b>Shipper :</b> <span class="dynamic">{{shipper}}</span></div>
+      <div class="row"><b>Cargo Type :</b> <span class="dynamic">{{cargo_type}}</span></div>
+      <div class="row"><b>Shipper Line :</b> <span class="dynamic">{{shipper_line}}</span></div>
+      <div class="row"><b>Cargo Weight :</b> <span class="dynamic">{{cargo_weight}}</span></div>
+      <div class="row"><b>Volume :</b> <span class="dynamic">{{cbm}}</span></div>
+      <div class="row"><b>POD :</b> <span class="dynamic">{{pod}}</span></div>
+      <div class="row"><b>No. of Pkgs :</b> <span class="dynamic">{{no_of_pkgs}}</span></div>
+      <div class="row"><b>ETA Date :</b> <span class="dynamic">{{eta_date}}</span></div>
+      <div class="row"><b>Ex Rate :</b> <span class="dynamic">{{ex_rate}}</span></div>
     </div>
   </div>
 
   <!-- ===================== CONTAINER NO ===================== -->
   <div class="container-no-strip">
-    <b>Container No.:</b> <span class="dynamic">UETU6156836</span>
+    <b>Container No.:</b> <span class="dynamic">{{container_numbers}}</span>
   </div>
 
   <!-- ===================== CHARGES TABLE ===================== -->
@@ -349,58 +350,68 @@
       </tr>
     </thead>
     <tbody>
+      {{#each charges}}
       <tr class="dynamic">
-        <td>OCEAN FREIGHT CHARGES</td>
-        <td class="center">996521</td>
-        <td class="num">1050.00</td>
-        <td class="center">USD</td>
-        <td class="center">1</td>
-        <td class="num">90405.00</td>
-        <td class="num">5.0</td>
-        <td class="num">4520.25</td>
-        <td class="num">94925.25</td>
+        <td>{{charge_name}}</td>
+        <td class="center">{{hsn_sac}}</td>
+        <td class="num">{{rate}}</td>
+        <td class="center">{{currency}}</td>
+        <td class="center">{{qty}}</td>
+        <td class="num">{{amount}}</td>
+        <td class="num">{{gst_rate}}%</td>
+        <td class="num">{{gst_amount}}</td>
+        <td class="num">{{total_amount}}</td>
       </tr>
-      <tr class="dynamic">
-        <td>SHIPPING LINE CHARGES</td>
-        <td class="center">996759</td>
-        <td class="num">31510.00</td>
-        <td class="center">INR</td>
-        <td class="center">1</td>
-        <td class="num">31510.00</td>
-        <td class="num">18.0</td>
-        <td class="num">5671.80</td>
-        <td class="num">37181.80</td>
-      </tr>
+      {{/each}}
 
       <!-- ===== TOTALS ===== -->
       <tr class="subtotal">
         <td colspan="5"></td>
-        <td class="num dynamic">121915.00</td>
+        <td class="num dynamic">{{taxable_total}}</td>
         <td></td>
-        <td class="num dynamic">10192.05</td>
-        <td class="num dynamic">132107.05</td>
+        <td class="num dynamic">{{gst_total}}</td>
+        <td class="num dynamic">{{grand_total}}</td>
       </tr>
 
+      {{#if is_intra_state}}
+      <tr class="tax-row">
+        <td colspan="8">CGST 9%</td>
+        <td class="num dynamic">{{cgst}}</td>
+      </tr>
+      <tr class="tax-row">
+        <td colspan="8">SGST 9%</td>
+        <td class="num dynamic">{{sgst}}</td>
+      </tr>
+      <tr class="tax-row">
+        <td colspan="8">CGST ON FREIGHT @2.5%</td>
+        <td class="num dynamic">{{cgst_freight}}</td>
+      </tr>
+      <tr class="tax-row">
+        <td colspan="8">SGST ON FREIGHT @2.5%</td>
+        <td class="num dynamic">{{sgst_freight}}</td>
+      </tr>
+      {{else}}
       <tr class="tax-row">
         <td colspan="8">IGST 18%</td>
-        <td class="num dynamic">5671.80</td>
+        <td class="num dynamic">{{igst}}</td>
       </tr>
       <tr class="tax-row">
         <td colspan="8">IGST ON FREIGHT @5%</td>
-        <td class="num dynamic">4520.25</td>
+        <td class="num dynamic">{{igst_freight}}</td>
       </tr>
+      {{/if}}
 
       <tr class="words-row">
-        <td colspan="7" class="dynamic">INR - <span>One Lakh Thirty Two Thousand One Hundred Seven Rupees Only</span></td>
-        <td class="total-label">INR TOTAL</td>
-        <td class="total-val dynamic">132107.00</td>
+        <td colspan="7" class="dynamic">{{currency_label}} - <span>{{amount_in_words}}</span></td>
+        <td class="total-label">{{currency_label}} TOTAL</td>
+        <td class="total-val dynamic">{{grand_total}}</td>
       </tr>
     </tbody>
   </table>
 
   <!-- ===================== REVERSE CHARGE ===================== -->
   <div class="reverse-charge">
-    Reverse Charge Amount : <span class="dynamic">No</span>
+    Reverse Charge Amount : <span class="dynamic">{{reverse_charge}}</span>
   </div>
 
   <!-- ===================== TERMS & CONDITIONS ===================== -->
@@ -426,15 +437,12 @@
     <div class="sign-col">
       <div class="eoe">E &amp; O.E.</div>
       <div class="for-company">FOR SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
-      <div class="stamp">
-        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" alt="Company Stamp and Signature">
+      <div class="stamp" style="text-align: center; margin: 2px 0;">
+        <img src="/images/ssr_stamp_signature.png" alt="Stamp and signature" style="width: 100px; height: auto; display: inline-block;" />
       </div>
       <div class="accounts-dept">Accounts Department</div>
     </div>
   </div>
-
-  <!-- ===================== FOOTER NOTE ===================== -->
-  <div class="footer-note">System generated Invoice. Does not require Signature</div>
 
 </div>
 

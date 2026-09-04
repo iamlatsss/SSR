@@ -95,9 +95,10 @@ router.post('/reset-password', async (req, res) => {
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(newPassword, saltRounds);
 
-    // Update password and clear token
+    // Update password, record change date, and clear token
     await db.updateUserByEmail(user.email, {
       password: hashedPassword,
+      password_changed_at: new Date(),
       reset_token: null,
       reset_token_expires: null,
       failed_login_attempts: 0, // Reset failed attempts

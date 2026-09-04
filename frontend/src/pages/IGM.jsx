@@ -170,56 +170,53 @@ const IGM = () => {
 
             {/* List */}
             <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse">
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse min-w-[700px]">
                         <thead>
                             <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
                                 <th className="p-4">Job No</th>
                                 <th className="p-4">HBL / MBL</th>
                                 <th className="p-4">IGM Details</th>
                                 <th className="p-4">Container</th>
-                                <th className="p-4">Parties (CHA/CFS)</th>
+                                <th className="p-4">CHA / CFS</th>
+                                <th className="p-4">Freight / Validity</th>
                                 <th className="p-4 text-right">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                             {loading ? (
-                                <tr><td colSpan="6" className="p-8 text-center text-slate-500">Loading...</td></tr>
+                                <tr><td colSpan="7" className="p-8 text-center text-slate-500">Loading...</td></tr>
                             ) : filteredIGMs.length === 0 ? (
-                                <tr><td colSpan="6" className="p-8 text-center text-slate-500">No IGM records found.</td></tr>
+                                <tr><td colSpan="7" className="p-8 text-center text-slate-500">No IGM records found.</td></tr>
                             ) : (
                                 filteredIGMs.map(item => (
                                     <tr key={item.job_no} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
-                                        <td className="p-4 text-sm font-medium text-slate-900 dark:text-white">
+                                        <td className="p-4 font-medium text-slate-800 dark:text-white">
                                             #{item.job_no}
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="font-mono text-sm text-indigo-600 dark:text-indigo-400">{item.hbl_no || "—"}</div>
-                                            <div className="text-xs text-slate-500">{item.mbl_no}</div>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2 text-sm text-slate-800 dark:text-white">
-                                                <FileText size={16} className="text-slate-400" /> {item.igm_no} <span className="text-xs px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-500">{item.igm_on}</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex items-center gap-2 text-sm text-slate-800 dark:text-white">
-                                                <Container size={16} className="text-slate-400" /> {item.container_number}
-                                            </div>
+                                            <div className="text-xs text-slate-400">{item.shipper_name}</div>
                                         </td>
                                         <td className="p-4 text-sm">
-                                            <div className="text-slate-800 dark:text-white truncate max-w-[150px]" title={item.cha_name}>{item.cha_name || "—"}</div>
-                                            <div className="text-xs text-slate-500 truncate max-w-[150px]" title={item.cfs_name}>{item.cfs_name || "—"}</div>
+                                            <div className="font-semibold text-indigo-600 dark:text-indigo-400">H: {item.hbl_no || "—"}</div>
+                                            <div className="text-xs text-slate-500">M: {item.mbl_no || "—"}</div>
                                         </td>
-                                        <td className="p-4 text-right flex justify-end gap-2">
-                                            <button onClick={() => handleViewIGM(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors" title="View Details">
-                                                <Eye size={18} />
-                                            </button>
-                                            <button onClick={() => handleOpenModal(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors" title="Edit">
-                                                <Edit2 size={18} />
-                                            </button>
-                                            <button onClick={() => handleDeleteIGM(item.job_no)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-red-600 transition-colors">
-                                                <Trash2 size={18} />
+                                        <td className="p-4 text-sm">
+                                            <div className="font-semibold text-slate-700 dark:text-slate-200">IGM: {item.igm_no || "—"}</div>
+                                            <div className="text-xs text-slate-400">On: {item.igm_on || "HBL"}</div>
+                                        </td>
+                                        <td className="p-4 text-sm">
+                                            <div>{item.container_number || "—"}</div>
+                                        </td>
+                                        <td className="p-4 text-sm">
+                                            <div className="text-slate-700 dark:text-slate-300">CHA: {item.cha_name || "—"}</div>
+                                            <div className="text-xs text-slate-400">CFS: {item.cfs_name || "—"}</div>
+                                        </td>
+                                        <td className="p-4 text-sm">
+                                            <div className="font-medium text-emerald-600 dark:text-emerald-400">{item.freight_amount || "—"} {item.freight_currency}</div>
+                                            <div className="text-xs text-slate-400">Val: {item.do_validity ? new Date(item.do_validity).toLocaleDateString() : "—"}</div>
+                                        </td>
+                                        <td className="p-4 text-right">
+                                            <button onClick={() => handleOpenModal(item)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">
+                                                <Edit size={18} />
                                             </button>
                                         </td>
                                     </tr>
@@ -232,19 +229,18 @@ const IGM = () => {
 
             {/* Modal */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={() => setIsModalOpen(false)}>
-                    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-4xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                        <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+                    <div className="bg-white dark:bg-dark-card rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                        <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 sticky top-0 z-10">
                             <h3 className="text-xl font-bold text-slate-800 dark:text-white">
-                                IGM Details
+                                {igmForm.job_no ? "Edit IGM Record" : "Add IGM Record"}
                             </h3>
                             <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                                <XCircle size={24} />
+                                <X size={24} />
                             </button>
                         </div>
 
                         <form onSubmit={handleSaveIGM} className="p-6 space-y-6">
-
                             {/* Job Select */}
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Select Job No. (Booking)</label>
@@ -253,7 +249,7 @@ const IGM = () => {
                                     value={igmForm.job_no || ""}
                                     onChange={handleJobSelect}
                                     className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                                    disabled={!!igmForm.job_no} // If editing existing IGM, maybe lock it? Or user can clear and select another. Let's allowing switching if needed, but normally editing implies same job.
+                                    disabled={!!igmForm.job_no}
                                 >
                                     <option value="">-- Select Job --</option>
                                     {bookings.map(b => (
@@ -264,8 +260,8 @@ const IGM = () => {
                                 </select>
                             </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                {/* HBL / MBL (Editable as per user request to be synced) */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                                {/* HBL / MBL */}
                                 <div>
                                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">HBL No.</label>
                                     <input type="text" name="hbl_no" value={igmForm.hbl_no || ""} onChange={handleChange} className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white focus:ring-2 focus:ring-indigo-500 focus:outline-none" />

@@ -41,7 +41,10 @@ export const knexDB = knex({
       "ADD COLUMN last_login_timestamp DATETIME",
       "ADD COLUMN account_locked_until DATETIME",
       "ADD COLUMN reset_token VARCHAR(255)",
-      "ADD COLUMN reset_token_expires DATETIME"
+      "ADD COLUMN reset_token_expires DATETIME",
+      "ADD COLUMN password_changed_at DATETIME DEFAULT CURRENT_TIMESTAMP",
+      "ADD COLUMN otp_code VARCHAR(255)",
+      "ADD COLUMN otp_expires DATETIME"
     ];
     for (const col of newColumns) {
       try {
@@ -57,6 +60,13 @@ export const knexDB = knex({
       // Ignored if constraint already exists
     }
     
+    // Ensure email_pass is nullable with default NULL if it exists
+    try {
+      await pool.query(`ALTER TABLE Users MODIFY COLUMN email_pass VARCHAR(255) NULL DEFAULT NULL`);
+    } catch (e) {
+      // Ignored if column doesn't exist
+    }
+
     // Migrate new_user to Viewer and modify ENUM
     try {
       await pool.query(`UPDATE Users SET role = 'Viewer' WHERE role = 'new_user'`);
@@ -65,18 +75,45 @@ export const knexDB = knex({
       console.log("Ignored or failed updating ENUM role:", e.message);
     }
     
-    console.log("Users table initialized with security fields and updated roles");
+    console.log("Users table initialized with security fields, OTP support, and updated roles");
   } catch (err) {
     console.error("Error updating Users table:", err);
   }
 })();
 
-export const ALLOWED_UPDATE_FIELDS = new Set(["role", "is_active", "password", "email", "user_name", "failed_login_attempts", "last_login_timestamp", "account_locked_until", "reset_token", "reset_token_expires"]);
+export const ALLOWED_UPDATE_FIELDS = new Set([
+  "role",
+  "is_active",
+  "password",
+  "email",
+  "user_name",
+  "failed_login_attempts",
+  "last_login_timestamp",
+  "account_locked_until",
+  "reset_token",
+  "reset_token_expires",
+  "password_changed_at",
+  "otp_code",
+  "otp_expires"
+]);
 
 export async function getUserByEmail(email) {
   try {
     const rows = await knexDB('Users')
-      .select('user_name', 'user_id', 'password', 'email', 'role', 'is_active', 'failed_login_attempts', 'account_locked_until', 'last_login_timestamp')
+      .select(
+        'user_name',
+        'user_id',
+        'password',
+        'email',
+        'role',
+        'is_active',
+        'failed_login_attempts',
+        'account_locked_until',
+        'last_login_timestamp',
+        'password_changed_at',
+        'otp_code',
+        'otp_expires'
+      )
       .where({ email });
 
     if (rows.length === 0) {
@@ -111,13 +148,15 @@ export async function getUserByToken(token) {
   }
 }
 
-export async function createUser(user_name, email, passwordHash, role = 'Viewer') {
+export async function createUser(user_name, email, passwordHash, role = 'Viewer', is_active = 1) {
   try {
     const [insertId] = await knexDB('Users').insert({
       user_name,
       email,
       password: passwordHash,
-      role
+      role,
+      is_active,
+      password_changed_at: knexDB.fn.now()
     });
 
     if (!insertId) {
@@ -893,12 +932,16 @@ export async function deleteQuotationsByIds(ids) {
       reimbursement_applicable VARCHAR(10) DEFAULT 'No',
       status VARCHAR(50) DEFAULT 'Enabled',
       sac VARCHAR(50) DEFAULT '',
+      tax_class VARCHAR(100) DEFAULT '',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `;
   try {
     await pool.query(query);
+    try {
+      await pool.query("ALTER TABLE Charges ADD COLUMN tax_class VARCHAR(100) DEFAULT ''");
+    } catch(e) {}
     console.log("Charges table initialized in MySQL");
     
     // Seed/Upsert charges from STANDARD_CHARGES
@@ -1130,17 +1173,78 @@ export async function deleteQuotationsByIds(ids) {
       job_no INT NOT NULL,
       document_type VARCHAR(50) NOT NULL,
       bl_no VARCHAR(50) UNIQUE NOT NULL,
+      bl_date VARCHAR(20) NULL,
+      pdf_link TEXT NULL,
+      is_locked TINYINT(1) DEFAULT 0,
+      locked_by VARCHAR(100) NULL,
+      locked_at DATETIME NULL,
+      status VARCHAR(50) DEFAULT 'Draft',
       doc_data JSON NOT NULL,
+      created_by VARCHAR(100) NULL,
+      updated_by VARCHAR(100) NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-      UNIQUE KEY unique_job_doc (job_no, document_type)
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )
   `;
   try {
     await pool.query(query);
+
+    // Ensure columns exist on existing table
+    const alterQueries = [
+      "ALTER TABLE HBLDocuments ADD COLUMN IF NOT EXISTS bl_date VARCHAR(20) NULL",
+      "ALTER TABLE HBLDocuments ADD COLUMN IF NOT EXISTS pdf_link LONGTEXT NULL",
+      "ALTER TABLE HBLDocuments MODIFY COLUMN pdf_link LONGTEXT NULL",
+      "ALTER TABLE HBLDocuments ADD COLUMN IF NOT EXISTS is_locked TINYINT(1) DEFAULT 0",
+      "ALTER TABLE HBLDocuments ADD COLUMN IF NOT EXISTS locked_by VARCHAR(100) NULL",
+      "ALTER TABLE HBLDocuments ADD COLUMN IF NOT EXISTS locked_at DATETIME NULL",
+      "ALTER TABLE HBLDocuments ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Draft'",
+      "ALTER TABLE HBLDocuments ADD COLUMN IF NOT EXISTS created_by VARCHAR(100) NULL",
+      "ALTER TABLE HBLDocuments ADD COLUMN IF NOT EXISTS updated_by VARCHAR(100) NULL"
+    ];
+
+    for (const q of alterQueries) {
+      try { await pool.query(q); } catch (e) {}
+    }
+
+    // Drop unique_job_doc constraint if exists to allow multiple BLs per job
+    try {
+      await pool.query("ALTER TABLE HBLDocuments DROP INDEX unique_job_doc");
+    } catch (e) {}
+
     console.log("HBLDocuments table initialized in MySQL");
+
+    // Initialize HBLAuditLogs table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS HBLAuditLogs (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        bl_no VARCHAR(50) NOT NULL,
+        job_no INT NOT NULL,
+        action VARCHAR(50) NOT NULL,
+        performed_by VARCHAR(100),
+        role VARCHAR(50),
+        details TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("HBLAuditLogs table initialized in MySQL");
+
+    // Initialize HBLEditRequests table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS HBLEditRequests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        bl_no VARCHAR(50) NOT NULL,
+        job_no INT NOT NULL,
+        requested_by VARCHAR(100),
+        reason TEXT,
+        status VARCHAR(50) DEFAULT 'Pending',
+        reviewed_by VARCHAR(100),
+        reviewed_at DATETIME,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    console.log("HBLEditRequests table initialized in MySQL");
   } catch (err) {
-    console.error("Error creating HBLDocuments table:", err);
+    console.error("Error creating HBLDocuments tables:", err);
   }
 })();
 
@@ -1364,6 +1468,28 @@ export function mapPartyToCustomer(party) {
     console.error("Error creating JobEditRequests table:", err);
   }
 })();
+
+// Initialize performance indexes for fast query responses
+(async function initPerformanceIndexes() {
+  const indexStatements = [
+    "CREATE INDEX idx_bookings_job_no ON Bookings(job_no)",
+    "CREATE INDEX idx_bookings_created ON Bookings(created_at)",
+    "CREATE INDEX idx_booking_updates_job_no ON BookingUpdates(job_no)",
+    "CREATE INDEX idx_parties_category ON Parties(category)",
+    "CREATE INDEX idx_invoices_job_no ON Invoices(job_no)",
+    "CREATE INDEX idx_proforma_job_no ON ProformaInvoices(job_no)",
+    "CREATE INDEX idx_masterbl_job_no ON MasterBL(job_no)"
+  ];
+  for (const stmt of indexStatements) {
+    try {
+      await pool.query(stmt);
+    } catch (e) {
+      // Ignored if index already exists
+    }
+  }
+  console.log("Performance indexes checked / initialized");
+})();
+
 
 
 

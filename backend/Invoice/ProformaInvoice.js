@@ -4,6 +4,7 @@ import { authenticateJWT } from "../AuthAPI/Auth.js";
 import fs from 'fs/promises';
 import path from 'path';
 import puppeteer from 'puppeteer';
+import { getBrowser } from '../utils/pdfGenerator.js';
 import { uploadFile } from '../S3/S3Service.js';
 import { fileURLToPath } from 'url';
 import handlebars from 'handlebars';
@@ -83,7 +84,7 @@ function numberToWordsUSD(num) {
     const cents = Math.round((num - n) * 100);
     let str = '';
 
-    if (n === 0) return 'Zero US Dollars';
+    if (n === 0) return 'Zero Dollor Only';
 
     const millions = Math.floor(n / 1000000);
     n %= 1000000;
@@ -108,7 +109,7 @@ function numberToWordsUSD(num) {
         str += numToWords(n) + ' ';
     }
 
-    str += 'US Dollars';
+    str += 'Dollor';
 
     if (cents > 0) {
         str += ' And ' + numToWords(cents) + ' Cents';
@@ -199,6 +200,24 @@ router.get("/job-details/:jobNo", authenticateJWT, async (req, res) => {
                 job_no: job.job_no,
                 hbl_no: job.hbl_no
             });
+        }
+
+        try {
+            const hblDocs = await knexDB('HBLDocuments')
+                .where({ job_no: jobNo })
+                .select('id', 'job_no', 'bl_no');
+            
+            for (const doc of hblDocs) {
+                if (doc.bl_no && !relatedHBLs.some(r => r.hbl_no === doc.bl_no)) {
+                    relatedHBLs.push({
+                        id: doc.id,
+                        job_no: doc.job_no,
+                        hbl_no: doc.bl_no
+                    });
+                }
+            }
+        } catch (hblErr) {
+            console.error("Error fetching HBLDocuments for job:", hblErr);
         }
 
         if (!job) {
@@ -369,12 +388,29 @@ router.post("/save", authenticateJWT, async (req, res) => {
         const effectiveExRate = parseFloat(exRate || 85.00);
         const targetCurrency = printType === 'USD' ? 'USD' : 'INR';
 
+        const isUSDFx = printType === 'USD';
+        const hasDr = items.some(item => String(item.drcr || item.doc_type || '').toUpperCase() === 'DR');
+        const is_usd_fx_dr = isUSDFx || hasDr;
+
+        let taxableTotalVal = 0;
+        let nonTaxableTotalVal = 0;
+        let gstTotalVal = 0;
+        let grandTotalVal = 0;
+
+        let cgstVal = 0;
+        let sgstVal = 0;
+        let cgstFreightVal = 0;
+        let sgstFreightVal = 0;
+
+        let igstVal = 0;
+        let igstFreightVal = 0;
+
         // Map and compute items
         const chargesList = items.map((item) => {
             const qty = parseFloat(item.quantity || 1);
             const baseRate = parseFloat(item.rate || 0);
-            const itemCurrency = item.currency || 'USD';
-            const rowExRate = parseFloat(item.ex_rate || effectiveExRate);
+            const itemCurrency = item.currency || (isUSDFx ? 'USD' : 'INR');
+            const rowExRate = parseFloat(item.ex_rate || (itemCurrency === 'USD' ? 1 : effectiveExRate));
 
             let amount = qty * baseRate;
 
@@ -388,19 +424,54 @@ router.post("/save", authenticateJWT, async (req, res) => {
                 }
             }
 
-            const gstRate = parseFloat(item.gst || 0);
-            const gstAmount = amount * (gstRate / 100);
+            // For USD Invoices, no GST is added
+            const gstRate = isUSDFx ? 0 : parseFloat(item.gst || 0);
+            const gstAmount = isUSDFx ? 0 : amount * (gstRate / 100);
             const totalAmount = amount + gstAmount;
 
-            // Classify as freight if the name contains 'freight' or the gst rate is 5%
             const isFreight = String(item.charge || '').toLowerCase().includes('freight') || gstRate === 5;
+
+            const totAmtChargeCurr = qty * baseRate;
+            const taxable = gstRate > 0 ? amount.toFixed(2) : "0.00";
+            const nonTaxable = gstRate === 0 ? amount.toFixed(2) : "0.00";
+
+            if (gstRate > 0) {
+                taxableTotalVal += amount;
+            } else {
+                nonTaxableTotalVal += amount;
+            }
+
+            gstTotalVal += gstAmount;
+            grandTotalVal += totalAmount;
+
+            if (gstRate > 0) {
+                if (isIntraState) {
+                    if (isFreight) {
+                        cgstFreightVal += gstAmount / 2;
+                        sgstFreightVal += gstAmount / 2;
+                    } else {
+                        cgstVal += gstAmount / 2;
+                        sgstVal += gstAmount / 2;
+                    }
+                } else {
+                    if (isFreight) {
+                        igstFreightVal += gstAmount;
+                    } else {
+                        igstVal += gstAmount;
+                    }
+                }
+            }
 
             return {
                 charge_name: item.charge || '—',
-                hsn_sac: item.hsn_sac || item.sac || '996521',
+                hsn_sac: item.hsn_sac || item.sac || '',
                 rate: baseRate.toFixed(2),
                 currency: itemCurrency,
                 qty: qty,
+                ex_rate: itemCurrency === 'USD' ? '1' : String(rowExRate),
+                tot_amt_charge_curr: totAmtChargeCurr.toFixed(2),
+                taxable: taxable,
+                non_taxable: nonTaxable,
                 amount: amount.toFixed(2),
                 gst_rate: gstRate.toFixed(1),
                 gst_amount: gstAmount.toFixed(2),
@@ -410,43 +481,6 @@ router.post("/save", authenticateJWT, async (req, res) => {
                 gst_rate_num: gstRate,
                 gst_amount_num: gstAmount
             };
-        });
-
-        // Compute GST breakdown
-        let taxableTotalVal = 0;
-        let gstTotalVal = 0;
-        let grandTotalVal = 0;
-
-        let cgstVal = 0;
-        let sgstVal = 0;
-        let cgstFreightVal = 0;
-        let sgstFreightVal = 0;
-
-        let igstVal = 0;
-        let igstFreightVal = 0;
-
-        chargesList.forEach((c) => {
-            taxableTotalVal += c.taxable_amount;
-            gstTotalVal += c.gst_amount_num;
-            grandTotalVal += c.taxable_amount + c.gst_amount_num;
-
-            if (c.gst_rate_num > 0) {
-                if (isIntraState) {
-                    if (c.is_freight) {
-                        cgstFreightVal += c.gst_amount_num / 2;
-                        sgstFreightVal += c.gst_amount_num / 2;
-                    } else {
-                        cgstVal += c.gst_amount_num / 2;
-                        sgstVal += c.gst_amount_num / 2;
-                    }
-                } else {
-                    if (c.is_freight) {
-                        igstFreightVal += c.gst_amount_num;
-                    } else {
-                        igstVal += c.gst_amount_num;
-                    }
-                }
-            }
         });
 
         const formatNum = (val) => val > 0 ? val.toFixed(2) : '0.00';
@@ -478,20 +512,36 @@ router.post("/save", authenticateJWT, async (req, res) => {
             }
         }
 
+        let logoBase64 = "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg";
+        try {
+            const logoPath = path.join(__dirname, '..', '..', 'frontend', 'public', 'images', 'SSR_Logo.png');
+            const logoBuf = await fs.readFile(logoPath);
+            logoBase64 = `data:image/png;base64,${logoBuf.toString('base64')}`;
+        } catch (err) {}
+
+        let companyStamp = "";
+        try {
+            const stampPath = path.join(__dirname, '..', '..', 'frontend', 'public', 'images', 'ssr_stamp_signature.png');
+            const stampBuf = await fs.readFile(stampPath);
+            companyStamp = `data:image/png;base64,${stampBuf.toString('base64')}`;
+        } catch (err) {}
+
         // Context for Handlebars template rendering
         const contextData = {
-            company_logo: "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg",
-            company_name: "SSR LOGISTIC SOLUTIONS PRIVATE LIMITED",
-            company_address: "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai - 400703, Maharashtra, India",
+            is_usd_fx_dr: is_usd_fx_dr,
+            company_logo: logoBase64,
+            company_name: "SSR LOGISTIC SOLUTIONS PVT. LTD.",
+            company_address: "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi,<br>Navi Mumbai- 400703, India Tel.No : 7700990630,",
             website: "www.ssrlogistic.net",
             state: "Maharashtra",
-            state_code: "27",
+            state_code: "277",
             company_gst: "27ABMCS1941A1ZI",
             company_pan: "ABMCS1941A",
-            company_stamp: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", // transparent spacer
+            company_stamp: companyStamp,
 
             party_name: clientName || '—',
             party_address: clientAddress || '—',
+            party_city_country: (!clientGstin || clientGstin === 'N/A' || clientGstin === 'URP') ? '' : '',
             party_gst: clientGstin || 'N/A',
             party_state_code: stateInfo.code,
             place_of_supply: stateInfo.name,
@@ -499,6 +549,9 @@ router.post("/save", authenticateJWT, async (req, res) => {
             proforma_no: proformaNoStr,
             proforma_date: formatDate(proformaDate || new Date()),
             ref_no: jobNo,
+            job_no: jobNo,
+            job_date: formatDate(jobRecord?.date_of_nomination || jobRecord?.created_at || proformaDate),
+            reference: addDetails?.reference_no || addDetails?.enquiry_no || '',
 
             hbl_no: mblHblType === 'HBL' ? mblHblNo : (addDetails.hbl_no || '—'),
             hbl_date: formatDate(jobRecord?.hbl_date || addDetails.hbl_date),
@@ -506,13 +559,15 @@ router.post("/save", authenticateJWT, async (req, res) => {
             mbl_date: formatDate(jobRecord?.mbl_date || addDetails.mbl_date),
             vessel_voy: `${jobRecord?.shipping_line_name || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
             pol: polVal,
+            be_no: addDetails?.boe_no || addDetails?.be_no || '',
             fpd: fpdVal,
             igm_no: addDetails.igm_no || '—',
             line_no: addDetails.item_no || '—',
             line_date: formatDate(addDetails.igm_date || jobRecord?.created_at),
             sub_line_no: addDetails.sub_no || '—',
             etd_date: formatDate(jobRecord?.etd || addDetails.etd_date),
-            container_type_count: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'}`,
+            shipping_line: addDetails.carrier || jobRecord?.shipping_line_name || addDetails.shipping_line || '—',
+            container_type_count: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'} ,`,
             consignee: consigneeName || '—',
             shipper: shipperName || '—',
             cargo_type: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
@@ -522,14 +577,16 @@ router.post("/save", authenticateJWT, async (req, res) => {
             pod: podVal,
             no_of_pkgs: addDetails.no_of_packages || '—',
             eta_date: formatDate(jobRecord?.eta || addDetails.eta_date),
+            shipper_ref_no: addDetails?.reference_no || '',
             ex_rate: effectiveExRate.toFixed(2),
             container_numbers: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.container_no || c.containerNo).join(', ')) || '—',
 
             charges: chargesList,
 
             taxable_total: taxableTotalVal.toFixed(2),
+            non_taxable_total: nonTaxableTotalVal.toFixed(2),
             gst_total: gstTotalVal.toFixed(2),
-            grand_total: printType === 'USD' ? grandTotalVal.toFixed(2) : roundedGrandTotal.toFixed(2),
+            grand_total: printType === 'USD' ? (Number.isInteger(grandTotalVal) ? grandTotalVal.toString() : grandTotalVal.toFixed(2)) : roundedGrandTotal.toFixed(2),
 
             is_intra_state: isIntraState,
             cgst: formatNum(cgstVal),
@@ -549,8 +606,9 @@ router.post("/save", authenticateJWT, async (req, res) => {
             ifsc: 'KKBK0001370'
         };
 
-        // Read Template HTML
-        const templatePath = path.join(__dirname, '..', 'Mail', 'proforma_pdf.html');
+        // Read Template HTML (use dedicated Debit Invoice template for USD / DR)
+        const templateFileName = is_usd_fx_dr ? 'debit_invoice_pdf.html' : 'proforma_pdf.html';
+        const templatePath = path.join(__dirname, '..', 'Mail', templateFileName);
         const templateSource = await fs.readFile(templatePath, 'utf-8');
 
         // Compile with Handlebars
@@ -558,23 +616,24 @@ router.post("/save", authenticateJWT, async (req, res) => {
         const html = template(contextData);
 
         // Render to PDF using Puppeteer
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
+        const browser = await getBrowser();
         const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'networkidle0' });
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: {
-                top: '0.4in',
-                bottom: '0.4in',
-                left: '0.4in',
-                right: '0.4in'
-            }
-        });
-        await browser.close();
+        let pdfBuffer;
+        try {
+            await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 5000 });
+            pdfBuffer = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                margin: {
+                    top: '0.4in',
+                    bottom: '0.4in',
+                    left: '0.4in',
+                    right: '0.4in'
+                }
+            });
+        } finally {
+            await page.close().catch(() => {});
+        }
 
         // Upload PDF to S3
         const filename = `Proforma_${proformaNoStr}_${Date.now()}.pdf`;
@@ -729,11 +788,27 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
         const effectiveExRate = parseFloat(firstItem.ex_rate || firstItem.exRate || 85.00);
         const targetCurrency = print_type === 'USD' ? 'USD' : 'INR';
 
+        const isUSDFx = print_type === 'USD';
+        const hasDr = items.some(item => String(item.drcr || item.doc_type || '').toUpperCase() === 'DR');
+        const is_usd_fx_dr = isUSDFx || hasDr;
+
+        let taxableTotalVal = 0;
+        let nonTaxableTotalVal = 0;
+        let gstTotalVal = 0;
+        let grandTotalVal = 0;
+
+        let cgstVal = 0;
+        let sgstVal = 0;
+        let cgstFreightVal = 0;
+        let sgstFreightVal = 0;
+        let igstVal = 0;
+        let igstFreightVal = 0;
+
         const chargesList = items.map((item) => {
             const qty = parseFloat(item.quantity || item.qty || 1);
             const baseRate = parseFloat(item.rate || 0);
-            const itemCurrency = item.currency || 'USD';
-            const rowExRate = parseFloat(item.ex_rate || item.exRate || effectiveExRate);
+            const itemCurrency = item.currency || (isUSDFx ? 'USD' : 'INR');
+            const rowExRate = parseFloat(item.ex_rate || item.exRate || (itemCurrency === 'USD' ? 1 : effectiveExRate));
 
             let amount = qty * baseRate;
 
@@ -747,18 +822,54 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
                 }
             }
 
-            const gstRate = parseFloat(item.gst || item.taxPercent || 0);
-            const gstAmount = amount * (gstRate / 100);
+            // For USD Invoices, no GST is added
+            const gstRate = isUSDFx ? 0 : parseFloat(item.gst || item.taxPercent || 0);
+            const gstAmount = isUSDFx ? 0 : amount * (gstRate / 100);
             const totalAmount = amount + gstAmount;
 
             const isFreight = String(item.charge || item.chargeName || '').toLowerCase().includes('freight') || gstRate === 5;
 
+            const totAmtChargeCurr = qty * baseRate;
+            const taxable = gstRate > 0 ? amount.toFixed(2) : "0.00";
+            const nonTaxable = gstRate === 0 ? amount.toFixed(2) : "0.00";
+
+            if (gstRate > 0) {
+                taxableTotalVal += amount;
+            } else {
+                nonTaxableTotalVal += amount;
+            }
+
+            gstTotalVal += gstAmount;
+            grandTotalVal += totalAmount;
+
+            if (gstRate > 0) {
+                if (isIntraState) {
+                    if (isFreight) {
+                        cgstFreightVal += gstAmount / 2;
+                        sgstFreightVal += gstAmount / 2;
+                    } else {
+                        cgstVal += gstAmount / 2;
+                        sgstVal += gstAmount / 2;
+                    }
+                } else {
+                    if (isFreight) {
+                        igstFreightVal += gstAmount;
+                    } else {
+                        igstVal += gstAmount;
+                    }
+                }
+            }
+
             return {
                 charge_name: item.charge || item.chargeName || '—',
-                hsn_sac: item.hsn_sac || item.sac || '996521',
+                hsn_sac: item.hsn_sac || item.sac || '',
                 rate: baseRate.toFixed(2),
                 currency: itemCurrency,
                 qty: qty,
+                ex_rate: itemCurrency === 'USD' ? '1' : String(rowExRate),
+                tot_amt_charge_curr: totAmtChargeCurr.toFixed(2),
+                taxable: taxable,
+                non_taxable: nonTaxable,
                 amount: amount.toFixed(2),
                 gst_rate: gstRate.toFixed(1),
                 gst_amount: gstAmount.toFixed(2),
@@ -768,41 +879,6 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
                 gst_rate_num: gstRate,
                 gst_amount_num: gstAmount
             };
-        });
-
-        let taxableTotalVal = 0;
-        let gstTotalVal = 0;
-        let grandTotalVal = 0;
-
-        let cgstVal = 0;
-        let sgstVal = 0;
-        let cgstFreightVal = 0;
-        let sgstFreightVal = 0;
-        let igstVal = 0;
-        let igstFreightVal = 0;
-
-        chargesList.forEach((c) => {
-            taxableTotalVal += c.taxable_amount;
-            gstTotalVal += c.gst_amount_num;
-            grandTotalVal += c.taxable_amount + c.gst_amount_num;
-
-            if (c.gst_rate_num > 0) {
-                if (isIntraState) {
-                    if (c.is_freight) {
-                        cgstFreightVal += c.gst_amount_num / 2;
-                        sgstFreightVal += c.gst_amount_num / 2;
-                    } else {
-                        cgstVal += c.gst_amount_num / 2;
-                        sgstVal += c.gst_amount_num / 2;
-                    }
-                } else {
-                    if (c.is_freight) {
-                        igstFreightVal += c.gst_amount_num;
-                    } else {
-                        igstVal += c.gst_amount_num;
-                    }
-                }
-            }
         });
 
         const formatNum = (val) => val > 0 ? val.toFixed(2) : '0.00';
@@ -833,19 +909,35 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             }
         }
 
+        let logoBase64 = "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg";
+        try {
+            const logoPath = path.join(__dirname, '..', '..', 'frontend', 'public', 'images', 'SSR_Logo.png');
+            const logoBuf = await fs.readFile(logoPath);
+            logoBase64 = `data:image/png;base64,${logoBuf.toString('base64')}`;
+        } catch (err) {}
+
+        let companyStamp = "";
+        try {
+            const stampPath = path.join(__dirname, '..', '..', 'frontend', 'public', 'images', 'ssr_stamp_signature.png');
+            const stampBuf = await fs.readFile(stampPath);
+            companyStamp = `data:image/png;base64,${stampBuf.toString('base64')}`;
+        } catch (err) {}
+
         const contextData = {
-            company_logo: "https://ssr.sirifreight.com/image/logo_Gh64uq2d8W82fDF5F8D7yeWNAgqTjc6h.jpeg",
-            company_name: "SSR LOGISTIC SOLUTIONS PRIVATE LIMITED",
-            company_address: "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi, Navi Mumbai - 400703, Maharashtra, India",
+            is_usd_fx_dr: is_usd_fx_dr,
+            company_logo: logoBase64,
+            company_name: "SSR LOGISTIC SOLUTIONS PVT. LTD.",
+            company_address: "Office No. 612, 6th Floor, Vashi Infotech Park, Sector - 30 A, Near Raghuleela Mall, Vashi,<br>Navi Mumbai- 400703, India Tel.No : 7700990630,",
             website: "www.ssrlogistic.net",
             state: "Maharashtra",
-            state_code: "27",
+            state_code: "277",
             company_gst: "27ABMCS1941A1ZI",
             company_pan: "ABMCS1941A",
-            company_stamp: "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7", // transparent spacer
+            company_stamp: companyStamp,
 
             party_name: client_name || '—',
             party_address: client_address || '—',
+            party_city_country: (!client_gstin || client_gstin === 'N/A' || client_gstin === 'URP') ? '' : '',
             party_gst: client_gstin || 'N/A',
             party_state_code: stateInfo.code,
             place_of_supply: stateInfo.name,
@@ -853,6 +945,9 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             proforma_no: proforma.proforma_no,
             proforma_date: formatDate(updatedDate),
             ref_no: job_no,
+            job_no: job_no,
+            job_date: formatDate(jobRecord?.date_of_nomination || jobRecord?.created_at || updatedDate),
+            reference: addDetails?.reference_no || addDetails?.enquiry_no || '',
 
             hbl_no: mbl_hbl_type === 'HBL' ? mbl_hbl_no : (addDetails.hbl_no || '—'),
             hbl_date: formatDate(jobRecord?.hbl_date || addDetails.hbl_date),
@@ -860,13 +955,15 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             mbl_date: formatDate(jobRecord?.mbl_date || addDetails.mbl_date),
             vessel_voy: `${jobRecord?.shipping_line_name || addDetails.vessel || '—'} / ${addDetails.voyage || '—'}`,
             pol: polVal,
+            be_no: addDetails?.boe_no || addDetails?.be_no || '',
             fpd: fpdVal,
             igm_no: addDetails.igm_no || '—',
             line_no: addDetails.item_no || '—',
             line_date: formatDate(addDetails.igm_date || jobRecord?.created_at),
             sub_line_no: addDetails.sub_no || '—',
             etd_date: formatDate(jobRecord?.etd || addDetails.etd_date),
-            container_type_count: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'}`,
+            shipping_line: addDetails.carrier || jobRecord?.shipping_line_name || addDetails.shipping_line || '—',
+            container_type_count: `${jobRecord?.container_count || addDetails.inv_no_of_units || '1'} X ${jobRecord?.container_size || addDetails.inv_csize || '40HQ'} ,`,
             consignee: consigneeName || '—',
             shipper: shipperName || '—',
             cargo_type: jobRecord?.cargo_type || addDetails.shipment_type || 'General',
@@ -876,14 +973,16 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             pod: podVal,
             no_of_pkgs: addDetails.no_of_packages || '—',
             eta_date: formatDate(jobRecord?.eta || addDetails.eta_date),
+            shipper_ref_no: addDetails?.reference_no || '',
             ex_rate: effectiveExRate.toFixed(2),
             container_numbers: jobRecord?.container_number || (addDetails.containers && addDetails.containers.map(c => c.container_no || c.containerNo).join(', ')) || '—',
 
             charges: chargesList,
 
             taxable_total: taxableTotalVal.toFixed(2),
+            non_taxable_total: nonTaxableTotalVal.toFixed(2),
             gst_total: gstTotalVal.toFixed(2),
-            grand_total: print_type === 'USD' ? grandTotalVal.toFixed(2) : roundedGrandTotal.toFixed(2),
+            grand_total: print_type === 'USD' ? (Number.isInteger(grandTotalVal) ? grandTotalVal.toString() : grandTotalVal.toFixed(2)) : roundedGrandTotal.toFixed(2),
 
             is_intra_state: isIntraState,
             cgst: formatNum(cgstVal),
@@ -903,23 +1002,25 @@ router.put("/update/:id", authenticateJWT, async (req, res) => {
             ifsc: 'KKBK0001370'
         };
 
-        const templatePath = path.join(__dirname, '..', 'Mail', 'proforma_pdf.html');
+        const templateFileName = is_usd_fx_dr ? 'debit_invoice_pdf.html' : 'proforma_pdf.html';
+        const templatePath = path.join(__dirname, '..', 'Mail', templateFileName);
         const templateSource = await fs.readFile(templatePath, 'utf-8');
         const template = handlebars.compile(templateSource);
         const html = template(contextData);
 
-        const browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
+        const browser = await getBrowser();
         const page = await browser.newPage();
-        await page.setContent(html, { waitUntil: 'networkidle0' });
-        const pdfBuffer = await page.pdf({
-            format: 'A4',
-            printBackground: true,
-            margin: { top: '0.4in', bottom: '0.4in', left: '0.4in', right: '0.4in' }
-        });
-        await browser.close();
+        let pdfBuffer;
+        try {
+            await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 5000 });
+            pdfBuffer = await page.pdf({
+                format: 'A4',
+                printBackground: true,
+                margin: { top: '0.4in', bottom: '0.4in', left: '0.4in', right: '0.4in' }
+            });
+        } finally {
+            await page.close().catch(() => {});
+        }
 
         let filename = `Proforma_${proforma.proforma_no}_${Date.now()}.pdf`;
         if (proforma.pdf_link) {

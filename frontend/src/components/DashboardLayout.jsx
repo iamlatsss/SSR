@@ -238,9 +238,8 @@ const menuConfig = [
         icon: <Scroll size={20} />,
         groupKey: 'hblDocuments',
         children: [
-            { text: 'HBL Confirmation', to: '/hbl-confirmation', icon: <FileText size={18} /> },
-            { text: 'HBL Final', to: '/hbl-final', icon: <FileCheck2 size={18} /> },
-            { text: 'HBL Telex Release', to: '/hbl-telex-release', icon: <Anchor size={18} /> }
+            { text: 'HBL Generator', to: '/hbl-generator', icon: <FileText size={18} /> },
+            { text: 'HBL Register', to: '/hbl-register', icon: <FileCheck2 size={18} /> }
         ]
     }
 ];
@@ -315,7 +314,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
     const isDashboardActive = ['/kyc', '/users', '/charges', '/parties'].includes(location.pathname);
     const isSeaImportActive = ['/si-masterbl', '/si-masterbl-form'].includes(location.pathname) && direction === 'import';
     const isInvoiceActive = ['/invoice', '/proforma-invoice', '/e-invoice-approval', '/e-invoice-posting'].includes(location.pathname);
-    const isHblDocsActive = ['/hbl-confirmation', '/hbl-final', '/hbl-telex-release'].includes(location.pathname);
+    const isHblDocsActive = ['/hbl-generator', '/hbl-register'].includes(location.pathname);
 
     const [expandedMenus, setExpandedMenus] = useState({
         dashboard: isDashboardActive,
@@ -511,7 +510,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                     </button>
                 </div>
             </aside>
-            <div className="flex-1 flex flex-col overflow-hidden relative w-full">
+            <div className="flex-1 flex flex-col overflow-hidden relative w-full min-w-0">
                 <header className="h-16 bg-white dark:bg-dark-bg border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 sm:px-10 z-40 shadow-sm shrink-0 transition-colors duration-300">
                     <div className="flex items-center gap-4">
                         <button
@@ -646,7 +645,7 @@ const DashboardLayout = ({ children, title = "Dashboard" }) => {
                         </div>
                     </div>
                 </header>
-                <main className="flex-1 overflow-y-auto p-4 sm:p-8 bg-slate-50/50 dark:bg-dark-bg transition-colors duration-300">
+                <main className="flex-1 overflow-y-auto p-3 sm:p-5 lg:p-8 bg-slate-50/50 dark:bg-dark-bg transition-colors duration-300 min-w-0">
                     {children}
                 </main>
             </div>

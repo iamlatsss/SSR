@@ -425,28 +425,28 @@ const InvoiceGenerator = () => {
 
                     {/* Totals Footer */}
                     <div className="bg-slate-50 dark:bg-slate-800/80 border-t border-slate-200 dark:border-slate-700">
-                        <div className="grid grid-cols-6 gap-4 p-4 text-center text-sm">
-                            <div className="flex flex-col">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 p-4 text-center text-sm">
+                            <div className="flex flex-col p-2">
                                 <span className="text-xs uppercase text-slate-500 font-semibold mb-1">Taxable</span>
                                 <span className="font-bold text-slate-800 dark:text-white text-lg">₹{totals.taxable.toFixed(2)}</span>
                             </div>
-                            <div className="flex flex-col border-l border-slate-200 dark:border-slate-700">
+                            <div className="flex flex-col p-2 sm:border-l border-slate-200 dark:border-slate-700">
                                 <span className="text-xs uppercase text-slate-500 font-semibold mb-1">Total GST</span>
                                 <span className="font-bold text-slate-600 dark:text-slate-300">₹{totals.igst.toFixed(2)}</span>
                             </div>
-                            <div className="flex flex-col border-l border-slate-200 dark:border-slate-700">
+                            <div className="flex flex-col p-2 lg:border-l border-slate-200 dark:border-slate-700">
                                 <span className="text-xs uppercase text-slate-500 font-semibold mb-1">CGST</span>
                                 <span className="font-medium text-slate-500">₹{totals.cgst.toFixed(2)}</span>
                             </div>
-                            <div className="flex flex-col border-l border-slate-200 dark:border-slate-700">
+                            <div className="flex flex-col p-2 sm:border-l border-slate-200 dark:border-slate-700">
                                 <span className="text-xs uppercase text-slate-500 font-semibold mb-1">SGST</span>
                                 <span className="font-medium text-slate-500">₹{totals.sgst.toFixed(2)}</span>
                             </div>
-                            <div className="flex flex-col border-l border-slate-200 dark:border-slate-700">
+                            <div className="flex flex-col p-2 lg:border-l border-slate-200 dark:border-slate-700">
                                 <span className="text-xs uppercase text-slate-500 font-semibold mb-1">IGST</span>
                                 <span className="font-medium text-slate-500">₹{totals.igst.toFixed(2)}</span>
                             </div>
-                            <div className="flex flex-col border-l border-slate-200 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-900/20 -my-4 py-4 justify-center">
+                            <div className="flex flex-col p-2 sm:border-l border-slate-200 dark:border-slate-700 bg-indigo-50 dark:bg-indigo-900/20 rounded-xl justify-center">
                                 <span className="text-xs uppercase text-indigo-600 dark:text-indigo-400 font-bold mb-1">Grand Total</span>
                                 <span className="font-extrabold text-indigo-700 dark:text-indigo-300 text-xl">₹{totals.grandTotal.toFixed(2)}</span>
                             </div>

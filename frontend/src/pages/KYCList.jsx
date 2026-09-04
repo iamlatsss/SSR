@@ -173,8 +173,8 @@ const KYCList = () => {
                 <div className="flex justify-center p-12"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div></div>
             ) : (
                 <div className="bg-white dark:bg-dark-card rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="overflow-x-auto custom-scrollbar">
+                        <table className="w-full text-left border-collapse min-w-[750px]">
                             <thead>
                                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 text-xs uppercase font-semibold">
                                     <th className="p-4">Customer Name</th>
@@ -243,50 +243,21 @@ const KYCList = () => {
                                     <option value={20}>20</option>
                                     <option value={50}>50</option>
                                 </select>
-                                <span className="ml-2">
-                                    Showing {indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredCustomers.length)} of {filteredCustomers.length}
-                                </span>
                             </div>
 
                             <div className="flex items-center gap-2">
                                 <button
-                                    onClick={() => handlePageChange(currentPage - 1)}
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                                     disabled={currentPage === 1}
                                     className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
                                     <ChevronLeft size={16} />
                                 </button>
-
-                                <div className="flex gap-1">
-                                    {(() => {
-                                        const pages = [];
-                                        let startPage = Math.max(1, currentPage - 2);
-                                        let endPage = Math.min(totalPages, startPage + 4);
-
-                                        if (endPage - startPage + 1 < Math.min(5, totalPages)) {
-                                            startPage = Math.max(1, endPage - Math.min(5, totalPages) + 1);
-                                        }
-
-                                        for (let p = startPage; p <= endPage; p++) {
-                                            pages.push(p);
-                                        }
-                                        return pages.map(pageNum => (
-                                            <button
-                                                key={pageNum}
-                                                onClick={() => handlePageChange(pageNum)}
-                                                className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${currentPage === pageNum
-                                                    ? "bg-indigo-600 text-white"
-                                                    : "hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400"
-                                                    }`}
-                                            >
-                                                {pageNum}
-                                            </button>
-                                        ));
-                                    })()}
-                                </div>
-
+                                <span className="text-sm text-slate-600 dark:text-slate-400 px-2">
+                                    Page {currentPage} of {totalPages}
+                                </span>
                                 <button
-                                    onClick={() => handlePageChange(currentPage + 1)}
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                                     disabled={currentPage === totalPages}
                                     className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-white dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                 >
@@ -312,7 +283,8 @@ const KYCList = () => {
                         </div>
 
                         <form id="kycForm" onSubmit={handleSubmit} className="p-6">
-                            <table className="w-full border border-gray-400 text-sm">
+                            <div className="overflow-x-auto custom-scrollbar">
+                                <table className="w-full border border-gray-400 text-sm min-w-[700px]">
                                 <tbody>
                                     {/* Date / Branch */}
                                     <tr className="border-b border-gray-400">
@@ -754,6 +726,7 @@ const KYCList = () => {
                                     </tr>
                                 </tbody>
                             </table>
+                            </div>
 
                             <div className="flex justify-center mt-6">
                                 <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 mr-4 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors font-medium">Cancel</button>

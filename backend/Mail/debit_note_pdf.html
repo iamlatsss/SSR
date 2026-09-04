@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Debit Note</title>
+<style>
+  @page {
+    size: A4 portrait;
+    margin: 6mm;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #ffffff;
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 9.5px;
+    color: #000000;
+  }
+
+  .debit-note-container {
+    width: 100%;
+    max-width: 100%;
+    margin: 0 auto;
+    border: 1px solid #000000;
+    background: #ffffff;
+  }
+
+  /* ===== HEADER ===== */
+  .header {
+    display: flex;
+    align-items: center;
+    padding: 8px 14px;
+    border-bottom: 1px solid #000000;
+  }
+  .header .logo {
+    width: 110px;
+    flex: 0 0 110px;
+  }
+  .header .logo img {
+    width: 100%;
+    max-width: 105px;
+    height: auto;
+    display: block;
+  }
+  .header .company-info {
+    flex: 1 1 auto;
+    text-align: center;
+    padding-right: 30px;
+  }
+  .company-info .company-name {
+    font-weight: bold;
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    margin-bottom: 2px;
+  }
+  .company-info .company-line {
+    font-size: 9.5px;
+    line-height: 1.35;
+  }
+
+  /* ===== TITLE ===== */
+  .title-bar {
+    text-align: center;
+    font-weight: bold;
+    font-size: 11px;
+    padding: 3px 0;
+    border-bottom: 1px solid #000000;
+    background: #ffffff;
+  }
+
+  /* ===== TWO-COLUMN INFO BLOCKS ===== */
+  .info-grid {
+    display: flex;
+    width: 100%;
+    border-bottom: 1px solid #000000;
+  }
+  .info-grid .col-left {
+    flex: 1 1 50%;
+    min-width: 0;
+    padding: 6px 10px;
+    border-right: 1px solid #000000;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .info-grid .col-right {
+    flex: 1 1 50%;
+    min-width: 0;
+    padding: 6px 10px;
+  }
+  .info-grid .row {
+    margin: 1.5px 0;
+    line-height: 1.35;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+  }
+  .info-grid b, .info-grid strong { font-weight: bold; }
+
+  /* ===== PARTICULARS TABLE ===== */
+  table.particulars-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 9.5px;
+  }
+  table.particulars-table th, table.particulars-table td {
+    border: 1px solid #000000;
+    padding: 3.5px 6px;
+    vertical-align: middle;
+  }
+  table.particulars-table th {
+    font-weight: bold;
+    text-align: center;
+    background: #ffffff;
+  }
+  table.particulars-table td.num { text-align: right; }
+  table.particulars-table td.center { text-align: center; }
+
+  table.particulars-table col.c-part  { width: 58%; }
+  table.particulars-table col.c-rate  { width: 14%; }
+  table.particulars-table col.c-qty   { width: 11%; }
+  table.particulars-table col.c-fc    { width: 17%; }
+
+  table.particulars-table tr.total-row td {
+    font-weight: bold;
+  }
+  table.particulars-table tr.words-row td {
+    font-weight: bold;
+    padding: 4px 6px;
+  }
+
+  /* ===== BOTTOM SECTION (BANK & SIGNATURE) ===== */
+  .bottom-grid {
+    display: flex;
+    width: 100%;
+  }
+  .bottom-grid .bank-col {
+    flex: 1 1 58%;
+    min-width: 0;
+    padding: 6px 10px;
+    border-right: 1px solid #000000;
+    font-size: 9px;
+    line-height: 1.35;
+  }
+  .bottom-grid .bank-col .row { margin: 1px 0; }
+  .bottom-grid .bank-col .tax-header-block { margin-bottom: 6px; }
+
+  .bottom-grid .sign-col {
+    flex: 1 1 42%;
+    min-width: 0;
+    padding: 6px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 120px;
+  }
+  .sign-col .for-company {
+    font-weight: bold;
+    font-size: 9.5px;
+  }
+  .sign-col .stamp-area {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 4px 0;
+  }
+  .sign-col .stamp-area img {
+    height: 65px;
+    max-width: 140px;
+    object-fit: contain;
+  }
+  .sign-col .accounts-dept {
+    font-weight: bold;
+    font-size: 9.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="debit-note-container">
+
+  <!-- ===================== HEADER ===================== -->
+  <div class="header">
+    <div class="logo">
+      <img src="{{company_logo}}" alt="SSR Logo">
+    </div>
+    <div class="company-info">
+      <div class="company-name">{{company_name}}</div>
+      <div class="company-line">{{{company_address}}}</div>
+      <div class="company-line"><b>Tel.No :</b>{{company_phone}}, <b>GST No. :</b> {{company_gst}}</div>
+      <div class="company-line"><b>Website:</b> {{website}}</div>
+    </div>
+  </div>
+
+  <!-- ===================== TITLE ===================== -->
+  <div class="title-bar">DEBIT NOTE (Original for Recipient)</div>
+
+  <!-- ===================== PARTY & SHIPMENT DETAILS ===================== -->
+  <div class="info-grid">
+    <!-- Left Column: Party & Notify -->
+    <div class="col-left">
+      <div>
+        <div class="row"><b>To,</b> <span style="font-weight: bold;">{{party_name}}</span></div>
+        <div class="row" style="white-space: pre-line; font-weight: bold;">{{party_address}}</div>
+        {{#if party_city_country}}
+        <div class="row" style="font-weight: bold; margin-top: 4px;">{{party_city_country}}</div>
+        {{/if}}
+      </div>
+      <div style="margin-top: 14px;">
+        <div class="row"><b>Notify :</b> <span>{{notify_party}}</span></div>
+        <div class="row"><b>Container No. :</b> <span>{{container_numbers}}</span></div>
+        <div class="row"><b>Description :</b> <span>{{description}}</span></div>
+      </div>
+    </div>
+
+    <!-- Right Column: Job & Shipment Details -->
+    <div class="col-right">
+      <div class="row"><b>No. :</b><span>{{invoice_no}}</span> / <span>{{invoice_date}}</span></div>
+      <div class="row"><b>JOB No. :</b> <span>{{job_no}}</span></div>
+      <div class="row"><b>MBL No. :</b> <span>{{mbl_no}}</span> / <span>{{mbl_date}}</span></div>
+      <div class="row"><b>HBL No. :</b> <span>{{hbl_no}}</span> / <span>{{hbl_date}}</span></div>
+      <div class="row"><b>Reference :</b> <span>{{reference}}</span></div>
+      <div class="row"><b>Gross Weight :</b> <span>{{gross_weight}}</span> <b>Volume :</b> <span>{{volume}}</span></div>
+      <div class="row"><b>ETA Date :</b> <span>{{eta_date}}</span></div>
+      <div class="row"><b>ETD Date :</b> <span>{{etd_date}}</span></div>
+      <div class="row"><b>Vessel / Voyage :</b> <span>{{vessel_voyage}}</span></div>
+      <div class="row"><b>Discharge Port :</b> <span>{{discharge_port}}</span></div>
+      <div class="row"><b>Load Port :</b> <span>{{load_port}}</span></div>
+      <div class="row"><b>Shipment Type :</b> <span>{{shipment_type}}</span></div>
+      <div class="row"><b>IGM No. :</b> <span>{{igm_no}}</span> <b>Date:</b> <span>{{igm_date}}</span></div>
+      <div class="row"><b>C.F.S :</b> <span>{{cfs}}</span></div>
+      <div class="row"><b>Ship Line :</b> <span>{{shipping_line}}</span></div>
+      <div class="row"><b>Shipping Bill No :</b> <span>{{shipping_bill_no}}</span></div>
+    </div>
+  </div>
+
+  <!-- ===================== PARTICULARS TABLE ===================== -->
+  <table class="particulars-table">
+    <colgroup>
+      <col class="c-part">
+      <col class="c-rate">
+      <col class="c-qty">
+      <col class="c-fc">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>PARTICULARS</th>
+        <th>RATE</th>
+        <th>QTY</th>
+        <th>FC Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each charges}}
+      <tr>
+        <td>{{charge_name}}</td>
+        <td class="num">{{rate}}</td>
+        <td class="center">{{qty}}</td>
+        <td class="num">{{fc_amount}}</td>
+      </tr>
+      {{/each}}
+    </tbody>
+    <tfoot>
+      <!-- Subtotal row -->
+      <tr class="total-row">
+        <td colspan="3"></td>
+        <td class="num">{{grand_total}}</td>
+      </tr>
+      <!-- Words row -->
+      <tr class="words-row">
+        <td colspan="4">{{currency_label}} - {{amount_in_words}}</td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <!-- ===================== BANK DETAILS / SIGNATURE ===================== -->
+  <div class="bottom-grid">
+    <div class="bank-col">
+      <div class="tax-header-block">
+        <div class="row"><b>Pan No :</b> <span>{{company_pan}}</span></div>
+        <div class="row"><b>GST No:</b> <span>{{company_gst}}</span></div>
+        <div class="row"><b>LUT No:</b> <span>{{lut_no}}</span></div>
+        <div class="row"><b>CIN No:</b> <span>{{cin_no}}</span> <b>State Code</b> <span>{{state_code}}</span></div>
+      </div>
+      <div>
+        <div class="row"><b>Bank Details : Beneficiary Name :</b> <span>{{beneficiary_name}}</span></div>
+        <div class="row"><b>Bank Name :</b> <span>{{bank_name}}</span></div>
+        <div class="row"><b>IFSC:</b> <span>{{ifsc}}</span></div>
+        <div class="row"><b>Swift Code:</b> <span>{{swift_code}}</span></div>
+        <div class="row"><b>Account Number (INR):</b> <span>{{account_number_inr}}</span></div>
+        <div class="row"><b>Account Number (USD):</b> <span>{{account_number_usd}}</span></div>
+        <div class="row"><b>Account Number (EUR):</b> <span>{{account_number_eur}}</span></div>
+      </div>
+    </div>
+    <div class="sign-col">
+      <div class="for-company">FOR SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
+      <div class="stamp-area">
+        {{#if company_stamp}}
+        <img src="{{company_stamp}}" alt="Company Stamp">
+        {{/if}}
+      </div>
+      <div class="accounts-dept">Accounts Department</div>
+    </div>
+  </div>
+
+</div>
+
+</body>
+</html>

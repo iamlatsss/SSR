@@ -206,10 +206,10 @@ const InvoicePreview = ({ data, onClose }) => {
                                 </div>
                             </div>
                             <div className="w-1/3 p-2 flex flex-col justify-between text-center">
-                                <p className="font-bold mb-8">FOR SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</p>
-                                {/* Signature Placeholder */}
-                                <div className="h-16 flex items-center justify-center">
-                                    <img src="/images/signature.png" alt="Signature" className="max-h-full opacity-50" onError={(e) => e.target.style.display = 'none'} />
+                                <p className="font-bold mb-2">FOR SSR LOGISTIC SOLUTIONS PRIVATE LIMITED</p>
+                                {/* Stamp and Signature */}
+                                <div className="h-20 flex items-center justify-center my-1">
+                                    <img src="/images/ssr_stamp_signature.png" alt="Stamp and Signature" className="max-h-full object-contain" onError={(e) => e.target.style.display = 'none'} />
                                 </div>
                                 <p className="font-bold">Accounts Department</p>
                             </div>

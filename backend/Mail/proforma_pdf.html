@@ -134,7 +134,7 @@
 
   .container-no-strip {
     padding: 4px 12px;
-    border-bottom: 1.5px solid #000000;
+    border-bottom: 1px solid #000000;
     font-size: 10.5px;
   }
 
@@ -144,6 +144,7 @@
     border-collapse: collapse;
     table-layout: fixed;
     font-size: 9.5px;
+    border-top: none;
   }
   table.charges th, table.charges td {
     border: 1px solid #000000;
@@ -212,24 +213,21 @@
     min-width: 0;
     padding: 6px 10px;
     border-left: 1.5px solid #000000;
-    text-align: center;
+    text-align: left;
     position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 85px;
   }
   .sign-col .for-company {
     font-weight: bold;
     text-align: left;
+    text-transform: uppercase;
   }
   .sign-col .stamp {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 45px;
-    margin: 2px 0;
-  }
-  .sign-col .stamp img {
     height: 40px;
-    max-width: 150px;
-    object-fit: contain;
+    margin: 2px 0;
   }
   .sign-col .eoe {
     position: absolute;
@@ -438,16 +436,15 @@
     </div>
     <div class="sign-col">
       <div class="eoe">E &amp; O.E.</div>
-      <div class="for-company">FOR {{company_name}}</div>
-      <div class="stamp">
-        <img src="{{company_stamp}}" alt="Company Stamp and Signature">
+      <div class="for-company">FOR SSR LOGISTIC SOLUTIONS PVT. LTD.</div>
+      <div class="stamp" style="text-align: center; margin: 2px 0;">
+        {{#if company_stamp}}
+        <img src="{{company_stamp}}" alt="Stamp and Signature" style="width: 100px; height: auto; display: inline-block;" />
+        {{/if}}
       </div>
       <div class="accounts-dept">Accounts Department</div>
     </div>
   </div>
-
-  <!-- ===================== FOOTER NOTE ===================== -->
-  <div class="footer-note">System generated Invoice. Does not require Signature</div>
 
 </div>
 

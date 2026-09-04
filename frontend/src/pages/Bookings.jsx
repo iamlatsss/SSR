@@ -232,7 +232,7 @@ const Bookings = () => {
                         {activeTab === 'booking' ? (
                             <div className="space-y-6">
                                 <h3 className="text-lg font-semibold text-slate-800 dark:text-white mb-4">Initial Booking</h3>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {/* Shipper/Consignee */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Shipper</label>
